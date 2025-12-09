@@ -21,11 +21,13 @@ export function PropertiesManager() {
   const firestore = useFirestore();
   const { toast } = useToast();
   const [newProperty, setNewProperty] = useState('');
+  const [isSubmitting, setIsSubmitting] = useState(false);
 
   const propertiesDocRef = useMemoFirebase(
     () => (user ? doc(firestore, 'siteConfiguration', 'properties') : null),
     [firestore, user]
   );
+
   const {
     data: propertiesData,
     isLoading,
@@ -42,33 +44,65 @@ export function PropertiesManager() {
     }
   }, [propertiesData, isLoading]);
 
-  const handleSave = async () => {
-    if (!propertiesDocRef) return;
+  const showSuccessToast = (description: string) => {
+    toast({
+      title: 'Success',
+      description,
+    });
+  };
+
+  const showErrorToast = (description: string) => {
+    toast({
+      variant: 'destructive',
+      title: 'Error',
+      description,
+    });
+  };
+
+  const updateFirestore = async (updatedProperties: string[]) => {
+    if (!propertiesDocRef) return false;
+    setIsSubmitting(true);
     try {
-      await setDoc(propertiesDocRef, { options: properties }, { merge: true });
-      toast({
-        title: 'Success',
-        description: 'Properties saved successfully.',
-      });
+      await setDoc(propertiesDocRef, { options: updatedProperties }, { merge: true });
+      return true;
     } catch (e) {
-      toast({
-        variant: 'destructive',
-        title: 'Error',
-        description: 'Failed to save properties.',
-      });
+      showErrorToast('Failed to save changes.');
+      return false;
+    } finally {
+      setIsSubmitting(false);
     }
   };
 
-  const handleAddProperty = () => {
+  const handleAddProperty = async () => {
     if (newProperty && !properties.includes(newProperty)) {
-      setProperties([...properties, newProperty]);
-      setNewProperty('');
+      const updatedProperties = [...properties, newProperty];
+      const success = await updateFirestore(updatedProperties);
+      if (success) {
+        setProperties(updatedProperties);
+        setNewProperty('');
+        showSuccessToast(`Added "${newProperty}".`);
+      }
     }
   };
 
-  const handleDeleteProperty = (typeToDelete: string) => {
-    setProperties(properties.filter((type) => type !== typeToDelete));
+  const handleDeleteProperty = async (propertyToDelete: string) => {
+    const updatedProperties = properties.filter((prop) => prop !== propertyToDelete);
+    const success = await updateFirestore(updatedProperties);
+    if(success) {
+      setProperties(updatedProperties);
+      showSuccessToast(`Removed "${propertyToDelete}".`);
+    }
   };
+
+  const handleEditProperty = async (index: number, value: string) => {
+    const updatedProperties = [...properties];
+    updatedProperties[index] = value;
+    const success = await updateFirestore(updatedProperties);
+    if(success) {
+      setProperties(updatedProperties);
+      showSuccessToast('Property updated.');
+    }
+  }
 
   if (isLoading) {
     return <Loader2 className="mx-auto h-8 w-8 animate-spin" />;
@@ -83,7 +117,7 @@ export function PropertiesManager() {
       <CardHeader>
         <CardTitle>Manage Properties</CardTitle>
         <CardDescription>
-          Add, edit, or remove the available properties for the platform.
+          Add or remove the available properties for the platform. Changes are saved automatically.
         </CardDescription>
       </CardHeader>
       <CardContent className="space-y-6">
@@ -97,12 +131,15 @@ export function PropertiesManager() {
                   newTypes[index] = e.target.value;
                   setProperties(newTypes);
                 }}
+                onBlur={(e) => handleEditProperty(index, e.target.value)}
+                disabled={isSubmitting}
                 className="flex-grow"
               />
               <Button
                 variant="ghost"
                 size="icon"
                 onClick={() => handleDeleteProperty(type)}
+                disabled={isSubmitting}
                 className="text-destructive hover:text-destructive/80"
               >
                 <Trash2 className="h-4 w-4" />
@@ -119,14 +156,16 @@ export function PropertiesManager() {
             value={newProperty}
             onChange={(e) => setNewProperty(e.target.value)}
             onKeyDown={(e) => e.key === 'Enter' && handleAddProperty()}
+            disabled={isSubmitting}
           />
-          <Button onClick={handleAddProperty} size="sm">
-            <PlusCircle className="mr-2 h-4 w-4" />
+          <Button onClick={handleAddProperty} size="sm" disabled={isSubmitting}>
+             {isSubmitting && newProperty ? (
+                <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+            ) : (
+                <PlusCircle className="mr-2 h-4 w-4" />
+            )}
             Add
           </Button>
-        </div>
-        <div>
-          <Button onClick={handleSave}>Save Changes</Button>
         </div>
       </CardContent>
     </Card>
