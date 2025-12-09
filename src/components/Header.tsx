@@ -69,7 +69,7 @@ export function Header() {
               className="flex items-center gap-2 text-primary font-bold"
             >
               <KeyRound className="h-6 w-6" />
-              <span>Auth App</span>
+              <span>AMCP</span>
             </Link>
             <nav className="hidden md:flex items-center space-x-4">
               {navItems.map((item) => (

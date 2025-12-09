@@ -4,7 +4,7 @@ import { Toaster } from '@/components/ui/toaster';
 import { FirebaseClientProvider } from '@/firebase';
 
 export const metadata: Metadata = {
-  title: 'LoginFlow',
+  title: 'AMCP',
   description: 'A simple login flow application built with Next.js and Firebase.',
 };
 
