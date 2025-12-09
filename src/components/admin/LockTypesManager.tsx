@@ -35,13 +35,39 @@ export function LockTypesManager() {
     data: lockTypesData,
     isLoading,
     error,
-  } = useDoc<{ types: DoorLockType[] }>(lockTypesDocRef);
+  } = useDoc<{ types: DoorLockType[] | string[] }>(lockTypesDocRef);
 
   const [lockTypes, setLockTypes] = useState<DoorLockType[]>([]);
 
   useEffect(() => {
     if (lockTypesData?.types) {
-      setLockTypes(lockTypesData.types);
+      // Check if the data is in the old format (array of strings)
+      if (
+        lockTypesData.types.length > 0 &&
+        typeof lockTypesData.types[0] === 'string'
+      ) {
+        const migratedTypes = (lockTypesData.types as string[]).map(
+          (name) => ({
+            id: name, // Use name as a temporary unique ID
+            name,
+            textInstructions: '',
+            instructionImageUrl: '',
+          })
+        );
+        // Save the migrated data back to Firestore
+        updateFirestore(migratedTypes)
+          .then(success => {
+            if (success) {
+              setLockTypes(migratedTypes);
+              toast({
+                title: 'Data Migrated',
+                description: 'Your lock types have been updated to the new format.',
+              });
+            }
+          });
+      } else {
+        setLockTypes(lockTypesData.types as DoorLockType[]);
+      }
     } else if (!isLoading && !lockTypesData) {
       // If the document doesn't exist or has no types, initialize with an empty array.
       setLockTypes([]);
@@ -198,7 +224,7 @@ export function LockTypesManager() {
               </Button>
             </div>
           ))}
-          {lockTypes.length === 0 && (
+          {lockTypes.length === 0 && !isLoading && (
             <p className="text-sm text-muted-foreground text-center py-4">No lock types defined.</p>
           )}
         </div>
