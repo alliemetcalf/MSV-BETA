@@ -2,7 +2,13 @@
 
 import Link from 'next/link';
 import { usePathname, useRouter } from 'next/navigation';
-import { KeyRound, LogOut, ShieldCheck, User as UserIcon } from 'lucide-react';
+import {
+  ChevronDown,
+  KeyRound,
+  LogOut,
+  ShieldCheck,
+  User as UserIcon,
+} from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { Button } from './ui/button';
 import { useAuth, useUser } from '@/firebase';
@@ -10,6 +16,13 @@ import { signOut } from 'firebase/auth';
 import { useToast } from '@/hooks/use-toast';
 import { useEffect, useState } from 'react';
 import { IdTokenResult } from 'firebase/auth';
+import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuSeparator,
+  DropdownMenuTrigger,
+} from '@/components/ui/dropdown-menu';
 
 export function Header() {
   const pathname = usePathname();
@@ -54,7 +67,6 @@ export function Header() {
   const navItems = [
     { href: '/', label: 'Home' },
     { href: '/door-codes', label: 'Door Codes' },
-    { href: '/profile', label: 'Profile' },
   ];
 
   const adminNavItems = [{ href: '/admin', label: 'Admin', icon: ShieldCheck }];
@@ -106,14 +118,28 @@ export function Header() {
           </div>
           <div className="flex items-center">
             {user && (
-              <span className="text-sm text-muted-foreground mr-4 hidden sm:inline">
-                {user.displayName || user.email}
-              </span>
+              <DropdownMenu>
+                <DropdownMenuTrigger asChild>
+                  <Button variant="ghost" className="flex items-center gap-2">
+                    <span className="text-sm text-muted-foreground hidden sm:inline">
+                      {user.displayName || user.email}
+                    </span>
+                    <ChevronDown className="h-4 w-4 text-muted-foreground" />
+                  </Button>
+                </DropdownMenuTrigger>
+                <DropdownMenuContent align="end">
+                  <DropdownMenuItem onClick={() => router.push('/profile')}>
+                    <UserIcon className="mr-2 h-4 w-4" />
+                    <span>Profile</span>
+                  </DropdownMenuItem>
+                  <DropdownMenuSeparator />
+                  <DropdownMenuItem onClick={handleLogout}>
+                    <LogOut className="mr-2 h-4 w-4" />
+                    <span>Logout</span>
+                  </DropdownMenuItem>
+                </DropdownMenuContent>
+              </DropdownMenu>
             )}
-            <Button onClick={handleLogout} variant="ghost" size="sm">
-              <LogOut className="mr-2 h-4 w-4" />
-              Logout
-            </Button>
           </div>
         </div>
       </div>
