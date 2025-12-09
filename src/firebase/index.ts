@@ -2,21 +2,39 @@
 
 import { firebaseConfig } from '@/firebase/config';
 import { initializeApp, getApps, getApp, FirebaseApp } from 'firebase/app';
-import { getAuth } from 'firebase/auth';
-import { getFirestore } from 'firebase/firestore';
-import { getStorage } from 'firebase/storage';
+import { getAuth, Auth } from 'firebase/auth';
+import { getFirestore, Firestore } from 'firebase/firestore';
+import { getStorage, FirebaseStorage } from 'firebase/storage';
+
+// This holds the initialized services.
+let firebaseServices: {
+  firebaseApp: FirebaseApp;
+  auth: Auth;
+  firestore: Firestore;
+  storage: FirebaseStorage;
+} | null = null;
+
 
 // IMPORTANT: DO NOT MODIFY THIS FUNCTION
 export function initializeFirebase() {
-  if (!getApps().length) {
-    // Always initialize with the explicit config to ensure all services
-    // are correctly configured, especially during local development.
-    const firebaseApp = initializeApp(firebaseConfig);
-    return getSdks(firebaseApp);
+  // If services are already initialized, return them immediately.
+  // This is the core of the fix to make initialization truly idempotent.
+  if (firebaseServices) {
+    return firebaseServices;
   }
-
-  // If already initialized, return the SDKs with the already initialized App
-  return getSdks(getApp());
+  
+  // If no apps are initialized, initialize a new one.
+  if (!getApps().length) {
+    const firebaseApp = initializeApp(firebaseConfig);
+    firebaseServices = getSdks(firebaseApp);
+    return firebaseServices;
+  }
+  
+  // If an app is already initialized (e.g. by another part of the system),
+  // get that app and its services.
+  const firebaseApp = getApp();
+  firebaseServices = getSdks(firebaseApp);
+  return firebaseServices;
 }
 
 export function getSdks(firebaseApp: FirebaseApp) {
