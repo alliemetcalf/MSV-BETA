@@ -169,38 +169,10 @@ export function useDoc<T = any>(
         if (snapshot.exists()) {
           setData(snapshot.data() as T);
         } else {
-          // Document does not exist, check if we should create it.
-          if (memoizedDocRef.path.startsWith('siteConfiguration/')) {
-            let initialData: { [key: string]: any } = {};
-            if (memoizedDocRef.id === 'lockTypes') {
-               initialData = { types: [
-                 { id: '1', name: 'Keypad', textInstructions: 'Enter code and turn knob.', instructionImageUrl: '' },
-                 { id: '2', name: 'Smart Lock', textInstructions: 'Use app to unlock.', instructionImageUrl: '' },
-               ]};
-            } else if (memoizedDocRef.id === 'properties') {
-                initialData = { options: ['Main House', 'Guest House']};
-            }
-            
-            setDoc(memoizedDocRef, initialData).then(() => {
-               getDoc(memoizedDocRef).then((newSnapshot) => {
-                 if(newSnapshot.exists()){
-                   setData(newSnapshot.data() as T);
-                 }
-                 setIsLoading(false);
-               })
-            }).catch(e => {
-                setError(e);
-                setIsLoading(false);
-            });
-          } else {
-            setData(null);
-            setIsLoading(false);
-          }
+          setData(null);
         }
         setError(null); 
-        if (snapshot.exists()) {
-          setIsLoading(false);
-        }
+        setIsLoading(false);
       },
       (error: FirestoreError) => {
         const contextualError = new FirestorePermissionError({

@@ -40,26 +40,16 @@ export function LockTypesManager() {
   const [lockTypes, setLockTypes] = useState<DoorLockType[]>([]);
 
   useEffect(() => {
-    if (isLoading) {
-      return;
-    }
-    
-    const rawTypes = lockTypesData?.types;
-
-    if (rawTypes && rawTypes.length > 0) {
-      // Check if migration is needed
-      if (typeof rawTypes[0] === 'string') {
-        const migratedTypes = (rawTypes as string[]).map(
-          (name, index) => ({
-            id: `${Date.now()}-${index}`, // More robust unique ID
-            name,
-            textInstructions: '',
-            instructionImageUrl: '',
-          })
-        );
-        // Set state immediately to update UI
+    if (lockTypesData) {
+      const rawTypes = lockTypesData.types || [];
+      if (rawTypes.length > 0 && typeof rawTypes[0] === 'string') {
+        const migratedTypes = (rawTypes as string[]).map((name, index) => ({
+          id: `${Date.now()}-${index}`,
+          name,
+          textInstructions: '',
+          instructionImageUrl: '',
+        }));
         setLockTypes(migratedTypes);
-        // Update Firestore in the background
         if (lockTypesDocRef) {
           setDoc(lockTypesDocRef, { types: migratedTypes }, { merge: true })
             .then(() => {
@@ -77,15 +67,27 @@ export function LockTypesManager() {
             });
         }
       } else {
-        // Data is in the correct format
         setLockTypes(rawTypes as DoorLockType[]);
       }
-    } else {
-      // Handle case where there are no types
-      setLockTypes([]);
+    } else if (!isLoading) {
+      // If data is null and not loading, it means the doc doesn't exist or is empty
+      // Create it with some defaults if it's the first time
+      if (!error && lockTypesDocRef) {
+          const defaultTypes = [
+            { id: '1', name: 'Keypad', textInstructions: 'Enter code and turn knob.', instructionImageUrl: '' },
+            { id: '2', name: 'Smart Lock', textInstructions: 'Use app to unlock.', instructionImageUrl: '' },
+          ];
+          setDoc(lockTypesDocRef, { types: defaultTypes }).then(() => {
+            setLockTypes(defaultTypes);
+            toast({
+              title: 'Initialized Lock Types',
+              description: 'Default lock types have been created.',
+            });
+          });
+      }
     }
-  }, [lockTypesData, isLoading, lockTypesDocRef, toast]);
-
+  }, [lockTypesData, isLoading, lockTypesDocRef, toast, error]);
+  
   const showSuccessToast = (description: string) => {
     toast({
       title: 'Success',
