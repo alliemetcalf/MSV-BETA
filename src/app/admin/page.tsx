@@ -14,6 +14,7 @@ import {
 } from '@/components/ui/card';
 import { IdTokenResult } from 'firebase/auth';
 import { AddUserForm } from '@/components/admin/AddUserForm';
+import { PropertiesManager } from '@/components/admin/PropertiesManager';
 
 export default function AdminPage() {
   const { user, isUserLoading } = useUser();
@@ -63,7 +64,10 @@ export default function AdminPage() {
           </CardHeader>
         </Card>
         <AddUserForm />
-        <LockTypesManager />
+        <div className="grid md:grid-cols-2 gap-8">
+          <LockTypesManager />
+          <PropertiesManager />
+        </div>
       </div>
     </MainLayout>
   );

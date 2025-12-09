@@ -1,6 +1,6 @@
 'use client';
 
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { useUser, useFirestore, useMemoFirebase } from '@/firebase';
 import {
   collection,
@@ -46,10 +46,9 @@ import {
   SelectValue,
 } from '@/components/ui/select';
 import { Loader2, PlusCircle, Edit, Trash2 } from 'lucide-react';
-import { DoorCode, DoorLockType } from '@/types/door-code';
+import { DoorCode, DoorLockType, PropertyType } from '@/types/door-code';
 import { format } from 'date-fns';
 import { useRouter } from 'next/navigation';
-import { useEffect } from 'react';
 
 export default function DoorCodesPage() {
   const { user, isUserLoading } = useUser();
@@ -61,7 +60,8 @@ export default function DoorCodesPage() {
     location: string;
     code: string;
     doorLockType: DoorLockType;
-  }>({ location: '', code: '', doorLockType: '' });
+    property: PropertyType;
+  }>({ location: '', code: '', doorLockType: '', property: '' });
 
   useEffect(() => {
     if (!isUserLoading && !user) {
@@ -87,10 +87,19 @@ export default function DoorCodesPage() {
   const { data: lockTypesData, isLoading: lockTypesLoading } =
     useDoc<{ options: string[] }>(lockTypesDocRef);
   const lockTypes = lockTypesData?.options || [];
+  
+  const propertiesDocRef = useMemoFirebase(
+    () => (user ? doc(firestore, 'siteConfiguration', 'properties') : null),
+    [firestore, user]
+  );
+  const { data: propertiesData, isLoading: propertiesLoading } =
+    useDoc<{ options: string[] }>(propertiesDocRef);
+  const properties = propertiesData?.options || [];
+
 
   const handleAddClick = () => {
     setEditingCode(null);
-    setFormData({ location: '', code: '', doorLockType: lockTypes[0] || '' });
+    setFormData({ location: '', code: '', doorLockType: lockTypes[0] || '', property: properties[0] || '' });
     setIsDialogOpen(true);
   };
 
@@ -100,6 +109,7 @@ export default function DoorCodesPage() {
       location: code.location,
       code: code.code,
       doorLockType: code.doorLockType || '',
+      property: code.property || '',
     });
     setIsDialogOpen(true);
   };
@@ -115,7 +125,7 @@ export default function DoorCodesPage() {
   const handleDialogClose = () => {
     setIsDialogOpen(false);
     setEditingCode(null);
-    setFormData({ location: '', code: '', doorLockType: '' });
+    setFormData({ location: '', code: '', doorLockType: '', property: '' });
   };
 
   const handleFormChange = (e: React.ChangeEvent<HTMLInputElement>) => {
@@ -123,13 +133,13 @@ export default function DoorCodesPage() {
     setFormData((prev) => ({ ...prev, [id]: value }));
   };
 
-  const handleSelectChange = (value: DoorLockType) => {
-    setFormData((prev) => ({ ...prev, doorLockType: value }));
+  const handleSelectChange = (field: 'doorLockType' | 'property') => (value: string) => {
+    setFormData((prev) => ({ ...prev, [field]: value }));
   };
 
   const handleFormSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    if (!user || !formData.location || !formData.code || !formData.doorLockType)
+    if (!user || !formData.location || !formData.code || !formData.doorLockType || !formData.property)
       return;
 
     const codeData = {
@@ -162,6 +172,8 @@ export default function DoorCodesPage() {
       </div>
     );
   }
+  
+  const isLoading = codesLoading || lockTypesLoading || propertiesLoading;
 
   return (
     <MainLayout>
@@ -180,16 +192,17 @@ export default function DoorCodesPage() {
             </Button>
           </CardHeader>
           <CardContent>
-            {(codesLoading || lockTypesLoading) && (
+            {isLoading && (
               <Loader2 className="mx-auto h-8 w-8 animate-spin" />
             )}
             {codesError && (
               <p className="text-destructive">Error: {codesError.message}</p>
             )}
-            {!(codesLoading || lockTypesLoading) && !codesError && (
+            {!isLoading && !codesError && (
               <Table>
                 <TableHeader>
                   <TableRow>
+                    <TableHead>Property</TableHead>
                     <TableHead>Location</TableHead>
                     <TableHead>Lock Type</TableHead>
                     <TableHead>Code</TableHead>
@@ -201,6 +214,7 @@ export default function DoorCodesPage() {
                   {doorCodes && doorCodes.length > 0 ? (
                     doorCodes.map((code) => (
                       <TableRow key={code.id}>
+                        <TableCell>{code.property}</TableCell>
                         <TableCell>{code.location}</TableCell>
                         <TableCell>{code.doorLockType}</TableCell>
                         <TableCell className="font-mono">{code.code}</TableCell>
@@ -229,7 +243,7 @@ export default function DoorCodesPage() {
                     ))
                   ) : (
                     <TableRow>
-                      <TableCell colSpan={5} className="text-center">
+                      <TableCell colSpan={6} className="text-center">
                         No door codes found.
                       </TableCell>
                     </TableRow>
@@ -253,6 +267,27 @@ export default function DoorCodesPage() {
           </DialogHeader>
           <form onSubmit={handleFormSubmit}>
             <div className="grid gap-4 py-4">
+               <div className="grid grid-cols-4 items-center gap-4">
+                <Label htmlFor="property" className="text-right">
+                  Property
+                </Label>
+                <Select
+                  onValueChange={handleSelectChange('property')}
+                  value={formData.property}
+                  required
+                >
+                  <SelectTrigger className="col-span-3">
+                    <SelectValue placeholder="Select a property" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    {properties.map((type) => (
+                      <SelectItem key={type} value={type}>
+                        {type}
+                      </SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+              </div>
               <div className="grid grid-cols-4 items-center gap-4">
                 <Label htmlFor="location" className="text-right">
                   Location
@@ -270,7 +305,7 @@ export default function DoorCodesPage() {
                   Lock Type
                 </Label>
                 <Select
-                  onValueChange={handleSelectChange}
+                  onValueChange={handleSelectChange('doorLockType')}
                   value={formData.doorLockType}
                   required
                 >

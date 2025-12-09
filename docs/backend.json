@@ -32,6 +32,10 @@
           "type": "string",
           "description": "The type of the door lock."
         },
+        "property": {
+          "type": "string",
+          "description": "The property the door code belongs to."
+        },
         "lastChanged": {
           "type": "string",
           "description": "The date and time the door code was last changed.",
@@ -41,7 +45,8 @@
       "required": [
         "location",
         "code",
-        "doorLockType"
+        "doorLockType",
+        "property"
       ]
     },
     "LockTypes": {
@@ -52,6 +57,23 @@
         "options": {
           "type": "array",
           "description": "An array of door lock type names.",
+          "items": {
+            "type": "string"
+          }
+        }
+      },
+      "required": [
+        "options"
+      ]
+    },
+    "Properties": {
+      "title": "Properties",
+      "type": "object",
+      "description": "A list of available properties for the platform.",
+      "properties": {
+        "options": {
+          "type": "array",
+          "description": "An array of property names.",
           "items": {
             "type": "string"
           }
@@ -90,6 +112,13 @@
           "$ref": "#/entities/LockTypes"
         },
         "description": "Stores the list of available door lock types."
+      },
+      {
+        "path": "/siteConfiguration/properties",
+        "schema": {
+          "$ref": "#/entities/Properties"
+        },
+        "description": "Stores the list of available properties."
       }
     ]
   }
