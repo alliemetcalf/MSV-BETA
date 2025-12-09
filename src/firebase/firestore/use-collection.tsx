@@ -11,7 +11,8 @@ import {
   DocumentReference,
   doc,
   getDoc,
-  DocumentSnapshot
+  DocumentSnapshot,
+  setDoc,
 } from 'firebase/firestore';
 import { errorEmitter } from '@/firebase/error-emitter';
 import { FirestorePermissionError } from '@/firebase/errors';
