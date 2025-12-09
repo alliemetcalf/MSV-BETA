@@ -31,6 +31,7 @@ export function LockTypesManager() {
     [firestore, user]
   );
 
+  // The hook now correctly returns the document data or null.
   const {
     data: lockTypesData,
     isLoading,
@@ -42,16 +43,18 @@ export function LockTypesManager() {
   useEffect(() => {
     if (lockTypesData && lockTypesData.types) {
       const rawTypes = lockTypesData.types;
-      // Check if the data is in the old format (an array of strings)
+      
+      // Check if data is in the old format (array of strings) and needs migration.
       if (rawTypes.length > 0 && typeof rawTypes[0] === 'string') {
         const migratedTypes = (rawTypes as string[]).map((name, index) => ({
-          id: `${Date.now()}-${index}`,
+          id: `${Date.now()}-${index}`, // simple unique id
           name,
           textInstructions: '',
           instructionImageUrl: '',
         }));
         setLockTypes(migratedTypes);
-        // Save the migrated data back to Firestore
+        
+        // Save the migrated data back to Firestore.
         if (lockTypesDocRef) {
           setDoc(lockTypesDocRef, { types: migratedTypes }, { merge: true })
             .then(() => {
@@ -69,14 +72,18 @@ export function LockTypesManager() {
             });
         }
       } else {
-        // Data is in the new format or empty
+        // Data is already in the new format (or empty), so just use it.
         setLockTypes(rawTypes as DoorLockType[]);
       }
-    } else {
-        // Data is null or undefined, do nothing and wait.
+    } else if (!isLoading && !lockTypesData) {
+        // If there's no data and we're not loading, initialize with an empty array.
+        // And if the document doesn't exist, create it.
         setLockTypes([]);
+        if(lockTypesDocRef) {
+            setDoc(lockTypesDocRef, { types: [] }, { merge: true });
+        }
     }
-  }, [lockTypesData, lockTypesDocRef, toast]);
+  }, [lockTypesData, isLoading, lockTypesDocRef, toast]);
   
   const showSuccessToast = (description: string) => {
     toast({
