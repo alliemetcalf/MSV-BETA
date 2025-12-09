@@ -116,9 +116,11 @@ export default function DoorCodesPage() {
       {} as Record<string, DoorCode[]>
     );
 
-    // Sort codes within each property group by location
+    // Sort codes within each property group by location using natural sort
     for (const property in grouped) {
-      grouped[property].sort((a, b) => a.location.localeCompare(b.location));
+      grouped[property].sort((a, b) =>
+        a.location.localeCompare(b.location, undefined, { numeric: true })
+      );
     }
 
     return grouped;
