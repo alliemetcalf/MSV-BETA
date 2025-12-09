@@ -38,7 +38,7 @@
         },
         "doorLockType": {
           "type": "string",
-          "description": "The type of the door lock."
+          "description": "The name of the door lock type."
         },
         "property": {
           "type": "string",
@@ -56,21 +56,45 @@
         "property"
       ]
     },
-    "LockTypes": {
-      "title": "LockTypes",
+    "LockType": {
+      "title": "LockType",
+      "type": "object",
+      "description": "Represents a single door lock type with instructions.",
+      "properties": {
+        "id": {
+          "type": "string",
+          "description": "A unique identifier for the lock type."
+        },
+        "name": {
+          "type": "string",
+          "description": "The name of the door lock type."
+        },
+        "textInstructions": {
+          "type": "string",
+          "description": "Text-based instructions for the lock."
+        },
+        "instructionImageUrl": {
+          "type": "string",
+          "description": "A URL to an image of the instruction sheet."
+        }
+      },
+      "required": ["id", "name"]
+    },
+    "LockTypesConfiguration": {
+      "title": "LockTypesConfiguration",
       "type": "object",
       "description": "A list of available door lock types for the platform.",
       "properties": {
-        "options": {
+        "types": {
           "type": "array",
-          "description": "An array of door lock type names.",
+          "description": "An array of door lock type objects.",
           "items": {
-            "type": "string"
+            "$ref": "#/entities/LockType"
           }
         }
       },
       "required": [
-        "options"
+        "types"
       ]
     },
     "Properties": {
@@ -116,9 +140,9 @@
       {
         "path": "/siteConfiguration/lockTypes",
         "schema": {
-          "$ref": "#/entities/LockTypes"
+          "$ref": "#/entities/LockTypesConfiguration"
         },
-        "description": "Stores the list of available door lock types."
+        "description": "Stores the list of available door lock types with their instructions."
       },
       {
         "path": "/siteConfiguration/properties",

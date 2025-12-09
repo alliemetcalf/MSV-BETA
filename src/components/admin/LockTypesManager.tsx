@@ -15,12 +15,15 @@ import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Loader2, PlusCircle, Trash2 } from 'lucide-react';
 import { useToast } from '@/hooks/use-toast';
+import { DoorLockType } from '@/types/door-code';
+import { Textarea } from '../ui/textarea';
+import { Label } from '../ui/label';
 
 export function LockTypesManager() {
   const { user } = useUser();
   const firestore = useFirestore();
   const { toast } = useToast();
-  const [newLockType, setNewLockType] = useState('');
+  const [newLockTypeName, setNewLockTypeName] = useState('');
   const [isSubmitting, setIsSubmitting] = useState(false);
 
   const lockTypesDocRef = useMemoFirebase(
@@ -32,18 +35,19 @@ export function LockTypesManager() {
     data: lockTypesData,
     isLoading,
     error,
-  } = useDoc<{ options: string[] }>(lockTypesDocRef);
+  } = useDoc<{ types: DoorLockType[] }>(lockTypesDocRef);
 
-  const [lockTypes, setLockTypes] = useState<string[]>([]);
+  const [lockTypes, setLockTypes] = useState<DoorLockType[]>([]);
 
   useEffect(() => {
-    if (lockTypesData?.options) {
-      setLockTypes(lockTypesData.options);
+    if (lockTypesData?.types) {
+      setLockTypes(lockTypesData.types);
     } else if (!isLoading && !lockTypesData) {
+      // If the document doesn't exist or has no types, initialize with an empty array.
       setLockTypes([]);
     }
   }, [lockTypesData, isLoading]);
-  
+
   const showSuccessToast = (description: string) => {
     toast({
       title: 'Success',
@@ -60,11 +64,11 @@ export function LockTypesManager() {
     });
   };
 
-  const updateFirestore = async (updatedTypes: string[]) => {
+  const updateFirestore = async (updatedTypes: DoorLockType[]) => {
     if (!lockTypesDocRef) return false;
     setIsSubmitting(true);
     try {
-      await setDoc(lockTypesDocRef, { options: updatedTypes }, { merge: true });
+      await setDoc(lockTypesDocRef, { types: updatedTypes }, { merge: true });
       return true;
     } catch (e) {
       showErrorToast('Failed to save changes.');
@@ -75,36 +79,54 @@ export function LockTypesManager() {
   };
 
   const handleAddLockType = async () => {
-    if (newLockType && !lockTypes.includes(newLockType)) {
-      const updatedTypes = [...lockTypes, newLockType];
+    if (newLockTypeName && !lockTypes.some(t => t.name === newLockTypeName)) {
+      const newType: DoorLockType = {
+        id: new Date().toISOString(), // simple unique id
+        name: newLockTypeName,
+        textInstructions: '',
+        instructionImageUrl: '',
+      };
+      const updatedTypes = [...lockTypes, newType];
       const success = await updateFirestore(updatedTypes);
       if (success) {
         setLockTypes(updatedTypes);
-        setNewLockType('');
-        showSuccessToast(`Added "${newLockType}".`);
+        setNewLockTypeName('');
+        showSuccessToast(`Added "${newLockTypeName}".`);
       }
     }
   };
 
-  const handleDeleteLockType = async (typeToDelete: string) => {
-    const updatedTypes = lockTypes.filter((type) => type !== typeToDelete);
+  const handleDeleteLockType = async (idToDelete: string) => {
+    const typeNameToDelete = lockTypes.find(t => t.id === idToDelete)?.name || 'item';
+    const updatedTypes = lockTypes.filter((type) => type.id !== idToDelete);
     const success = await updateFirestore(updatedTypes);
-    if(success) {
+    if (success) {
       setLockTypes(updatedTypes);
-      showSuccessToast(`Removed "${typeToDelete}".`);
+      showSuccessToast(`Removed "${typeNameToDelete}".`);
     }
   };
 
-  const handleEditLockType = async (index: number, value: string) => {
-    const updatedTypes = [...lockTypes];
-    updatedTypes[index] = value;
+  const handleUpdateField = (id: string, field: keyof DoorLockType, value: string) => {
+     const updatedTypes = lockTypes.map(type => 
+      type.id === id ? { ...type, [field]: value } : type
+    );
+    setLockTypes(updatedTypes);
+  };
+
+  const handleSaveChangesForType = async (id: string) => {
+    const typeToSave = lockTypes.find(t => t.id === id);
+    if (!typeToSave) return;
+    
+    // Create a new array with the updated item
+    const updatedTypes = lockTypes.map(type => 
+      type.id === id ? typeToSave : type
+    );
+
     const success = await updateFirestore(updatedTypes);
-    if(success) {
-      setLockTypes(updatedTypes);
-      showSuccessToast('Lock type updated.');
+    if (success) {
+      showSuccessToast(`Saved changes for "${typeToSave.name}".`);
     }
   }
-
 
   if (isLoading) {
     return <Loader2 className="mx-auto h-8 w-8 animate-spin" />;
@@ -119,52 +141,80 @@ export function LockTypesManager() {
       <CardHeader>
         <CardTitle>Manage Door Lock Types</CardTitle>
         <CardDescription>
-          Add or remove the available door lock types for the platform. Changes are saved automatically.
+          Add, remove, or edit the available door lock types for the platform.
         </CardDescription>
       </CardHeader>
       <CardContent className="space-y-6">
         <div className="space-y-4">
-          {lockTypes.map((type, index) => (
-            <div key={index} className="flex items-center gap-2">
-              <Input
-                value={type}
-                onChange={(e) => {
-                  const newTypes = [...lockTypes];
-                  newTypes[index] = e.target.value;
-                  setLockTypes(newTypes);
-                }}
-                onBlur={(e) => handleEditLockType(index, e.target.value)}
-                disabled={isSubmitting}
-                className="flex-grow"
-              />
+          {lockTypes.map((type) => (
+            <div key={type.id} className="p-4 border rounded-lg space-y-4 relative">
+               <Button
+                  variant="ghost"
+                  size="icon"
+                  onClick={() => handleDeleteLockType(type.id)}
+                  disabled={isSubmitting}
+                  className="absolute top-2 right-2 text-destructive hover:text-destructive/80"
+                >
+                  <Trash2 className="h-4 w-4" />
+                </Button>
+              <div className='space-y-2'>
+                <Label htmlFor={`name-${type.id}`}>Lock Type Name</Label>
+                <Input
+                  id={`name-${type.id}`}
+                  value={type.name}
+                  onChange={(e) => handleUpdateField(type.id, 'name', e.target.value)}
+                  disabled={isSubmitting}
+                  className="flex-grow font-semibold"
+                />
+              </div>
+              <div className='space-y-2'>
+                <Label htmlFor={`instructions-${type.id}`}>Text Instructions</Label>
+                <Textarea
+                  id={`instructions-${type.id}`}
+                  value={type.textInstructions || ''}
+                  onChange={(e) => handleUpdateField(type.id, 'textInstructions', e.target.value)}
+                  placeholder="Enter step-by-step instructions..."
+                  disabled={isSubmitting}
+                />
+              </div>
+              <div className='space-y-2'>
+                <Label htmlFor={`imageUrl-${type.id}`}>Instruction Image URL</Label>
+                <Input
+                  id={`imageUrl-${type.id}`}
+                  value={type.instructionImageUrl || ''}
+                  onChange={(e) => handleUpdateField(type.id, 'instructionImageUrl', e.target.value)}
+                  placeholder="https://example.com/image.png"
+                  disabled={isSubmitting}
+                />
+              </div>
               <Button
-                variant="ghost"
-                size="icon"
-                onClick={() => handleDeleteLockType(type)}
+                onClick={() => handleSaveChangesForType(type.id)}
+                size="sm"
                 disabled={isSubmitting}
-                className="text-destructive hover:text-destructive/80"
+                className='w-full'
               >
-                <Trash2 className="h-4 w-4" />
+                {isSubmitting ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : null}
+                Save Changes for {type.name}
               </Button>
             </div>
           ))}
           {lockTypes.length === 0 && (
-             <p className="text-sm text-muted-foreground text-center py-4">No lock types defined.</p>
+            <p className="text-sm text-muted-foreground text-center py-4">No lock types defined.</p>
           )}
         </div>
-        <div className="flex items-center gap-2">
+        <div className="flex items-center gap-2 pt-4 border-t">
           <Input
-            placeholder="New lock type..."
-            value={newLockType}
-            onChange={(e) => setNewLockType(e.target.value)}
+            placeholder="New lock type name..."
+            value={newLockTypeName}
+            onChange={(e) => setNewLockTypeName(e.target.value)}
             onKeyDown={(e) => e.key === 'Enter' && handleAddLockType()}
             disabled={isSubmitting}
           />
-          <Button onClick={handleAddLockType} size="sm" disabled={isSubmitting}>
-            {isSubmitting && newLockType ? (
-                <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+          <Button onClick={handleAddLockType} size="sm" disabled={isSubmitting || !newLockTypeName}>
+            {isSubmitting && newLockTypeName ? (
+              <Loader2 className="mr-2 h-4 w-4 animate-spin" />
             ) : (
-                <PlusCircle className="mr-2 h-4 w-4" />
+              <PlusCircle className="mr-2 h-4 w-4" />
             )}
             Add
           </Button>

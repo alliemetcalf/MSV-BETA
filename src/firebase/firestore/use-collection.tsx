@@ -123,10 +123,11 @@ export function useCollection<T = any>(
  * @template T Type of the document data.
  */
 export interface UseDocResult<T> {
-  data: WithId<T> | null; // Document data with ID, or null.
+  data: T | null; // Document data without ID, since it's known
   isLoading: boolean;       // True if loading.
   error: FirestoreError | Error | null; // Error object, or null.
 }
+
 
 /**
  * React hook to subscribe to a single Firestore document in real-time.
@@ -145,7 +146,7 @@ export interface UseDocResult<T> {
 export function useDoc<T = any>(
   memoizedDocRef: (DocumentReference<DocumentData> & {__memo?: boolean}) | null | undefined,
 ): UseDocResult<T> {
-  type StateDataType = WithId<T> | null;
+  type StateDataType = T | null;
 
   const [data, setData] = useState<StateDataType>(null);
   const [isLoading, setIsLoading] = useState<boolean>(false);
@@ -161,24 +162,29 @@ export function useDoc<T = any>(
 
     setIsLoading(true);
     setError(null);
-    // Optional: setData(null); // Clear previous data instantly
-
+    
     const unsubscribe = onSnapshot(
       memoizedDocRef,
       (snapshot: DocumentSnapshot<DocumentData>) => {
         if (snapshot.exists()) {
-          setData({ ...(snapshot.data() as T), id: snapshot.id });
+          setData(snapshot.data() as T);
         } else {
-          // Document does not exist, but let's check if we should create it.
+          // Document does not exist, check if we should create it.
           if (memoizedDocRef.path.startsWith('siteConfiguration/')) {
-            const initialData: { [key: string]: any } = {};
+            let initialData: { [key: string]: any } = {};
             if (memoizedDocRef.id === 'lockTypes') {
-              initialData.options = ['Keypad', 'Smart Lock', 'Key Box', 'Other'];
+               initialData = { types: [
+                 { id: '1', name: 'Keypad', textInstructions: 'Enter code and turn knob.', instructionImageUrl: '' },
+                 { id: '2', name: 'Smart Lock', textInstructions: 'Use app to unlock.', instructionImageUrl: '' },
+               ]};
+            } else if (memoizedDocRef.id === 'properties') {
+                initialData = { options: ['Main House', 'Guest House']};
             }
+            
             setDoc(memoizedDocRef, initialData).then(() => {
                getDoc(memoizedDocRef).then((newSnapshot) => {
                  if(newSnapshot.exists()){
-                   setData({ ...(newSnapshot.data() as T), id: newSnapshot.id });
+                   setData(newSnapshot.data() as T);
                  }
                  setIsLoading(false);
                })
@@ -191,8 +197,8 @@ export function useDoc<T = any>(
             setIsLoading(false);
           }
         }
-        setError(null); // Clear any previous error on successful snapshot (even if doc doesn't exist)
-        if (snapshot.exists()) { // Only stop loading if doc exists or we are not auto-creating
+        setError(null); 
+        if (snapshot.exists()) {
           setIsLoading(false);
         }
       },
@@ -206,13 +212,12 @@ export function useDoc<T = any>(
         setData(null)
         setIsLoading(false)
 
-        // trigger global error propagation
         errorEmitter.emit('permission-error', contextualError);
       }
     );
 
     return () => unsubscribe();
-  }, [memoizedDocRef]); // Re-run if the memoizedDocRef changes.
+  }, [memoizedDocRef]);
 
   if(memoizedDocRef && !memoizedDocRef.__memo) {
     throw new Error((memoizedDocRef.path || 'Document Reference') + ' was not properly memoized using useMemoFirebase');

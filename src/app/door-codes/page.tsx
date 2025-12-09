@@ -2,6 +2,7 @@
 
 import { useState, useEffect, useMemo } from 'react';
 import { useUser, useFirestore, useMemoFirebase } from '@/firebase';
+import Image from 'next/image';
 import {
   collection,
   doc,
@@ -35,6 +36,7 @@ import {
   DialogTitle,
   DialogDescription,
   DialogFooter,
+  DialogClose
 } from '@/components/ui/dialog';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
@@ -51,7 +53,7 @@ import {
   AccordionItem,
   AccordionTrigger,
 } from '@/components/ui/accordion';
-import { Loader2, PlusCircle, Edit, Trash2 } from 'lucide-react';
+import { Loader2, PlusCircle, Edit, Trash2, Info } from 'lucide-react';
 import { DoorCode, DoorLockType, PropertyType } from '@/types/door-code';
 import { format } from 'date-fns';
 import { useRouter } from 'next/navigation';
@@ -60,14 +62,16 @@ export default function DoorCodesPage() {
   const { user, isUserLoading } = useUser();
   const firestore = useFirestore();
   const router = useRouter();
-  const [isDialogOpen, setIsDialogOpen] = useState(false);
+  const [isFormDialogOpen, setIsFormDialogOpen] = useState(false);
+  const [isInstructionDialogOpen, setIsInstructionDialogOpen] = useState(false);
+  const [selectedInstruction, setSelectedInstruction] = useState<DoorLockType | null>(null);
   const [editingCode, setEditingCode] = useState<DoorCode | null>(null);
   const [formData, setFormData] = useState<{
     location: string;
     code: string;
     adminProgrammingCode: string;
     guestCode: string;
-    doorLockType: DoorLockType;
+    doorLockType: string; // Storing name
     property: PropertyType;
   }>({
     location: '',
@@ -100,8 +104,8 @@ export default function DoorCodesPage() {
     [firestore, user]
   );
   const { data: lockTypesData, isLoading: lockTypesLoading } =
-    useDoc<{ options: string[] }>(lockTypesDocRef);
-  const lockTypes = lockTypesData?.options || [];
+    useDoc<{ types: DoorLockType[] }>(lockTypesDocRef);
+  const lockTypes = lockTypesData?.types || [];
 
   const propertiesDocRef = useMemoFirebase(
     () => (user ? doc(firestore, 'siteConfiguration', 'properties') : null),
@@ -125,7 +129,6 @@ export default function DoorCodesPage() {
       {} as Record<string, DoorCode[]>
     );
 
-    // Sort codes within each property group by location using natural sort
     for (const property in grouped) {
       grouped[property].sort((a, b) =>
         a.location.localeCompare(b.location, undefined, { numeric: true })
@@ -142,10 +145,10 @@ export default function DoorCodesPage() {
       code: '',
       adminProgrammingCode: '',
       guestCode: '',
-      doorLockType: lockTypes[0] || '',
+      doorLockType: lockTypes[0]?.name || '',
       property: properties[0] || '',
     });
-    setIsDialogOpen(true);
+    setIsFormDialogOpen(true);
   };
 
   const handleEditClick = (code: DoorCode) => {
@@ -158,7 +161,7 @@ export default function DoorCodesPage() {
       doorLockType: code.doorLockType || '',
       property: code.property || '',
     });
-    setIsDialogOpen(true);
+    setIsFormDialogOpen(true);
   };
 
   const handleDeleteClick = async (codeId: string) => {
@@ -168,9 +171,17 @@ export default function DoorCodesPage() {
       await deleteDoc(docRef);
     }
   };
+  
+  const handleViewInstructions = (doorLockTypeName: string) => {
+    const instruction = lockTypes.find(lt => lt.name === doorLockTypeName);
+    if(instruction) {
+      setSelectedInstruction(instruction);
+      setIsInstructionDialogOpen(true);
+    }
+  }
 
   const handleDialogClose = () => {
-    setIsDialogOpen(false);
+    setIsFormDialogOpen(false);
     setEditingCode(null);
     setFormData({
       location: '',
@@ -235,7 +246,7 @@ export default function DoorCodesPage() {
 
   return (
     <MainLayout>
-      <div className="w-full max-w-4xl px-4">
+      <div className="w-full max-w-6xl px-4">
         <Card>
           <CardHeader className="flex flex-row items-center justify-between">
             <div>
@@ -285,7 +296,14 @@ export default function DoorCodesPage() {
                                 {codes.map((code) => (
                                   <TableRow key={code.id}>
                                     <TableCell>{code.location}</TableCell>
-                                    <TableCell>{code.doorLockType}</TableCell>
+                                    <TableCell>
+                                      <div className="flex items-center gap-2">
+                                        {code.doorLockType}
+                                        <Button variant="ghost" size="icon" className="h-6 w-6" onClick={() => handleViewInstructions(code.doorLockType)}>
+                                          <Info className="h-4 w-4 text-primary" />
+                                        </Button>
+                                      </div>
+                                    </TableCell>
                                     <TableCell className="font-mono">
                                       {code.code}
                                     </TableCell>
@@ -341,7 +359,7 @@ export default function DoorCodesPage() {
         </Card>
       </div>
 
-      <Dialog open={isDialogOpen} onOpenChange={setIsDialogOpen}>
+      <Dialog open={isFormDialogOpen} onOpenChange={setIsFormDialogOpen}>
         <DialogContent>
           <DialogHeader>
             <DialogTitle>
@@ -366,9 +384,9 @@ export default function DoorCodesPage() {
                     <SelectValue placeholder="Select a property" />
                   </SelectTrigger>
                   <SelectContent>
-                    {properties.map((type) => (
-                      <SelectItem key={type} value={type}>
-                        {type}
+                    {properties.map((prop) => (
+                      <SelectItem key={prop} value={prop}>
+                        {prop}
                       </SelectItem>
                     ))}
                   </SelectContent>
@@ -400,8 +418,8 @@ export default function DoorCodesPage() {
                   </SelectTrigger>
                   <SelectContent>
                     {lockTypes.map((type) => (
-                      <SelectItem key={type} value={type}>
-                        {type}
+                      <SelectItem key={type.id} value={type.name}>
+                        {type.name}
                       </SelectItem>
                     ))}
                   </SelectContent>
@@ -452,6 +470,42 @@ export default function DoorCodesPage() {
               <Button type="submit">Save</Button>
             </DialogFooter>
           </form>
+        </DialogContent>
+      </Dialog>
+      
+      <Dialog open={isInstructionDialogOpen} onOpenChange={setIsInstructionDialogOpen}>
+        <DialogContent className="max-w-3xl">
+          <DialogHeader>
+            <DialogTitle>{selectedInstruction?.name} - Instructions</DialogTitle>
+          </DialogHeader>
+          {selectedInstruction && (
+             <div className="grid gap-4 py-4 max-h-[70vh] overflow-y-auto">
+               <div>
+                  <h3 className="font-semibold mb-2">Text Instructions</h3>
+                  <p className="text-sm text-muted-foreground whitespace-pre-wrap">
+                    {selectedInstruction.textInstructions || "No text instructions provided."}
+                  </p>
+               </div>
+                {selectedInstruction.instructionImageUrl && (
+                  <div>
+                    <h3 className="font-semibold mb-2">Instruction Sheet</h3>
+                     <div className="relative w-full aspect-video">
+                        <Image 
+                          src={selectedInstruction.instructionImageUrl}
+                          alt={`${selectedInstruction.name} instruction sheet`}
+                          fill
+                          className="object-contain rounded-md border"
+                        />
+                      </div>
+                  </div>
+                )}
+             </div>
+          )}
+          <DialogFooter>
+            <DialogClose asChild>
+              <Button>Close</Button>
+            </DialogClose>
+          </DialogFooter>
         </DialogContent>
       </Dialog>
     </MainLayout>
