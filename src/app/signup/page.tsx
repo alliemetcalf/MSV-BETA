@@ -6,14 +6,14 @@ import { useEffect, useState } from "react";
 import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import * as z from "zod";
-import { signInWithEmailAndPassword } from "firebase/auth";
+import { createUserWithEmailAndPassword } from "firebase/auth";
 import { auth } from "@/lib/firebase";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from "@/components/ui/card";
 import { Form, FormControl, FormField, FormItem, FormLabel, FormMessage } from "@/components/ui/form";
 import { Input } from "@/components/ui/input";
 import { useToast } from "@/hooks/use-toast";
-import { LogIn, KeyRound, Loader2 } from "lucide-react";
+import { UserPlus, Loader2 } from "lucide-react";
 import Link from "next/link";
 
 const formSchema = z.object({
@@ -21,7 +21,7 @@ const formSchema = z.object({
   password: z.string().min(6, { message: "Password must be at least 6 characters." }),
 });
 
-export default function LoginPage() {
+export default function SignupPage() {
   const { user, loading } = useAuth();
   const router = useRouter();
   const { toast } = useToast();
@@ -44,17 +44,18 @@ export default function LoginPage() {
   async function onSubmit(values: z.infer<typeof formSchema>) {
     setIsSubmitting(true);
     try {
-      await signInWithEmailAndPassword(auth, values.email, values.password);
+      await createUserWithEmailAndPassword(auth, values.email, values.password);
       toast({
-        title: "Login successful!",
+        title: "Account created!",
         description: "Redirecting to your dashboard...",
       });
       router.push("/");
     } catch (error) {
+        const errorMessage = error instanceof Error ? error.message : "An unexpected error occurred.";
       toast({
         variant: "destructive",
-        title: "Login Failed",
-        description: "Invalid credentials. Please check your email and password.",
+        title: "Sign-up Failed",
+        description: errorMessage,
       });
     } finally {
       setIsSubmitting(false);
@@ -74,10 +75,10 @@ export default function LoginPage() {
       <Card className="w-full max-w-md shadow-2xl animate-in fade-in-50 zoom-in-95 duration-500">
         <CardHeader className="text-center">
           <div className="mx-auto mb-4">
-            <KeyRound className="h-16 w-16 text-primary" />
+            <UserPlus className="h-16 w-16 text-primary" />
           </div>
-          <CardTitle className="text-3xl font-headline font-bold text-primary">Welcome Back</CardTitle>
-          <CardDescription className="font-body">Enter your credentials to access your account</CardDescription>
+          <CardTitle className="text-3xl font-headline font-bold text-primary">Create an Account</CardTitle>
+          <CardDescription className="font-body">Enter your details to create a new account</CardDescription>
         </CardHeader>
         <CardContent>
           <Form {...form}>
@@ -112,18 +113,18 @@ export default function LoginPage() {
                 {isSubmitting ? (
                   <Loader2 className="mr-2 h-4 w-4 animate-spin" />
                 ) : (
-                  <LogIn className="mr-2 h-4 w-4" />
+                  <UserPlus className="mr-2 h-4 w-4" />
                 )}
-                {isSubmitting ? 'Logging in...' : 'Log In'}
+                {isSubmitting ? 'Creating Account...' : 'Sign Up'}
               </Button>
             </form>
           </Form>
         </CardContent>
         <CardFooter className="justify-center">
           <p className="text-sm text-muted-foreground">
-            Don&apos;t have an account?{" "}
-            <Link href="/signup" className="font-semibold text-primary hover:underline">
-              Sign up
+            Already have an account?{" "}
+            <Link href="/login" className="font-semibold text-primary hover:underline">
+              Log in
             </Link>
           </p>
         </CardFooter>
