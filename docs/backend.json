@@ -13,6 +13,16 @@
           "type": "string",
           "description": "The door code itself."
         },
+        "doorLockType": {
+          "type": "string",
+          "description": "The type of the door lock.",
+          "enum": [
+            "Keypad",
+            "Smart Lock",
+            "Key Box",
+            "Other"
+          ]
+        },
         "lastChanged": {
           "type": "string",
           "description": "The date and time the door code was last changed.",
@@ -21,7 +31,8 @@
       },
       "required": [
         "location",
-        "code"
+        "code",
+        "doorLockType"
       ]
     }
   },

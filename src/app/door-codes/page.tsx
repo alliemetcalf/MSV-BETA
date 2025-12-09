@@ -38,16 +38,29 @@ import {
 } from '@/components/ui/dialog';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from '@/components/ui/select';
 import { Loader2, PlusCircle, Edit, Trash2 } from 'lucide-react';
-import { DoorCode } from '@/types/door-code';
+import { DoorCode, DoorLockType } from '@/types/door-code';
 import { format } from 'date-fns';
+
+const lockTypes: DoorLockType[] = ['Keypad', 'Smart Lock', 'Key Box', 'Other'];
 
 export default function DoorCodesPage() {
   const { user, isUserLoading } = useUser();
   const firestore = useFirestore();
   const [isDialogOpen, setIsDialogOpen] = useState(false);
   const [editingCode, setEditingCode] = useState<DoorCode | null>(null);
-  const [formData, setFormData] = useState({ location: '', code: '' });
+  const [formData, setFormData] = useState<{
+    location: string;
+    code: string;
+    doorLockType: DoorLockType;
+  }>({ location: '', code: '', doorLockType: 'Keypad' });
 
   const doorCodesCollectionRef = useMemoFirebase(
     () => (user ? collection(firestore, 'users', user.uid, 'doorCodes') : null),
@@ -62,13 +75,17 @@ export default function DoorCodesPage() {
 
   const handleAddClick = () => {
     setEditingCode(null);
-    setFormData({ location: '', code: '' });
+    setFormData({ location: '', code: '', doorLockType: 'Keypad' });
     setIsDialogOpen(true);
   };
 
   const handleEditClick = (code: DoorCode) => {
     setEditingCode(code);
-    setFormData({ location: code.location, code: code.code });
+    setFormData({
+      location: code.location,
+      code: code.code,
+      doorLockType: code.doorLockType || 'Keypad',
+    });
     setIsDialogOpen(true);
   };
 
@@ -83,12 +100,16 @@ export default function DoorCodesPage() {
   const handleDialogClose = () => {
     setIsDialogOpen(false);
     setEditingCode(null);
-    setFormData({ location: '', code: '' });
+    setFormData({ location: '', code: '', doorLockType: 'Keypad' });
   };
 
   const handleFormChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     const { id, value } = e.target;
     setFormData((prev) => ({ ...prev, [id]: value }));
+  };
+
+  const handleSelectChange = (value: DoorLockType) => {
+    setFormData((prev) => ({ ...prev, doorLockType: value }));
   };
 
   const handleFormSubmit = async (e: React.FormEvent) => {
@@ -102,7 +123,13 @@ export default function DoorCodesPage() {
 
     if (editingCode) {
       // Update existing code
-      const docRef = doc(firestore, 'users', user.uid, 'doorCodes', editingCode.id);
+      const docRef = doc(
+        firestore,
+        'users',
+        user.uid,
+        'doorCodes',
+        editingCode.id
+      );
       await updateDoc(docRef, codeData);
     } else {
       // Add new code
@@ -111,7 +138,7 @@ export default function DoorCodesPage() {
     }
     handleDialogClose();
   };
-  
+
   if (isUserLoading) {
     return (
       <div className="flex h-screen w-full items-center justify-center bg-background">
@@ -137,13 +164,18 @@ export default function DoorCodesPage() {
             </Button>
           </CardHeader>
           <CardContent>
-            {codesLoading && <Loader2 className="mx-auto h-8 w-8 animate-spin" />}
-            {error && <p className="text-destructive">Error: {error.message}</p>}
+            {codesLoading && (
+              <Loader2 className="mx-auto h-8 w-8 animate-spin" />
+            )}
+            {error && (
+              <p className="text-destructive">Error: {error.message}</p>
+            )}
             {!codesLoading && !error && (
               <Table>
                 <TableHeader>
                   <TableRow>
                     <TableHead>Location</TableHead>
+                    <TableHead>Lock Type</TableHead>
                     <TableHead>Code</TableHead>
                     <TableHead>Last Changed</TableHead>
                     <TableHead className="text-right">Actions</TableHead>
@@ -154,9 +186,11 @@ export default function DoorCodesPage() {
                     doorCodes.map((code) => (
                       <TableRow key={code.id}>
                         <TableCell>{code.location}</TableCell>
+                        <TableCell>{code.doorLockType}</TableCell>
                         <TableCell className="font-mono">{code.code}</TableCell>
                         <TableCell>
-                          {code.lastChanged?.toDate && format(code.lastChanged.toDate(), 'PPP p')}
+                          {code.lastChanged?.toDate &&
+                            format(code.lastChanged.toDate(), 'PPP p')}
                         </TableCell>
                         <TableCell className="text-right">
                           <Button
@@ -179,7 +213,7 @@ export default function DoorCodesPage() {
                     ))
                   ) : (
                     <TableRow>
-                      <TableCell colSpan={4} className="text-center">
+                      <TableCell colSpan={5} className="text-center">
                         No door codes found.
                       </TableCell>
                     </TableRow>
@@ -216,6 +250,26 @@ export default function DoorCodesPage() {
                 />
               </div>
               <div className="grid grid-cols-4 items-center gap-4">
+                <Label htmlFor="doorLockType" className="text-right">
+                  Lock Type
+                </Label>
+                <Select
+                  onValueChange={handleSelectChange}
+                  value={formData.doorLockType}
+                >
+                  <SelectTrigger className="col-span-3">
+                    <SelectValue placeholder="Select a lock type" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    {lockTypes.map((type) => (
+                      <SelectItem key={type} value={type}>
+                        {type}
+                      </SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+              </div>
+              <div className="grid grid-cols-4 items-center gap-4">
                 <Label htmlFor="code" className="text-right">
                   Code
                 </Label>
@@ -229,7 +283,11 @@ export default function DoorCodesPage() {
               </div>
             </div>
             <DialogFooter>
-              <Button type="button" variant="outline" onClick={handleDialogClose}>
+              <Button
+                type="button"
+                variant="outline"
+                onClick={handleDialogClose}
+              >
                 Cancel
               </Button>
               <Button type="submit">Save</Button>
