@@ -1,15 +1,10 @@
 {
   "entities": {
     "DoorCode": {
-      "$schema": "http://json-schema.org/draft-07/schema#",
       "title": "DoorCode",
       "type": "object",
       "description": "Represents a door code for a specific property.",
       "properties": {
-        "id": {
-          "type": "string",
-          "description": "Unique identifier for the DoorCode entity."
-        },
         "location": {
           "type": "string",
           "description": "The physical location of the door (e.g., 'Front Door', 'Garage')."
@@ -25,10 +20,8 @@
         }
       },
       "required": [
-        "id",
         "location",
-        "code",
-        "lastChanged"
+        "code"
       ]
     }
   },
@@ -39,28 +32,14 @@
     ]
   },
   "firestore": {
-    "structure": [
+    "collections": [
       {
-        "path": "/users/{userId}/door_codes/{doorCodeId}",
-        "definition": {
-          "entityName": "DoorCode",
-          "schema": {
-            "$ref": "#/backend/entities/DoorCode"
-          },
-          "description": "Stores door codes for a specific user. Path-based ownership ensures only the authenticated user can access their own door codes.",
-          "params": [
-            {
-              "name": "userId",
-              "description": "The unique identifier of the user."
-            },
-            {
-              "name": "doorCodeId",
-              "description": "The unique identifier of the door code."
-            }
-          ]
-        }
+        "path": "/users/{userId}/doorCodes",
+        "schema": {
+          "$ref": "#/entities/DoorCode"
+        },
+        "description": "Stores door codes for a specific user."
       }
-    ],
-    "reasoning": "The Firestore structure is designed to store door codes associated with properties. It follows the principle of path-based ownership under each user. Each user has their own collection of door codes, enabling easy management and security rule creation. The structure prioritizes Authorization Independence, avoiding complex `get()` calls in security rules by ensuring that authorization context is directly tied to the user ID derived from authentication.  The path `/users/{userId}/door_codes/{doorCodeId}` uses hierarchical paths for user-owned data, which provides clarity and consistency, as well as makes it easy to create ownership-based security rules. This structure also facilitates secure `list` operations by scoping door codes to individual users."
+    ]
   }
 }

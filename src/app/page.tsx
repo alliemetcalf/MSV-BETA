@@ -1,50 +1,84 @@
+'use client';
 
-"use client";
-
-import { useAuth } from "@/context/AuthContext";
-import { useRouter } from "next/navigation";
-import { useEffect, useState } from "react";
-import { Button } from "@/components/ui/button";
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
-import { useToast } from "@/hooks/use-toast";
-import { UserCheck, UserPlus, Loader2 } from "lucide-react";
-import { useForm } from "react-hook-form";
-import { zodResolver } from "@hookform/resolvers/zod";
-import * as z from "zod";
-import { Form, FormControl, FormField, FormItem, FormLabel, FormMessage } from "@/components/ui/form";
-import { Input } from "@/components/ui/input";
-import { Checkbox } from "@/components/ui/checkbox";
-import { createUser } from "@/ai/flows/create-user-flow";
-import { MainLayout } from "@/components/MainLayout";
-
+import { useUser, useAuth } from '@/firebase';
+import { useRouter } from 'next/navigation';
+import { useEffect, useState } from 'react';
+import { Button } from '@/components/ui/button';
+import {
+  Card,
+  CardContent,
+  CardDescription,
+  CardHeader,
+  CardTitle,
+} from '@/components/ui/card';
+import { useToast } from '@/hooks/use-toast';
+import { UserCheck, UserPlus, Loader2 } from 'lucide-react';
+import { useForm } from 'react-hook-form';
+import { zodResolver } from '@hookform/resolvers/zod';
+import * as z from 'zod';
+import {
+  Form,
+  FormControl,
+  FormField,
+  FormItem,
+  FormLabel,
+  FormMessage,
+} from '@/components/ui/form';
+import { Input } from '@/components/ui/input';
+import { Checkbox } from '@/components/ui/checkbox';
+import { createUser } from '@/ai/flows/create-user-flow';
+import { MainLayout } from '@/components/MainLayout';
+import { IdTokenResult } from 'firebase/auth';
 
 const addUserFormSchema = z.object({
-  email: z.string().email({ message: "Invalid email address." }),
-  password: z.string().min(6, { message: "Password must be at least 6 characters." }),
+  email: z.string().email({ message: 'Invalid email address.' }),
+  password: z
+    .string()
+    .min(6, { message: 'Password must be at least 6 characters.' }),
   isAdmin: z.boolean().default(false),
 });
 
 export default function Home() {
-  const { user, loading, role, claimsLoading } = useAuth();
+  const { user, isUserLoading } = useUser();
   const router = useRouter();
   const { toast } = useToast();
   const [isSubmitting, setIsSubmitting] = useState(false);
+  const [role, setRole] = useState<'admin' | 'user' | null>(null);
+  const [claimsLoading, setClaimsLoading] = useState(true);
+
+  useEffect(() => {
+    if (!isUserLoading && !user) {
+      router.push('/login');
+    }
+  }, [user, isUserLoading, router]);
+
+  useEffect(() => {
+    if (user) {
+      setClaimsLoading(true);
+      user.getIdTokenResult().then((idTokenResult: IdTokenResult) => {
+        const userRole = idTokenResult.claims.role;
+        if (userRole === 'admin') {
+          setRole('admin');
+        } else {
+          setRole('user');
+        }
+        setClaimsLoading(false);
+      });
+    } else {
+      setRole(null);
+      setClaimsLoading(false);
+    }
+  }, [user]);
 
   const form = useForm<z.infer<typeof addUserFormSchema>>({
     resolver: zodResolver(addUserFormSchema),
     defaultValues: {
-      email: "",
-      password: "",
+      email: '',
+      password: '',
       isAdmin: false,
     },
   });
 
-  useEffect(() => {
-    if (!loading && !user) {
-      router.push("/login");
-    }
-  }, [user, loading, router]);
-  
   async function onAddUserSubmit(values: z.infer<typeof addUserFormSchema>) {
     setIsSubmitting(true);
     try {
@@ -55,18 +89,19 @@ export default function Home() {
       });
       if (result.success) {
         toast({
-          title: "User Created",
+          title: 'User Created',
           description: `Successfully created user: ${values.email}`,
         });
         form.reset();
       } else {
-        throw new Error(result.message || "Failed to create user.");
+        throw new Error(result.message || 'Failed to create user.');
       }
     } catch (error) {
-      const errorMessage = error instanceof Error ? error.message : "An unexpected error occurred.";
+      const errorMessage =
+        error instanceof Error ? error.message : 'An unexpected error occurred.';
       toast({
-        variant: "destructive",
-        title: "Failed to create user",
+        variant: 'destructive',
+        title: 'Failed to create user',
         description: errorMessage,
       });
     } finally {
@@ -74,8 +109,7 @@ export default function Home() {
     }
   }
 
-
-  if (loading || claimsLoading || !user) {
+  if (isUserLoading || claimsLoading || !user) {
     return (
       <div className="flex h-screen w-full items-center justify-center bg-background">
         <Loader2 className="h-10 w-10 animate-spin text-primary" />
@@ -91,22 +125,31 @@ export default function Home() {
             <div className="mx-auto bg-primary/10 rounded-full p-3 w-fit">
               <UserCheck className="h-12 w-12 text-primary" />
             </div>
-            <CardTitle className="mt-4 text-3xl font-headline font-bold text-primary">Welcome</CardTitle>
+            <CardTitle className="mt-4 text-3xl font-headline font-bold text-primary">
+              Welcome
+            </CardTitle>
             <CardDescription className="font-body">
               Welcome back, {user.email}! (Role: {role})
             </CardDescription>
           </CardHeader>
         </Card>
-        
+
         {role === 'admin' && (
           <Card className="w-full max-w-md shadow-2xl animate-in fade-in-50 zoom-in-95 duration-500 delay-200">
             <CardHeader>
-              <CardTitle className="text-2xl font-headline font-bold text-primary">Add New User</CardTitle>
-              <CardDescription>Create a new user account manually.</CardDescription>
+              <CardTitle className="text-2xl font-headline font-bold text-primary">
+                Add New User
+              </CardTitle>
+              <CardDescription>
+                Create a new user account manually.
+              </CardDescription>
             </CardHeader>
             <CardContent>
               <Form {...form}>
-                <form onSubmit={form.handleSubmit(onAddUserSubmit)} className="space-y-6">
+                <form
+                  onSubmit={form.handleSubmit(onAddUserSubmit)}
+                  className="space-y-6"
+                >
                   <FormField
                     control={form.control}
                     name="email"
@@ -114,7 +157,10 @@ export default function Home() {
                       <FormItem>
                         <FormLabel>New User's Email</FormLabel>
                         <FormControl>
-                          <Input placeholder="new.user@example.com" {...field} />
+                          <Input
+                            placeholder="new.user@example.com"
+                            {...field}
+                          />
                         </FormControl>
                         <FormMessage />
                       </FormItem>
@@ -127,7 +173,11 @@ export default function Home() {
                       <FormItem>
                         <FormLabel>Password</FormLabel>
                         <FormControl>
-                          <Input type="password" placeholder="••••••••" {...field} />
+                          <Input
+                            type="password"
+                            placeholder="••••••••"
+                            {...field}
+                          />
                         </FormControl>
                         <FormMessage />
                       </FormItem>
@@ -145,15 +195,17 @@ export default function Home() {
                           />
                         </FormControl>
                         <div className="space-y-1 leading-none">
-                          <FormLabel>
-                            Make Admin
-                          </FormLabel>
+                          <FormLabel>Make Admin</FormLabel>
                           <FormMessage />
                         </div>
                       </FormItem>
                     )}
                   />
-                  <Button type="submit" className="w-full" disabled={isSubmitting}>
+                  <Button
+                    type="submit"
+                    className="w-full"
+                    disabled={isSubmitting}
+                  >
                     {isSubmitting ? (
                       <Loader2 className="mr-2 h-4 w-4 animate-spin" />
                     ) : (

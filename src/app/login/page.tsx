@@ -1,28 +1,43 @@
-"use client";
+'use client';
 
-import { useAuth } from "@/context/AuthContext";
-import { useRouter } from "next/navigation";
-import { useEffect, useState } from "react";
-import { useForm } from "react-hook-form";
-import { zodResolver } from "@hookform/resolvers/zod";
-import * as z from "zod";
-import { signInWithEmailAndPassword } from "firebase/auth";
-import { auth } from "@/lib/firebase";
-import { Button } from "@/components/ui/button";
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
-import { Form, FormControl, FormField, FormItem, FormLabel, FormMessage } from "@/components/ui/form";
-import { Input } from "@/components/ui/input";
-import { useToast } from "@/hooks/use-toast";
-import { LogIn, KeyRound, Loader2 } from "lucide-react";
-import Link from "next/link";
+import { useUser, useAuth } from '@/firebase';
+import { useRouter } from 'next/navigation';
+import { useEffect, useState } from 'react';
+import { useForm } from 'react-hook-form';
+import { zodResolver } from '@hookform/resolvers/zod';
+import * as z from 'zod';
+import { signInWithEmailAndPassword } from 'firebase/auth';
+import { Button } from '@/components/ui/button';
+import {
+  Card,
+  CardContent,
+  CardDescription,
+  CardHeader,
+  CardTitle,
+} from '@/components/ui/card';
+import {
+  Form,
+  FormControl,
+  FormField,
+  FormItem,
+  FormLabel,
+  FormMessage,
+} from '@/components/ui/form';
+import { Input } from '@/components/ui/input';
+import { useToast } from '@/hooks/use-toast';
+import { LogIn, KeyRound, Loader2 } from 'lucide-react';
+import Link from 'next/link';
 
 const formSchema = z.object({
-  email: z.string().email({ message: "Invalid email address." }),
-  password: z.string().min(6, { message: "Password must be at least 6 characters." }),
+  email: z.string().email({ message: 'Invalid email address.' }),
+  password: z
+    .string()
+    .min(6, { message: 'Password must be at least 6 characters.' }),
 });
 
 export default function LoginPage() {
-  const { user, loading } = useAuth();
+  const { user, isUserLoading } = useUser();
+  const auth = useAuth();
   const router = useRouter();
   const { toast } = useToast();
   const [isSubmitting, setIsSubmitting] = useState(false);
@@ -30,38 +45,39 @@ export default function LoginPage() {
   const form = useForm<z.infer<typeof formSchema>>({
     resolver: zodResolver(formSchema),
     defaultValues: {
-      email: "",
-      password: "",
+      email: '',
+      password: '',
     },
   });
 
   useEffect(() => {
-    if (!loading && user) {
-      router.push("/");
+    if (!isUserLoading && user) {
+      router.push('/');
     }
-  }, [user, loading, router]);
+  }, [user, isUserLoading, router]);
 
   async function onSubmit(values: z.infer<typeof formSchema>) {
     setIsSubmitting(true);
     try {
       await signInWithEmailAndPassword(auth, values.email, values.password);
       toast({
-        title: "Login successful!",
-        description: "Redirecting to your dashboard...",
+        title: 'Login successful!',
+        description: 'Redirecting to your dashboard...',
       });
-      router.push("/");
+      router.push('/');
     } catch (error) {
       toast({
-        variant: "destructive",
-        title: "Login Failed",
-        description: "Invalid credentials. Please check your email and password.",
+        variant: 'destructive',
+        title: 'Login Failed',
+        description:
+          'Invalid credentials. Please check your email and password.',
       });
     } finally {
       setIsSubmitting(false);
     }
   }
 
-  if (loading || user) {
+  if (isUserLoading || user) {
     return (
       <div className="flex h-screen w-full items-center justify-center bg-background">
         <Loader2 className="h-10 w-10 animate-spin text-primary" />
@@ -76,8 +92,12 @@ export default function LoginPage() {
           <div className="mx-auto mb-4">
             <KeyRound className="h-16 w-16 text-primary" />
           </div>
-          <CardTitle className="text-3xl font-headline font-bold text-primary">Welcome Back</CardTitle>
-          <CardDescription className="font-body">Enter your credentials to access your account</CardDescription>
+          <CardTitle className="text-3xl font-headline font-bold text-primary">
+            Welcome Back
+          </CardTitle>
+          <CardDescription className="font-body">
+            Enter your credentials to access your account
+          </CardDescription>
         </CardHeader>
         <CardContent>
           <Form {...form}>
