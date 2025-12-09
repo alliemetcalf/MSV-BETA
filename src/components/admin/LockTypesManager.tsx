@@ -40,36 +40,51 @@ export function LockTypesManager() {
   const [lockTypes, setLockTypes] = useState<DoorLockType[]>([]);
 
   useEffect(() => {
-    if (lockTypesData?.types) {
-      if (
-        lockTypesData.types.length > 0 &&
-        typeof lockTypesData.types[0] === 'string'
-      ) {
-        const migratedTypes = (lockTypesData.types as string[]).map(
-          (name) => ({
-            id: name,
+    if (isLoading) {
+      return;
+    }
+    
+    const rawTypes = lockTypesData?.types;
+
+    if (rawTypes && rawTypes.length > 0) {
+      // Check if migration is needed
+      if (typeof rawTypes[0] === 'string') {
+        const migratedTypes = (rawTypes as string[]).map(
+          (name, index) => ({
+            id: `${Date.now()}-${index}`, // More robust unique ID
             name,
             textInstructions: '',
             instructionImageUrl: '',
           })
         );
+        // Set state immediately to update UI
         setLockTypes(migratedTypes);
-        
-        updateFirestore(migratedTypes, false).then(success => {
-            if (success) {
+        // Update Firestore in the background
+        if (lockTypesDocRef) {
+          setDoc(lockTypesDocRef, { types: migratedTypes }, { merge: true })
+            .then(() => {
               toast({
                 title: 'Data Migrated',
                 description: 'Your lock types have been updated to the new format.',
               });
-            }
-          });
+            })
+            .catch((e) => {
+              toast({
+                variant: 'destructive',
+                title: 'Migration Failed',
+                description: 'Could not save migrated lock types.',
+              });
+            });
+        }
       } else {
-        setLockTypes(lockTypesData.types as DoorLockType[]);
+        // Data is in the correct format
+        setLockTypes(rawTypes as DoorLockType[]);
       }
-    } else if (!isLoading && !lockTypesData) {
+    } else {
+      // Handle case where there are no types
       setLockTypes([]);
     }
-  }, [lockTypesData, isLoading]);
+  }, [lockTypesData, isLoading, lockTypesDocRef, toast]);
 
   const showSuccessToast = (description: string) => {
     toast({
@@ -87,9 +102,9 @@ export function LockTypesManager() {
     });
   };
 
-  const updateFirestore = async (updatedTypes: DoorLockType[], shouldSetLoading = true) => {
+  const updateFirestore = async (updatedTypes: DoorLockType[]) => {
     if (!lockTypesDocRef) return false;
-    if (shouldSetLoading) setIsSubmitting(true);
+    setIsSubmitting(true);
     try {
       await setDoc(lockTypesDocRef, { types: updatedTypes }, { merge: true });
       return true;
@@ -97,7 +112,7 @@ export function LockTypesManager() {
       showErrorToast('Failed to save changes.');
       return false;
     } finally {
-      if (shouldSetLoading) setIsSubmitting(false);
+      setIsSubmitting(false);
     }
   };
 
@@ -140,11 +155,8 @@ export function LockTypesManager() {
     const typeToSave = lockTypes.find(t => t.id === id);
     if (!typeToSave) return;
     
-    const updatedTypes = lockTypes.map(type => 
-      type.id === id ? typeToSave : type
-    );
-
-    const success = await updateFirestore(updatedTypes);
+    // The local state `lockTypes` already has the change from handleUpdateField
+    const success = await updateFirestore(lockTypes);
     if (success) {
       showSuccessToast(`Saved changes for "${typeToSave.name}".`);
     }
