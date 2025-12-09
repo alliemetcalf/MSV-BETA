@@ -2,18 +2,33 @@
 
 import Link from 'next/link';
 import { usePathname, useRouter } from 'next/navigation';
-import { KeyRound, LogOut } from 'lucide-react';
+import { KeyRound, LogOut, ShieldCheck } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { Button } from './ui/button';
-import { useAuth } from '@/firebase';
+import { useAuth, useUser } from '@/firebase';
 import { signOut } from 'firebase/auth';
 import { useToast } from '@/hooks/use-toast';
+import { useEffect, useState } from 'react';
+import { IdTokenResult } from 'firebase/auth';
 
 export function Header() {
   const pathname = usePathname();
   const { toast } = useToast();
   const router = useRouter();
   const auth = useAuth();
+  const { user } = useUser();
+  const [isAdmin, setIsAdmin] = useState(false);
+
+  useEffect(() => {
+    if (user) {
+      user.getIdTokenResult().then((idTokenResult: IdTokenResult) => {
+        const userRole = idTokenResult.claims.role;
+        setIsAdmin(userRole === 'admin');
+      });
+    } else {
+      setIsAdmin(false);
+    }
+  }, [user]);
 
   const handleLogout = async () => {
     try {
@@ -40,6 +55,8 @@ export function Header() {
     { href: '/', label: 'Home' },
     { href: '/door-codes', label: 'Door Codes' },
   ];
+
+  const adminNavItems = [{ href: '/admin', label: 'Admin', icon: ShieldCheck }];
 
   return (
     <header className="bg-card border-b sticky top-0 z-50">
@@ -68,6 +85,22 @@ export function Header() {
                   {item.label}
                 </Link>
               ))}
+              {isAdmin &&
+                adminNavItems.map((item) => (
+                  <Link
+                    key={item.href}
+                    href={item.href}
+                    className={cn(
+                      'px-3 py-2 rounded-md text-sm font-medium transition-colors flex items-center gap-2',
+                      pathname.startsWith(item.href)
+                        ? 'bg-primary text-primary-foreground'
+                        : 'text-muted-foreground hover:bg-accent hover:text-accent-foreground'
+                    )}
+                  >
+                    <item.icon className="h-4 w-4" />
+                    {item.label}
+                  </Link>
+                ))}
             </nav>
           </div>
           <div className="flex items-center">

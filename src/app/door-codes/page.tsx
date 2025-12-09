@@ -10,7 +10,7 @@ import {
   deleteDoc,
   serverTimestamp,
 } from 'firebase/firestore';
-import { useCollection } from '@/firebase/firestore/use-collection';
+import { useCollection, useDoc } from '@/firebase/firestore/use-collection';
 import { MainLayout } from '@/components/MainLayout';
 import {
   Card,
@@ -48,9 +48,6 @@ import {
 import { Loader2, PlusCircle, Edit, Trash2 } from 'lucide-react';
 import { DoorCode, DoorLockType } from '@/types/door-code';
 import { format } from 'date-fns';
-import backendConfig from '@/../docs/backend.json';
-
-const lockTypes = backendConfig.entities.DoorCode.properties.doorLockType.enum as DoorLockType[];
 
 export default function DoorCodesPage() {
   const { user, isUserLoading } = useUser();
@@ -61,7 +58,7 @@ export default function DoorCodesPage() {
     location: string;
     code: string;
     doorLockType: DoorLockType;
-  }>({ location: '', code: '', doorLockType: 'Keypad' });
+  }>({ location: '', code: '', doorLockType: '' });
 
   const doorCodesCollectionRef = useMemoFirebase(
     () => (user ? collection(firestore, 'users', user.uid, 'doorCodes') : null),
@@ -71,12 +68,20 @@ export default function DoorCodesPage() {
   const {
     data: doorCodes,
     isLoading: codesLoading,
-    error,
+    error: codesError,
   } = useCollection<DoorCode>(doorCodesCollectionRef);
+  
+  const lockTypesDocRef = useMemoFirebase(
+    () => doc(firestore, 'siteConfiguration', 'lockTypes'),
+    [firestore]
+  );
+  const { data: lockTypesData, isLoading: lockTypesLoading } = useDoc<{options: string[]}>(lockTypesDocRef);
+  const lockTypes = lockTypesData?.options || [];
+
 
   const handleAddClick = () => {
     setEditingCode(null);
-    setFormData({ location: '', code: '', doorLockType: 'Keypad' });
+    setFormData({ location: '', code: '', doorLockType: lockTypes[0] || '' });
     setIsDialogOpen(true);
   };
 
@@ -85,7 +90,7 @@ export default function DoorCodesPage() {
     setFormData({
       location: code.location,
       code: code.code,
-      doorLockType: code.doorLockType || 'Keypad',
+      doorLockType: code.doorLockType || '',
     });
     setIsDialogOpen(true);
   };
@@ -101,7 +106,7 @@ export default function DoorCodesPage() {
   const handleDialogClose = () => {
     setIsDialogOpen(false);
     setEditingCode(null);
-    setFormData({ location: '', code: '', doorLockType: 'Keypad' });
+    setFormData({ location: '', code: '', doorLockType: '' });
   };
 
   const handleFormChange = (e: React.ChangeEvent<HTMLInputElement>) => {
@@ -115,7 +120,7 @@ export default function DoorCodesPage() {
 
   const handleFormSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    if (!user || !formData.location || !formData.code) return;
+    if (!user || !formData.location || !formData.code || !formData.doorLockType) return;
 
     const codeData = {
       ...formData,
@@ -165,13 +170,13 @@ export default function DoorCodesPage() {
             </Button>
           </CardHeader>
           <CardContent>
-            {codesLoading && (
+            {(codesLoading || lockTypesLoading) && (
               <Loader2 className="mx-auto h-8 w-8 animate-spin" />
             )}
-            {error && (
-              <p className="text-destructive">Error: {error.message}</p>
+            {codesError && (
+              <p className="text-destructive">Error: {codesError.message}</p>
             )}
-            {!codesLoading && !error && (
+            {!(codesLoading || lockTypesLoading) && !codesError && (
               <Table>
                 <TableHeader>
                   <TableRow>
@@ -257,6 +262,7 @@ export default function DoorCodesPage() {
                 <Select
                   onValueChange={handleSelectChange}
                   value={formData.doorLockType}
+                  required
                 >
                   <SelectTrigger className="col-span-3">
                     <SelectValue placeholder="Select a lock type" />

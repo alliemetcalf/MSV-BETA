@@ -11,6 +11,10 @@ service cloud.firestore {
     function isOwner(userId) {
       return isSignedIn() && request.auth.uid == userId;
     }
+    
+    function isAdmin() {
+      return isSignedIn() && request.auth.token.role == 'admin';
+    }
 
     // Prototyping rules:
     // During development, these rules are more permissive to allow for rapid iteration.
@@ -19,6 +23,12 @@ service cloud.firestore {
     // Allow owners to read and write to their own user-specific data.
     match /users/{userId}/{document=**} {
       allow read, write: if isOwner(userId);
+    }
+    
+    // Site configuration can be read by any signed-in user, but only written by admins.
+    match /siteConfiguration/{document=**} {
+      allow read: if isSignedIn();
+      allow write: if isAdmin();
     }
   }
 }

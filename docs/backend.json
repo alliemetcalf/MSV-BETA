@@ -15,13 +15,7 @@
         },
         "doorLockType": {
           "type": "string",
-          "description": "The type of the door lock.",
-          "enum": [
-            "Keypad",
-            "Smart Lock",
-            "Key Box",
-            "Other"
-          ]
+          "description": "The type of the door lock."
         },
         "lastChanged": {
           "type": "string",
@@ -33,6 +27,23 @@
         "location",
         "code",
         "doorLockType"
+      ]
+    },
+    "LockTypes": {
+      "title": "LockTypes",
+      "type": "object",
+      "description": "A list of available door lock types for the platform.",
+      "properties": {
+        "options": {
+          "type": "array",
+          "description": "An array of door lock type names.",
+          "items": {
+            "type": "string"
+          }
+        }
+      },
+      "required": [
+        "options"
       ]
     }
   },
@@ -50,6 +61,13 @@
           "$ref": "#/entities/DoorCode"
         },
         "description": "Stores door codes for a specific user."
+      },
+      {
+        "path": "/siteConfiguration/lockTypes",
+        "schema": {
+          "$ref": "#/entities/LockTypes"
+        },
+        "description": "Stores the list of available door lock types."
       }
     ]
   }
