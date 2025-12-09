@@ -41,24 +41,22 @@ export function LockTypesManager() {
 
   useEffect(() => {
     if (lockTypesData?.types) {
-      // Check if the data is in the old format (array of strings)
       if (
         lockTypesData.types.length > 0 &&
         typeof lockTypesData.types[0] === 'string'
       ) {
         const migratedTypes = (lockTypesData.types as string[]).map(
           (name) => ({
-            id: name, // Use name as a temporary unique ID
+            id: name,
             name,
             textInstructions: '',
             instructionImageUrl: '',
           })
         );
-        // Save the migrated data back to Firestore
-        updateFirestore(migratedTypes)
-          .then(success => {
+        setLockTypes(migratedTypes);
+        
+        updateFirestore(migratedTypes, false).then(success => {
             if (success) {
-              setLockTypes(migratedTypes);
               toast({
                 title: 'Data Migrated',
                 description: 'Your lock types have been updated to the new format.',
@@ -69,7 +67,6 @@ export function LockTypesManager() {
         setLockTypes(lockTypesData.types as DoorLockType[]);
       }
     } else if (!isLoading && !lockTypesData) {
-      // If the document doesn't exist or has no types, initialize with an empty array.
       setLockTypes([]);
     }
   }, [lockTypesData, isLoading]);
@@ -90,9 +87,9 @@ export function LockTypesManager() {
     });
   };
 
-  const updateFirestore = async (updatedTypes: DoorLockType[]) => {
+  const updateFirestore = async (updatedTypes: DoorLockType[], shouldSetLoading = true) => {
     if (!lockTypesDocRef) return false;
-    setIsSubmitting(true);
+    if (shouldSetLoading) setIsSubmitting(true);
     try {
       await setDoc(lockTypesDocRef, { types: updatedTypes }, { merge: true });
       return true;
@@ -100,7 +97,7 @@ export function LockTypesManager() {
       showErrorToast('Failed to save changes.');
       return false;
     } finally {
-      setIsSubmitting(false);
+      if (shouldSetLoading) setIsSubmitting(false);
     }
   };
 
@@ -143,7 +140,6 @@ export function LockTypesManager() {
     const typeToSave = lockTypes.find(t => t.id === id);
     if (!typeToSave) return;
     
-    // Create a new array with the updated item
     const updatedTypes = lockTypes.map(type => 
       type.id === id ? typeToSave : type
     );
