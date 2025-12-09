@@ -1,8 +1,9 @@
 'use client';
 
-import { useFirestore, useMemoFirebase, useUser } from '@/firebase';
+import { useFirestore, useMemoFirebase, useUser, useStorage } from '@/firebase';
 import { useDoc } from '@/firebase/firestore/use-collection';
 import { doc, setDoc } from 'firebase/firestore';
+import { ref, uploadBytesResumable, getDownloadURL } from "firebase/storage";
 import { useState, useEffect } from 'react';
 import {
   Card,
@@ -13,11 +14,103 @@ import {
 } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
-import { Loader2, PlusCircle, Trash2 } from 'lucide-react';
+import { Loader2, PlusCircle, Trash2, Upload, Image as ImageIcon } from 'lucide-react';
 import { useToast } from '@/hooks/use-toast';
 import { DoorLockType } from '@/types/door-code';
 import { Textarea } from '../ui/textarea';
 import { Label } from '../ui/label';
+import { Progress } from '@/components/ui/progress';
+import Image from 'next/image';
+
+function ImageUploader({ type, onUploadComplete }: { type: DoorLockType, onUploadComplete: (id: string, url: string) => void }) {
+  const storage = useStorage();
+  const { toast } = useToast();
+  const [uploadProgress, setUploadProgress] = useState<number | null>(null);
+  const [isUploading, setIsUploading] = useState(false);
+  const fileInputRef = React.useRef<HTMLInputElement>(null);
+
+  const handleFileSelect = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (file) {
+      handleFileUpload(file);
+    }
+  };
+
+  const handleFileUpload = (file: File) => {
+    setIsUploading(true);
+    setUploadProgress(0);
+    
+    const storageRef = ref(storage, `lock-type-instructions/${type.id}/${file.name}`);
+    const uploadTask = uploadBytesResumable(storageRef, file);
+
+    uploadTask.on('state_changed',
+      (snapshot) => {
+        const progress = (snapshot.bytesTransferred / snapshot.totalBytes) * 100;
+        setUploadProgress(progress);
+      },
+      (error) => {
+        setIsUploading(false);
+        setUploadProgress(null);
+        toast({
+          variant: 'destructive',
+          title: 'Upload Failed',
+          description: error.message,
+        });
+      },
+      () => {
+        getDownloadURL(uploadTask.snapshot.ref).then((downloadURL) => {
+          onUploadComplete(type.id, downloadURL);
+          setIsUploading(false);
+          setUploadProgress(null);
+          toast({
+            title: 'Upload Complete',
+            description: 'Image has been successfully uploaded.',
+          });
+        });
+      }
+    );
+  };
+
+  return (
+    <div className="space-y-2">
+      <Label htmlFor={`imageUrl-${type.id}`}>Instruction Image</Label>
+      <div 
+        className="relative w-full aspect-video border rounded-md flex items-center justify-center bg-muted/50 cursor-pointer hover:bg-muted"
+        onClick={() => fileInputRef.current?.click()}
+      >
+        {type.instructionImageUrl ? (
+          <Image
+            src={type.instructionImageUrl}
+            alt={`${type.name} instruction sheet`}
+            fill
+            className="object-contain rounded-md"
+          />
+        ) : (
+          <div className="flex flex-col items-center gap-2 text-muted-foreground">
+            <ImageIcon className="h-8 w-8" />
+            <span>Click to upload</span>
+          </div>
+        )}
+        <input
+          ref={fileInputRef}
+          id={`imageUrl-${type.id}`}
+          type="file"
+          accept="image/*"
+          className="hidden"
+          onChange={handleFileSelect}
+          disabled={isUploading}
+        />
+      </div>
+      {isUploading && uploadProgress !== null && (
+        <div className="flex items-center gap-2">
+          <Progress value={uploadProgress} className="w-full" />
+          <span className="text-sm text-muted-foreground">{Math.round(uploadProgress)}%</span>
+        </div>
+      )}
+    </div>
+  );
+}
+
 
 export function LockTypesManager() {
   const { user } = useUser();
@@ -35,56 +128,41 @@ export function LockTypesManager() {
     data: lockTypesData,
     isLoading,
     error,
-  } = useDoc<{ types: DoorLockType[] | string[] }>(lockTypesDocRef);
+  } = useDoc<{ types: DoorLockType[] }>(lockTypesDocRef);
 
   const [lockTypes, setLockTypes] = useState<DoorLockType[]>([]);
 
   useEffect(() => {
-    // Only proceed if loading is finished and there's no error.
+    // This effect handles the initial loading and migration of data.
     if (!isLoading && !error) {
-      if (lockTypesData?.types) {
-        const rawTypes = lockTypesData.types;
-        
-        // Check if data is in the old format (array of strings) and needs migration.
-        if (rawTypes.length > 0 && typeof rawTypes[0] === 'string') {
-          const migratedTypes = (rawTypes as string[]).map((name, index) => ({
-            id: `${Date.now()}-${index}`, // simple unique id
-            name,
-            textInstructions: '',
-            instructionImageUrl: '',
-          }));
-          setLockTypes(migratedTypes);
-          
-          // Save the migrated data back to Firestore.
-          if (lockTypesDocRef) {
-            setDoc(lockTypesDocRef, { types: migratedTypes }, { merge: true })
-              .then(() => {
-                toast({
-                  title: 'Data Migrated',
-                  description: 'Your lock types have been updated to the new format.',
-                });
-              })
-              .catch((e) => {
-                toast({
-                  variant: 'destructive',
-                  title: 'Migration Failed',
-                  description: 'Could not save migrated lock types.',
-                });
-              });
-          }
+        if (lockTypesData) {
+            // Data exists, check if it's the old string[] format
+            if (lockTypesData.types && lockTypesData.types.length > 0 && typeof lockTypesData.types[0] === 'string') {
+                const migratedTypes = (lockTypesData.types as unknown as string[]).map((name, index) => ({
+                    id: `${Date.now()}-${index}`,
+                    name,
+                    textInstructions: '',
+                    instructionImageUrl: '',
+                }));
+                setLockTypes(migratedTypes);
+                // Save the migrated data back to Firestore
+                if (lockTypesDocRef) {
+                    setDoc(lockTypesDocRef, { types: migratedTypes }, { merge: true })
+                        .then(() => toast({ title: 'Data Migrated', description: 'Lock types updated to new format.' }))
+                        .catch(e => toast({ variant: 'destructive', title: 'Migration Failed', description: e.message }));
+                }
+            } else {
+                // Data is in the new DoorLockType[] format (or is an empty array)
+                setLockTypes(lockTypesData.types || []);
+            }
         } else {
-          // Data is already in the new format (or empty), so just use it.
-          setLockTypes(rawTypes as DoorLockType[]);
+            // Document does not exist yet. Initialize with empty array.
+            setLockTypes([]);
+            // Create the document with empty 'types' array if it doesn't exist
+            if (lockTypesDocRef) {
+                setDoc(lockTypesDocRef, { types: [] }, { merge: true });
+            }
         }
-      } else if (!lockTypesData) {
-        // Document does not exist. Initialize with an empty array.
-        // We can also create the document here if desired.
-        setLockTypes([]);
-        if (lockTypesDocRef) {
-          // Create the document with an empty array so we can add to it.
-          setDoc(lockTypesDocRef, { types: [] }, { merge: true });
-        }
-      }
     }
   }, [lockTypesData, isLoading, error, lockTypesDocRef, toast]);
   
@@ -104,11 +182,12 @@ export function LockTypesManager() {
     });
   };
 
-  const updateFirestore = async (updatedTypes: DoorLockType[]) => {
+  const updateFirestore = async (updatedTypes: DoorLockType[], showToast = true) => {
     if (!lockTypesDocRef) return false;
     setIsSubmitting(true);
     try {
       await setDoc(lockTypesDocRef, { types: updatedTypes }, { merge: true });
+      if(showToast) showSuccessToast('Changes saved successfully.');
       return true;
     } catch (e) {
       showErrorToast('Failed to save changes.');
@@ -127,7 +206,7 @@ export function LockTypesManager() {
         instructionImageUrl: '',
       };
       const updatedTypes = [...lockTypes, newType];
-      const success = await updateFirestore(updatedTypes);
+      const success = await updateFirestore(updatedTypes, false);
       if (success) {
         setLockTypes(updatedTypes);
         setNewLockTypeName('');
@@ -139,31 +218,44 @@ export function LockTypesManager() {
   const handleDeleteLockType = async (idToDelete: string) => {
     const typeNameToDelete = lockTypes.find(t => t.id === idToDelete)?.name || 'item';
     const updatedTypes = lockTypes.filter((type) => type.id !== idToDelete);
-    const success = await updateFirestore(updatedTypes);
+    const success = await updateFirestore(updatedTypes, false);
     if (success) {
       setLockTypes(updatedTypes);
       showSuccessToast(`Removed "${typeNameToDelete}".`);
     }
   };
 
-  const handleUpdateField = (id: string, field: keyof DoorLockType, value: string) => {
+  const handleUpdateField = (id: string, field: 'name' | 'textInstructions', value: string) => {
      const updatedTypes = lockTypes.map(type => 
       type.id === id ? { ...type, [field]: value } : type
     );
     setLockTypes(updatedTypes);
   };
+  
+  const handleUploadComplete = async (id: string, url: string) => {
+      const updatedTypes = lockTypes.map(type => 
+        type.id === id ? { ...type, instructionImageUrl: url } : type
+      );
+      const success = await updateFirestore(updatedTypes, false);
+      if(success) {
+        setLockTypes(updatedTypes);
+      }
+  }
 
   const handleSaveChangesForType = async (id: string) => {
     const typeToSave = lockTypes.find(t => t.id === id);
     if (!typeToSave) return;
     
-    // Find the current state of the type to save from the local `lockTypes` state
-    const updatedTypes = lockTypes.map(type => type.id === id ? typeToSave : type);
-  
-    const success = await updateFirestore(updatedTypes);
-    if (success) {
-      showSuccessToast(`Saved changes for "${typeToSave.name}".`);
+    const currentDataInFirestore = lockTypesData?.types?.find(t => t.id === id);
+
+    // Only save if there is a change
+    if (JSON.stringify(typeToSave) === JSON.stringify(currentDataInFirestore)) {
+      return;
     }
+    
+    const updatedTypes = lockTypesData?.types ? lockTypesData.types.map(t => t.id === id ? typeToSave : t) : [typeToSave];
+  
+    await updateFirestore(updatedTypes);
   }
 
 
@@ -218,17 +310,7 @@ export function LockTypesManager() {
                   disabled={isSubmitting}
                 />
               </div>
-              <div className='space-y-2'>
-                <Label htmlFor={`imageUrl-${type.id}`}>Instruction Image URL</Label>
-                <Input
-                  id={`imageUrl-${type.id}`}
-                  value={type.instructionImageUrl || ''}
-                  onChange={(e) => handleUpdateField(type.id, 'instructionImageUrl', e.target.value)}
-                  onBlur={() => handleSaveChangesForType(type.id)}
-                  placeholder="https://example.com/image.png"
-                  disabled={isSubmitting}
-                />
-              </div>
+              <ImageUploader type={type} onUploadComplete={handleUploadComplete} />
             </div>
           ))}
           {lockTypes.length === 0 && !isLoading && (
