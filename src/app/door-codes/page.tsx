@@ -48,10 +48,13 @@ import {
 import { Loader2, PlusCircle, Edit, Trash2 } from 'lucide-react';
 import { DoorCode, DoorLockType } from '@/types/door-code';
 import { format } from 'date-fns';
+import { useRouter } from 'next/navigation';
+import { useEffect } from 'react';
 
 export default function DoorCodesPage() {
   const { user, isUserLoading } = useUser();
   const firestore = useFirestore();
+  const router = useRouter();
   const [isDialogOpen, setIsDialogOpen] = useState(false);
   const [editingCode, setEditingCode] = useState<DoorCode | null>(null);
   const [formData, setFormData] = useState<{
@@ -59,6 +62,12 @@ export default function DoorCodesPage() {
     code: string;
     doorLockType: DoorLockType;
   }>({ location: '', code: '', doorLockType: '' });
+
+  useEffect(() => {
+    if (!isUserLoading && !user) {
+      router.push('/login');
+    }
+  }, [user, isUserLoading, router]);
 
   const doorCodesCollectionRef = useMemoFirebase(
     () => (user ? collection(firestore, 'users', user.uid, 'doorCodes') : null),
@@ -70,14 +79,14 @@ export default function DoorCodesPage() {
     isLoading: codesLoading,
     error: codesError,
   } = useCollection<DoorCode>(doorCodesCollectionRef);
-  
-  const lockTypesDocRef = useMemoFirebase(
-    () => doc(firestore, 'siteConfiguration', 'lockTypes'),
-    [firestore]
-  );
-  const { data: lockTypesData, isLoading: lockTypesLoading } = useDoc<{options: string[]}>(lockTypesDocRef);
-  const lockTypes = lockTypesData?.options || [];
 
+  const lockTypesDocRef = useMemoFirebase(
+    () => (user ? doc(firestore, 'siteConfiguration', 'lockTypes') : null),
+    [firestore, user]
+  );
+  const { data: lockTypesData, isLoading: lockTypesLoading } =
+    useDoc<{ options: string[] }>(lockTypesDocRef);
+  const lockTypes = lockTypesData?.options || [];
 
   const handleAddClick = () => {
     setEditingCode(null);
@@ -120,7 +129,8 @@ export default function DoorCodesPage() {
 
   const handleFormSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    if (!user || !formData.location || !formData.code || !formData.doorLockType) return;
+    if (!user || !formData.location || !formData.code || !formData.doorLockType)
+      return;
 
     const codeData = {
       ...formData,
@@ -145,7 +155,7 @@ export default function DoorCodesPage() {
     handleDialogClose();
   };
 
-  if (isUserLoading) {
+  if (isUserLoading || !user) {
     return (
       <div className="flex h-screen w-full items-center justify-center bg-background">
         <Loader2 className="h-10 w-10 animate-spin text-primary" />

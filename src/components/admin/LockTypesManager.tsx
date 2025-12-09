@@ -1,6 +1,6 @@
 'use client';
 
-import { useFirestore, useMemoFirebase } from '@/firebase';
+import { useFirestore, useMemoFirebase, useUser } from '@/firebase';
 import { useDoc } from '@/firebase/firestore/use-collection';
 import { doc, setDoc } from 'firebase/firestore';
 import { useState, useEffect } from 'react';
@@ -17,13 +17,14 @@ import { Loader2, PlusCircle, Trash2 } from 'lucide-react';
 import { useToast } from '@/hooks/use-toast';
 
 export function LockTypesManager() {
+  const { user } = useUser();
   const firestore = useFirestore();
   const { toast } = useToast();
   const [newLockType, setNewLockType] = useState('');
 
   const lockTypesDocRef = useMemoFirebase(
-    () => doc(firestore, 'siteConfiguration', 'lockTypes'),
-    [firestore]
+    () => (user ? doc(firestore, 'siteConfiguration', 'lockTypes') : null),
+    [firestore, user]
   );
   const {
     data: lockTypesData,
@@ -36,10 +37,14 @@ export function LockTypesManager() {
   useEffect(() => {
     if (lockTypesData?.options) {
       setLockTypes(lockTypesData.options);
+    } else if (!isLoading && !lockTypesData) {
+      // If there's no data and we're not loading, it might be an empty state
+      setLockTypes([]);
     }
-  }, [lockTypesData]);
+  }, [lockTypesData, isLoading]);
 
   const handleSave = async () => {
+    if (!lockTypesDocRef) return;
     try {
       await setDoc(lockTypesDocRef, { options: lockTypes }, { merge: true });
       toast({
