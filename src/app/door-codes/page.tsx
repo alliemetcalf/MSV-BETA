@@ -48,8 +48,9 @@ import {
 import { Loader2, PlusCircle, Edit, Trash2 } from 'lucide-react';
 import { DoorCode, DoorLockType } from '@/types/door-code';
 import { format } from 'date-fns';
+import backendConfig from '@/../docs/backend.json';
 
-const lockTypes: DoorLockType[] = ['Keypad', 'Smart Lock', 'Key Box', 'Other'];
+const lockTypes = backendConfig.entities.DoorCode.properties.doorLockType.enum as DoorLockType[];
 
 export default function DoorCodesPage() {
   const { user, isUserLoading } = useUser();
