@@ -11,6 +11,7 @@ import { ai } from '@/ai/genkit';
 import { z } from 'genkit';
 import { getAuth } from 'firebase-admin/auth';
 import { initializeApp, getApps, cert } from 'firebase-admin/app';
+import serviceAccount from '@/../firebase-service-account.json';
 
 const CreateUserInputSchema = z.object({
   email: z.string().email(),
@@ -28,9 +29,6 @@ export type CreateUserOutput = z.infer<typeof CreateUserOutputSchema>;
 
 // Initialize Firebase Admin SDK if not already initialized
 if (!getApps().length) {
-  const serviceAccount = JSON.parse(
-    process.env.FIREBASE_SERVICE_ACCOUNT_KEY as string
-  );
   initializeApp({
     credential: cert(serviceAccount),
   });
