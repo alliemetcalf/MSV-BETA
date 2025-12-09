@@ -104,7 +104,7 @@ export default function DoorCodesPage() {
 
   const groupedDoorCodes = useMemo(() => {
     if (!doorCodes) return {};
-    return doorCodes.reduce(
+    const grouped = doorCodes.reduce(
       (acc, code) => {
         const { property } = code;
         if (!acc[property]) {
@@ -115,6 +115,13 @@ export default function DoorCodesPage() {
       },
       {} as Record<string, DoorCode[]>
     );
+
+    // Sort codes within each property group by location
+    for (const property in grouped) {
+      grouped[property].sort((a, b) => a.location.localeCompare(b.location));
+    }
+
+    return grouped;
   }, [doorCodes]);
 
   const handleAddClick = () => {
