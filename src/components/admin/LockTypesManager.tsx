@@ -96,7 +96,7 @@ function ImageUploader({ type, onUploadComplete }: { type: DoorLockType, onUploa
           ref={fileInputRef}
           id={`imageUrl-${type.id}`}
           type="file"
-          accept="image/*"
+          accept="image/jpeg,image/png,image/tiff"
           className="hidden"
           onChange={handleFileSelect}
           disabled={isUploading}
@@ -134,35 +134,37 @@ export function LockTypesManager() {
   const [lockTypes, setLockTypes] = useState<DoorLockType[]>([]);
 
   useEffect(() => {
-    // This effect handles the initial loading and migration of data.
-    if (!isLoading && !error) {
-        if (lockTypesData) {
-            // Data exists, check if it's the old string[] format
-            if (lockTypesData.types && lockTypesData.types.length > 0 && typeof lockTypesData.types[0] === 'string') {
-                const migratedTypes = (lockTypesData.types as unknown as string[]).map((name, index) => ({
-                    id: `${Date.now()}-${index}`,
-                    name,
-                    textInstructions: '',
-                    instructionImageUrl: '',
-                }));
-                setLockTypes(migratedTypes);
-                // Save the migrated data back to Firestore
-                if (lockTypesDocRef) {
-                    setDoc(lockTypesDocRef, { types: migratedTypes }, { merge: true })
-                        .then(() => toast({ title: 'Data Migrated', description: 'Lock types updated to new format.' }))
-                        .catch(e => toast({ variant: 'destructive', title: 'Migration Failed', description: e.message }));
-                }
-            } else {
-                // Data is in the new DoorLockType[] format (or is an empty array)
-                setLockTypes(lockTypesData.types || []);
+    if (isLoading) return;
+    if (error) {
+        console.error("Error loading lock types:", error);
+        return;
+    }
+    
+    if (lockTypesData) {
+        // Data exists, check if it's the old string[] format
+        if (lockTypesData.types && lockTypesData.types.length > 0 && typeof lockTypesData.types[0] === 'string') {
+            const migratedTypes = (lockTypesData.types as unknown as string[]).map((name, index) => ({
+                id: `${Date.now()}-${index}`,
+                name,
+                textInstructions: '',
+                instructionImageUrl: '',
+            }));
+            setLockTypes(migratedTypes);
+            if (lockTypesDocRef) {
+                setDoc(lockTypesDocRef, { types: migratedTypes }, { merge: true })
+                    .then(() => toast({ title: 'Data Migrated', description: 'Lock types updated to new format.' }))
+                    .catch(e => toast({ variant: 'destructive', title: 'Migration Failed', description: e.message }));
             }
         } else {
-            // Document does not exist yet. Initialize with empty array.
-            setLockTypes([]);
-            // Create the document with empty 'types' array if it doesn't exist
-            if (lockTypesDocRef) {
-                setDoc(lockTypesDocRef, { types: [] }, { merge: true });
-            }
+            // Data is in the new DoorLockType[] format (or is an empty array)
+            setLockTypes(lockTypesData.types || []);
+        }
+    } else if (!lockTypesData && !isLoading) {
+        // Document does not exist yet. Initialize with empty array locally.
+        setLockTypes([]);
+        // Create the document with empty 'types' array if it doesn't exist
+        if (lockTypesDocRef) {
+            setDoc(lockTypesDocRef, { types: [] }, { merge: true });
         }
     }
   }, [lockTypesData, isLoading, error, lockTypesDocRef, toast]);
