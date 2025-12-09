@@ -64,10 +64,17 @@ export default function DoorCodesPage() {
   const [editingCode, setEditingCode] = useState<DoorCode | null>(null);
   const [formData, setFormData] = useState<{
     location: string;
-    code: string;
+    adminProgrammingCode: string;
+    guestCode: string;
     doorLockType: DoorLockType;
     property: PropertyType;
-  }>({ location: '', code: '', doorLockType: '', property: '' });
+  }>({
+    location: '',
+    adminProgrammingCode: '',
+    guestCode: '',
+    doorLockType: '',
+    property: '',
+  });
 
   useEffect(() => {
     if (!isUserLoading && !user) {
@@ -130,7 +137,8 @@ export default function DoorCodesPage() {
     setEditingCode(null);
     setFormData({
       location: '',
-      code: '',
+      adminProgrammingCode: '',
+      guestCode: '',
       doorLockType: lockTypes[0] || '',
       property: properties[0] || '',
     });
@@ -141,7 +149,8 @@ export default function DoorCodesPage() {
     setEditingCode(code);
     setFormData({
       location: code.location,
-      code: code.code,
+      adminProgrammingCode: code.adminProgrammingCode || '',
+      guestCode: code.guestCode || '',
       doorLockType: code.doorLockType || '',
       property: code.property || '',
     });
@@ -159,7 +168,13 @@ export default function DoorCodesPage() {
   const handleDialogClose = () => {
     setIsDialogOpen(false);
     setEditingCode(null);
-    setFormData({ location: '', code: '', doorLockType: '', property: '' });
+    setFormData({
+      location: '',
+      adminProgrammingCode: '',
+      guestCode: '',
+      doorLockType: '',
+      property: '',
+    });
   };
 
   const handleFormChange = (e: React.ChangeEvent<HTMLInputElement>) => {
@@ -177,7 +192,6 @@ export default function DoorCodesPage() {
     if (
       !user ||
       !formData.location ||
-      !formData.code ||
       !formData.doorLockType ||
       !formData.property
     )
@@ -253,7 +267,8 @@ export default function DoorCodesPage() {
                                 <TableRow>
                                   <TableHead>Location</TableHead>
                                   <TableHead>Lock Type</TableHead>
-                                  <TableHead>Code</TableHead>
+                                  <TableHead>Admin Code</TableHead>
+                                  <TableHead>Guest Code</TableHead>
                                   <TableHead>Last Changed</TableHead>
                                   <TableHead className="text-right">
                                     Actions
@@ -266,7 +281,10 @@ export default function DoorCodesPage() {
                                     <TableCell>{code.location}</TableCell>
                                     <TableCell>{code.doorLockType}</TableCell>
                                     <TableCell className="font-mono">
-                                      {code.code}
+                                      {code.adminProgrammingCode}
+                                    </TableCell>
+                                    <TableCell className="font-mono">
+                                      {code.guestCode}
                                     </TableCell>
                                     <TableCell>
                                       {code.lastChanged?.toDate &&
@@ -381,15 +399,25 @@ export default function DoorCodesPage() {
                 </Select>
               </div>
               <div className="grid grid-cols-4 items-center gap-4">
-                <Label htmlFor="code" className="text-right">
-                  Code
+                <Label htmlFor="adminProgrammingCode" className="text-right">
+                  Admin Code
                 </Label>
                 <Input
-                  id="code"
-                  value={formData.code}
+                  id="adminProgrammingCode"
+                  value={formData.adminProgrammingCode}
                   onChange={handleFormChange}
                   className="col-span-3"
-                  required
+                />
+              </div>
+              <div className="grid grid-cols-4 items-center gap-4">
+                <Label htmlFor="guestCode" className="text-right">
+                  Guest Code
+                </Label>
+                <Input
+                  id="guestCode"
+                  value={formData.guestCode}
+                  onChange={handleFormChange}
+                  className="col-span-3"
                 />
               </div>
             </div>

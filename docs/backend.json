@@ -24,9 +24,13 @@
           "type": "string",
           "description": "The physical location of the door (e.g., 'Front Door', 'Garage')."
         },
-        "code": {
+        "adminProgrammingCode": {
           "type": "string",
-          "description": "The door code itself."
+          "description": "The admin or programming code for the lock."
+        },
+        "guestCode": {
+          "type": "string",
+          "description": "The guest code for the lock."
         },
         "doorLockType": {
           "type": "string",
@@ -44,7 +48,6 @@
       },
       "required": [
         "location",
-        "code",
         "doorLockType",
         "property"
       ]
