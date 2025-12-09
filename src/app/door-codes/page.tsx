@@ -64,12 +64,14 @@ export default function DoorCodesPage() {
   const [editingCode, setEditingCode] = useState<DoorCode | null>(null);
   const [formData, setFormData] = useState<{
     location: string;
+    code: string;
     adminProgrammingCode: string;
     guestCode: string;
     doorLockType: DoorLockType;
     property: PropertyType;
   }>({
     location: '',
+    code: '',
     adminProgrammingCode: '',
     guestCode: '',
     doorLockType: '',
@@ -137,6 +139,7 @@ export default function DoorCodesPage() {
     setEditingCode(null);
     setFormData({
       location: '',
+      code: '',
       adminProgrammingCode: '',
       guestCode: '',
       doorLockType: lockTypes[0] || '',
@@ -149,6 +152,7 @@ export default function DoorCodesPage() {
     setEditingCode(code);
     setFormData({
       location: code.location,
+      code: code.code || '',
       adminProgrammingCode: code.adminProgrammingCode || '',
       guestCode: code.guestCode || '',
       doorLockType: code.doorLockType || '',
@@ -170,6 +174,7 @@ export default function DoorCodesPage() {
     setEditingCode(null);
     setFormData({
       location: '',
+      code: '',
       adminProgrammingCode: '',
       guestCode: '',
       doorLockType: '',
@@ -267,6 +272,7 @@ export default function DoorCodesPage() {
                                 <TableRow>
                                   <TableHead>Location</TableHead>
                                   <TableHead>Lock Type</TableHead>
+                                  <TableHead>Code</TableHead>
                                   <TableHead>Admin Code</TableHead>
                                   <TableHead>Guest Code</TableHead>
                                   <TableHead>Last Changed</TableHead>
@@ -280,6 +286,9 @@ export default function DoorCodesPage() {
                                   <TableRow key={code.id}>
                                     <TableCell>{code.location}</TableCell>
                                     <TableCell>{code.doorLockType}</TableCell>
+                                    <TableCell className="font-mono">
+                                      {code.code}
+                                    </TableCell>
                                     <TableCell className="font-mono">
                                       {code.adminProgrammingCode}
                                     </TableCell>
@@ -397,6 +406,17 @@ export default function DoorCodesPage() {
                     ))}
                   </SelectContent>
                 </Select>
+              </div>
+              <div className="grid grid-cols-4 items-center gap-4">
+                <Label htmlFor="code" className="text-right">
+                  Code
+                </Label>
+                <Input
+                  id="code"
+                  value={formData.code}
+                  onChange={handleFormChange}
+                  className="col-span-3"
+                />
               </div>
               <div className="grid grid-cols-4 items-center gap-4">
                 <Label htmlFor="adminProgrammingCode" className="text-right">

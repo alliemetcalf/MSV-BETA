@@ -24,6 +24,10 @@
           "type": "string",
           "description": "The physical location of the door (e.g., 'Front Door', 'Garage')."
         },
+        "code": {
+          "type": "string",
+          "description": "The primary code for the lock."
+        },
         "adminProgrammingCode": {
           "type": "string",
           "description": "The admin or programming code for the lock."

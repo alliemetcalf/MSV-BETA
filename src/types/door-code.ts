@@ -6,6 +6,7 @@ export type PropertyType = string;
 export interface DoorCode {
   id: string;
   location: string;
+  code: string;
   adminProgrammingCode: string;
   guestCode: string;
   doorLockType: DoorLockType;
