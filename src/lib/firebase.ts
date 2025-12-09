@@ -1,16 +1,17 @@
 import { initializeApp, getApps, getApp } from "firebase/app";
 import { getAuth } from "firebase/auth";
 
-// IMPORTANT: Replace with your actual Firebase project configuration.
-// You can find this in your project's settings in the Firebase console.
+// Your web app's Firebase configuration
 const firebaseConfig = {
-  apiKey: "YOUR_API_KEY",
+  apiKey: "AIzaSyBCG29EhICnZf3cjUYq4Hvn2q45ENB2rpQ",
   authDomain: "msv-beta.firebaseapp.com",
   projectId: "msv-beta",
-  storageBucket: "msv-beta.appspot.com",
-  messagingSenderId: "YOUR_MESSAGING_SENDER_ID",
-  appId: "YOUR_APP_ID",
+  storageBucket: "msv-beta.firebasestorage.app",
+  messagingSenderId: "614074080882",
+  appId: "1:614074080882:web:1e1984151011c1323d2ceb",
+  measurementId: "G-6L55TC2D5Y"
 };
+
 
 // Initialize Firebase for client-side
 const app = !getApps().length ? initializeApp(firebaseConfig) : getApp();
