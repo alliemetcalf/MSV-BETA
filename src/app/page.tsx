@@ -14,16 +14,18 @@ import { zodResolver } from "@hookform/resolvers/zod";
 import * as z from "zod";
 import { Form, FormControl, FormField, FormItem, FormLabel, FormMessage } from "@/components/ui/form";
 import { Input } from "@/components/ui/input";
-import { initializeApp, getApp, getApps, deleteApp } from "firebase/app";
-import { getAuth, createUserWithEmailAndPassword } from "firebase/auth";
+import { Checkbox } from "@/components/ui/checkbox";
+import { createUser } from "@/ai/flows/create-user-flow";
+
 
 const addUserFormSchema = z.object({
   email: z.string().email({ message: "Invalid email address." }),
   password: z.string().min(6, { message: "Password must be at least 6 characters." }),
+  isAdmin: z.boolean().default(false),
 });
 
 export default function Home() {
-  const { user, loading } = useAuth();
+  const { user, loading, role, claimsLoading } = useAuth();
   const router = useRouter();
   const { toast } = useToast();
   const [isSubmitting, setIsSubmitting] = useState(false);
@@ -33,6 +35,7 @@ export default function Home() {
     defaultValues: {
       email: "",
       password: "",
+      isAdmin: false,
     },
   });
 
@@ -62,29 +65,21 @@ export default function Home() {
   
   async function onAddUserSubmit(values: z.infer<typeof addUserFormSchema>) {
     setIsSubmitting(true);
-    let secondaryApp;
-    
-    // Use a secondary Firebase app instance to create user without signing out the admin
     try {
-      const firebaseConfig = {
-        apiKey: "AIzaSyBCG29EhICnZf3cjUYq4Hvn2q45ENB2rpQ",
-        authDomain: "msv-beta.firebaseapp.com",
-        projectId: "msv-beta",
-        storageBucket: "msv-beta.firebasestorage.app",
-        messagingSenderId: "614074080882",
-        appId: "1:614074080882:web:1e1984151011c1323d2ceb",
-        measurementId: "G-6L55TC2D5Y"
-      };
-
-      secondaryApp = initializeApp(firebaseConfig, "secondary");
-      const secondaryAuth = getAuth(secondaryApp);
-
-      await createUserWithEmailAndPassword(secondaryAuth, values.email, values.password);
-      toast({
-        title: "User Created",
-        description: `Successfully created user: ${values.email}`,
+      const result = await createUser({
+        email: values.email,
+        password: values.password,
+        role: values.isAdmin ? 'admin' : 'user',
       });
-      form.reset();
+      if (result.success) {
+        toast({
+          title: "User Created",
+          description: `Successfully created user: ${values.email}`,
+        });
+        form.reset();
+      } else {
+        throw new Error(result.message || "Failed to create user.");
+      }
     } catch (error) {
       const errorMessage = error instanceof Error ? error.message : "An unexpected error occurred.";
       toast({
@@ -94,14 +89,11 @@ export default function Home() {
       });
     } finally {
       setIsSubmitting(false);
-      if (secondaryApp) {
-        await deleteApp(secondaryApp);
-      }
     }
   }
 
 
-  if (loading || !user) {
+  if (loading || claimsLoading || !user) {
     return (
       <div className="flex h-screen w-full items-center justify-center bg-background">
         <Loader2 className="h-10 w-10 animate-spin text-primary" />
@@ -118,7 +110,7 @@ export default function Home() {
           </div>
           <CardTitle className="mt-4 text-3xl font-headline font-bold text-primary">Login Successful</CardTitle>
           <CardDescription className="font-body">
-            Welcome back, {user.email}!
+            Welcome back, {user.email}! (Role: {role})
           </CardDescription>
         </CardHeader>
         <CardContent className="flex flex-col gap-4">
@@ -129,52 +121,74 @@ export default function Home() {
         </CardContent>
       </Card>
       
-      <Card className="w-full max-w-md shadow-2xl animate-in fade-in-50 zoom-in-95 duration-500 delay-200">
-        <CardHeader>
-          <CardTitle className="text-2xl font-headline font-bold text-primary">Add New User</CardTitle>
-          <CardDescription>Create a new user account manually.</CardDescription>
-        </CardHeader>
-        <CardContent>
-          <Form {...form}>
-            <form onSubmit={form.handleSubmit(onAddUserSubmit)} className="space-y-6">
-              <FormField
-                control={form.control}
-                name="email"
-                render={({ field }) => (
-                  <FormItem>
-                    <FormLabel>New User's Email</FormLabel>
-                    <FormControl>
-                      <Input placeholder="new.user@example.com" {...field} />
-                    </FormControl>
-                    <FormMessage />
-                  </FormItem>
-                )}
-              />
-              <FormField
-                control={form.control}
-                name="password"
-                render={({ field }) => (
-                  <FormItem>
-                    <FormLabel>Password</FormLabel>
-                    <FormControl>
-                      <Input type="password" placeholder="••••••••" {...field} />
-                    </FormControl>
-                    <FormMessage />
-                  </FormItem>
-                )}
-              />
-              <Button type="submit" className="w-full" disabled={isSubmitting}>
-                {isSubmitting ? (
-                  <Loader2 className="mr-2 h-4 w-4 animate-spin" />
-                ) : (
-                  <UserPlus className="mr-2 h-4 w-4" />
-                )}
-                {isSubmitting ? 'Creating User...' : 'Add User'}
-              </Button>
-            </form>
-          </Form>
-        </CardContent>
-      </Card>
+      {role === 'admin' && (
+        <Card className="w-full max-w-md shadow-2xl animate-in fade-in-50 zoom-in-95 duration-500 delay-200">
+          <CardHeader>
+            <CardTitle className="text-2xl font-headline font-bold text-primary">Add New User</CardTitle>
+            <CardDescription>Create a new user account manually.</CardDescription>
+          </CardHeader>
+          <CardContent>
+            <Form {...form}>
+              <form onSubmit={form.handleSubmit(onAddUserSubmit)} className="space-y-6">
+                <FormField
+                  control={form.control}
+                  name="email"
+                  render={({ field }) => (
+                    <FormItem>
+                      <FormLabel>New User's Email</FormLabel>
+                      <FormControl>
+                        <Input placeholder="new.user@example.com" {...field} />
+                      </FormControl>
+                      <FormMessage />
+                    </FormItem>
+                  )}
+                />
+                <FormField
+                  control={form.control}
+                  name="password"
+                  render={({ field }) => (
+                    <FormItem>
+                      <FormLabel>Password</FormLabel>
+                      <FormControl>
+                        <Input type="password" placeholder="••••••••" {...field} />
+                      </FormControl>
+                      <FormMessage />
+                    </FormItem>
+                  )}
+                />
+                <FormField
+                  control={form.control}
+                  name="isAdmin"
+                  render={({ field }) => (
+                    <FormItem className="flex flex-row items-start space-x-3 space-y-0 rounded-md border p-4">
+                      <FormControl>
+                        <Checkbox
+                          checked={field.value}
+                          onCheckedChange={field.onChange}
+                        />
+                      </FormControl>
+                      <div className="space-y-1 leading-none">
+                        <FormLabel>
+                          Make Admin
+                        </FormLabel>
+                        <FormMessage />
+                      </div>
+                    </FormItem>
+                  )}
+                />
+                <Button type="submit" className="w-full" disabled={isSubmitting}>
+                  {isSubmitting ? (
+                    <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                  ) : (
+                    <UserPlus className="mr-2 h-4 w-4" />
+                  )}
+                  {isSubmitting ? 'Creating User...' : 'Add User'}
+                </Button>
+              </form>
+            </Form>
+          </CardContent>
+        </Card>
+      )}
     </main>
   );
 }
