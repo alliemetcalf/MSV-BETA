@@ -31,7 +31,6 @@ export function LockTypesManager() {
     [firestore, user]
   );
 
-  // The hook now correctly returns the document data or null.
   const {
     data: lockTypesData,
     isLoading,
@@ -41,49 +40,53 @@ export function LockTypesManager() {
   const [lockTypes, setLockTypes] = useState<DoorLockType[]>([]);
 
   useEffect(() => {
-    if (lockTypesData && lockTypesData.types) {
-      const rawTypes = lockTypesData.types;
-      
-      // Check if data is in the old format (array of strings) and needs migration.
-      if (rawTypes.length > 0 && typeof rawTypes[0] === 'string') {
-        const migratedTypes = (rawTypes as string[]).map((name, index) => ({
-          id: `${Date.now()}-${index}`, // simple unique id
-          name,
-          textInstructions: '',
-          instructionImageUrl: '',
-        }));
-        setLockTypes(migratedTypes);
+    // Only proceed if loading is finished and there's no error.
+    if (!isLoading && !error) {
+      if (lockTypesData?.types) {
+        const rawTypes = lockTypesData.types;
         
-        // Save the migrated data back to Firestore.
-        if (lockTypesDocRef) {
-          setDoc(lockTypesDocRef, { types: migratedTypes }, { merge: true })
-            .then(() => {
-              toast({
-                title: 'Data Migrated',
-                description: 'Your lock types have been updated to the new format.',
+        // Check if data is in the old format (array of strings) and needs migration.
+        if (rawTypes.length > 0 && typeof rawTypes[0] === 'string') {
+          const migratedTypes = (rawTypes as string[]).map((name, index) => ({
+            id: `${Date.now()}-${index}`, // simple unique id
+            name,
+            textInstructions: '',
+            instructionImageUrl: '',
+          }));
+          setLockTypes(migratedTypes);
+          
+          // Save the migrated data back to Firestore.
+          if (lockTypesDocRef) {
+            setDoc(lockTypesDocRef, { types: migratedTypes }, { merge: true })
+              .then(() => {
+                toast({
+                  title: 'Data Migrated',
+                  description: 'Your lock types have been updated to the new format.',
+                });
+              })
+              .catch((e) => {
+                toast({
+                  variant: 'destructive',
+                  title: 'Migration Failed',
+                  description: 'Could not save migrated lock types.',
+                });
               });
-            })
-            .catch((e) => {
-              toast({
-                variant: 'destructive',
-                title: 'Migration Failed',
-                description: 'Could not save migrated lock types.',
-              });
-            });
+          }
+        } else {
+          // Data is already in the new format (or empty), so just use it.
+          setLockTypes(rawTypes as DoorLockType[]);
         }
-      } else {
-        // Data is already in the new format (or empty), so just use it.
-        setLockTypes(rawTypes as DoorLockType[]);
-      }
-    } else if (!isLoading && !lockTypesData) {
-        // If there's no data and we're not loading, initialize with an empty array.
-        // And if the document doesn't exist, create it.
+      } else if (!lockTypesData) {
+        // Document does not exist. Initialize with an empty array.
+        // We can also create the document here if desired.
         setLockTypes([]);
-        if(lockTypesDocRef) {
-            setDoc(lockTypesDocRef, { types: [] }, { merge: true });
+        if (lockTypesDocRef) {
+          // Create the document with an empty array so we can add to it.
+          setDoc(lockTypesDocRef, { types: [] }, { merge: true });
         }
+      }
     }
-  }, [lockTypesData, isLoading, lockTypesDocRef, toast]);
+  }, [lockTypesData, isLoading, error, lockTypesDocRef, toast]);
   
   const showSuccessToast = (description: string) => {
     toast({
@@ -154,12 +157,15 @@ export function LockTypesManager() {
     const typeToSave = lockTypes.find(t => t.id === id);
     if (!typeToSave) return;
     
-    // The local state `lockTypes` already has the change from handleUpdateField
-    const success = await updateFirestore(lockTypes);
+    // Find the current state of the type to save from the local `lockTypes` state
+    const updatedTypes = lockTypes.map(type => type.id === id ? typeToSave : type);
+  
+    const success = await updateFirestore(updatedTypes);
     if (success) {
       showSuccessToast(`Saved changes for "${typeToSave.name}".`);
     }
   }
+
 
   if (isLoading) {
     return <Loader2 className="mx-auto h-8 w-8 animate-spin" />;
@@ -196,6 +202,7 @@ export function LockTypesManager() {
                   id={`name-${type.id}`}
                   value={type.name}
                   onChange={(e) => handleUpdateField(type.id, 'name', e.target.value)}
+                  onBlur={() => handleSaveChangesForType(type.id)}
                   disabled={isSubmitting}
                   className="flex-grow font-semibold"
                 />
@@ -206,6 +213,7 @@ export function LockTypesManager() {
                   id={`instructions-${type.id}`}
                   value={type.textInstructions || ''}
                   onChange={(e) => handleUpdateField(type.id, 'textInstructions', e.target.value)}
+                  onBlur={() => handleSaveChangesForType(type.id)}
                   placeholder="Enter step-by-step instructions..."
                   disabled={isSubmitting}
                 />
@@ -216,19 +224,11 @@ export function LockTypesManager() {
                   id={`imageUrl-${type.id}`}
                   value={type.instructionImageUrl || ''}
                   onChange={(e) => handleUpdateField(type.id, 'instructionImageUrl', e.target.value)}
+                  onBlur={() => handleSaveChangesForType(type.id)}
                   placeholder="https://example.com/image.png"
                   disabled={isSubmitting}
                 />
               </div>
-              <Button
-                onClick={() => handleSaveChangesForType(type.id)}
-                size="sm"
-                disabled={isSubmitting}
-                className='w-full'
-              >
-                {isSubmitting ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : null}
-                Save Changes for {type.name}
-              </Button>
             </div>
           ))}
           {lockTypes.length === 0 && !isLoading && (
