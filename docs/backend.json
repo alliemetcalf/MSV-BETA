@@ -1,5 +1,20 @@
 {
   "entities": {
+    "UserProfile": {
+      "title": "UserProfile",
+      "type": "object",
+      "description": "Represents a user's public profile information.",
+      "properties": {
+        "displayName": {
+          "type": "string",
+          "description": "The user's display name."
+        },
+        "bio": {
+          "type": "string",
+          "description": "A short biography for the user."
+        }
+      }
+    },
     "DoorCode": {
       "title": "DoorCode",
       "type": "object",
@@ -55,6 +70,13 @@
   },
   "firestore": {
     "collections": [
+      {
+        "path": "/users/{userId}",
+        "schema": {
+          "$ref": "#/entities/UserProfile"
+        },
+        "description": "Stores the public profile for a user."
+      },
       {
         "path": "/users/{userId}/doorCodes",
         "schema": {

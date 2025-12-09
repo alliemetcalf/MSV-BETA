@@ -2,7 +2,7 @@
 
 import Link from 'next/link';
 import { usePathname, useRouter } from 'next/navigation';
-import { KeyRound, LogOut, ShieldCheck } from 'lucide-react';
+import { KeyRound, LogOut, ShieldCheck, User as UserIcon } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { Button } from './ui/button';
 import { useAuth, useUser } from '@/firebase';
@@ -54,6 +54,7 @@ export function Header() {
   const navItems = [
     { href: '/', label: 'Home' },
     { href: '/door-codes', label: 'Door Codes' },
+    { href: '/profile', label: 'Profile' },
   ];
 
   const adminNavItems = [{ href: '/admin', label: 'Admin', icon: ShieldCheck }];
@@ -104,6 +105,11 @@ export function Header() {
             </nav>
           </div>
           <div className="flex items-center">
+            {user && (
+              <span className="text-sm text-muted-foreground mr-4 hidden sm:inline">
+                {user.displayName || user.email}
+              </span>
+            )}
             <Button onClick={handleLogout} variant="ghost" size="sm">
               <LogOut className="mr-2 h-4 w-4" />
               Logout
