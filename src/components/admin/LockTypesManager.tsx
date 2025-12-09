@@ -40,8 +40,9 @@ export function LockTypesManager() {
   const [lockTypes, setLockTypes] = useState<DoorLockType[]>([]);
 
   useEffect(() => {
-    if (lockTypesData) {
-      const rawTypes = lockTypesData.types || [];
+    if (lockTypesData && lockTypesData.types) {
+      const rawTypes = lockTypesData.types;
+      // Check if the data is in the old format (an array of strings)
       if (rawTypes.length > 0 && typeof rawTypes[0] === 'string') {
         const migratedTypes = (rawTypes as string[]).map((name, index) => ({
           id: `${Date.now()}-${index}`,
@@ -50,6 +51,7 @@ export function LockTypesManager() {
           instructionImageUrl: '',
         }));
         setLockTypes(migratedTypes);
+        // Save the migrated data back to Firestore
         if (lockTypesDocRef) {
           setDoc(lockTypesDocRef, { types: migratedTypes }, { merge: true })
             .then(() => {
@@ -67,26 +69,14 @@ export function LockTypesManager() {
             });
         }
       } else {
+        // Data is in the new format or empty
         setLockTypes(rawTypes as DoorLockType[]);
       }
-    } else if (!isLoading) {
-      // If data is null and not loading, it means the doc doesn't exist or is empty
-      // Create it with some defaults if it's the first time
-      if (!error && lockTypesDocRef) {
-          const defaultTypes = [
-            { id: '1', name: 'Keypad', textInstructions: 'Enter code and turn knob.', instructionImageUrl: '' },
-            { id: '2', name: 'Smart Lock', textInstructions: 'Use app to unlock.', instructionImageUrl: '' },
-          ];
-          setDoc(lockTypesDocRef, { types: defaultTypes }).then(() => {
-            setLockTypes(defaultTypes);
-            toast({
-              title: 'Initialized Lock Types',
-              description: 'Default lock types have been created.',
-            });
-          });
-      }
+    } else {
+        // Data is null or undefined, do nothing and wait.
+        setLockTypes([]);
     }
-  }, [lockTypesData, isLoading, lockTypesDocRef, toast, error]);
+  }, [lockTypesData, lockTypesDocRef, toast]);
   
   const showSuccessToast = (description: string) => {
     toast({
