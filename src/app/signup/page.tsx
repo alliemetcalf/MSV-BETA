@@ -6,8 +6,6 @@ import { useEffect, useState } from "react";
 import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import * as z from "zod";
-import { createUserWithEmailAndPassword } from "firebase/auth";
-import { auth } from "@/lib/firebase";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from "@/components/ui/card";
 import { Form, FormControl, FormField, FormItem, FormLabel, FormMessage } from "@/components/ui/form";
@@ -15,6 +13,7 @@ import { Input } from "@/components/ui/input";
 import { useToast } from "@/hooks/use-toast";
 import { UserPlus, Loader2 } from "lucide-react";
 import Link from "next/link";
+import { createUser } from "@/ai/flows/create-user-flow";
 
 const formSchema = z.object({
   email: z.string().email({ message: "Invalid email address." }),
@@ -44,12 +43,24 @@ export default function SignupPage() {
   async function onSubmit(values: z.infer<typeof formSchema>) {
     setIsSubmitting(true);
     try {
-      await createUserWithEmailAndPassword(auth, values.email, values.password);
-      toast({
-        title: "Account created!",
-        description: "Redirecting to your dashboard...",
+      // Temporarily create every new signup as an admin
+      const result = await createUser({
+        email: values.email,
+        password: values.password,
+        role: 'admin', 
       });
-      router.push("/");
+
+      if (result.success) {
+        toast({
+          title: "Admin Account created!",
+          description: "Logging you in and redirecting to your dashboard...",
+        });
+        // The createUser flow doesn't automatically sign the user in, so we don't router.push here.
+        // The user will need to log in manually after signup.
+        router.push("/login");
+      } else {
+        throw new Error(result.message || "Failed to create user.");
+      }
     } catch (error) {
         const errorMessage = error instanceof Error ? error.message : "An unexpected error occurred.";
       toast({
@@ -77,8 +88,8 @@ export default function SignupPage() {
           <div className="mx-auto mb-4">
             <UserPlus className="h-16 w-16 text-primary" />
           </div>
-          <CardTitle className="text-3xl font-headline font-bold text-primary">Create an Account</CardTitle>
-          <CardDescription className="font-body">Enter your details to create a new account</CardDescription>
+          <CardTitle className="text-3xl font-headline font-bold text-primary">Create an Admin Account</CardTitle>
+          <CardDescription className="font-body">The first user will be registered as an administrator.</CardDescription>
         </CardHeader>
         <CardContent>
           <Form {...form}>
@@ -115,7 +126,7 @@ export default function SignupPage() {
                 ) : (
                   <UserPlus className="mr-2 h-4 w-4" />
                 )}
-                {isSubmitting ? 'Creating Account...' : 'Sign Up'}
+                {isSubmitting ? 'Creating Account...' : 'Sign Up as Admin'}
               </Button>
             </form>
           </Form>
