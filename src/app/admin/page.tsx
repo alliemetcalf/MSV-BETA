@@ -13,6 +13,7 @@ import {
   CardTitle,
 } from '@/components/ui/card';
 import { IdTokenResult } from 'firebase/auth';
+import { AddUserForm } from '@/components/admin/AddUserForm';
 
 export default function AdminPage() {
   const { user, isUserLoading } = useUser();
@@ -57,10 +58,11 @@ export default function AdminPage() {
           <CardHeader>
             <CardTitle>Admin Panel</CardTitle>
             <CardDescription>
-              Manage site-wide configurations here.
+              Manage site-wide configurations and users here.
             </CardDescription>
           </CardHeader>
         </Card>
+        <AddUserForm />
         <LockTypesManager />
       </div>
     </MainLayout>
