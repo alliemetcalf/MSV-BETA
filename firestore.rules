@@ -1,0 +1,91 @@
+/**
+ * Core Philosophy: This ruleset enforces a strict user-ownership model. All data is
+ * siloed within a user-specific data tree, ensuring that users can only access
+ * information they own.
+ *
+ * Data Structure: All data is nested under the path /users/{userId}. The user's
+ * unique ID (UID) from Firebase Authentication is used as the document key,
+ * creating a direct and secure link between a user and their data. This ruleset
+ * manages a `door_codes` subcollection within each user's document tree.
+ *
+ * Key Security Decisions:
+ * - Strict Ownership: All operations (read, write, delete) on a user's data are
+ *   restricted to the authenticated user who matches the {userId} in the path.
+ * - No Public Access: There are no publicly readable or writable collections. All
+ *   access requires authentication.
+ * - User Listing Disabled: It is not possible to list all users in the database.
+ * - Path-Based Security: Authorization decisions are made using the document path,
+ *   which is fast, secure, and avoids costly database lookups (`get()` calls).
+ * - Relational Integrity: On creation, we validate that the document's internal `id`
+ *   field matches its ID in the path to ensure data consistency.
+ */
+rules_version = '2';
+service cloud.firestore {
+  match /databases/{database}/documents {
+
+    // Helper Functions for Reusable Logic
+
+    /**
+     * Checks if a user is authenticated.
+     */
+    function isSignedIn() {
+      return request.auth != null;
+    }
+
+    /**
+     * Checks if the currently authenticated user's UID matches the provided userId.
+     * This is the core of our user-ownership security model.
+     * @param userId The UID of the user to check against.
+     */
+    function isOwner(userId) {
+      return isSignedIn() && request.auth.uid == userId;
+    }
+
+    /**
+     * For update/delete operations, checks if the user is the owner AND the document exists.
+     * This prevents unauthorized writes to non-existent paths.
+     * @param userId The UID of the user to check against.
+     */
+    function isExistingOwner(userId) {
+      return isOwner(userId) && resource != null;
+    }
+
+    /**
+     * Validates a new document creation. Ensures the user is the owner and that the
+     * internal 'id' field of the document matches the document's ID in the path.
+     * @param userId The UID of the user creating the document.
+     * @param resourceId The ID of the document being created.
+     */
+    function isCreatingOwnResource(userId, resourceId) {
+      // Prototyping Rule: Only validates ownership and relational integrity.
+      // Data shape is not enforced to allow for rapid iteration.
+      return isOwner(userId) && request.resource.data.id == resourceId;
+    }
+
+    /**
+     * Validates a document update. Ensures the user is the owner of an existing
+     * document and that the immutable 'id' field is not being changed.
+     * @param userId The UID of the user updating the document.
+     */
+    function isUpdatingOwnResource(userId) {
+      // Prototyping Rule: Enforces ownership and immutability of the ID.
+      // Allows partial updates and does not validate the rest of the data shape.
+      return isExistingOwner(userId) && request.resource.data.id == resource.data.id;
+    }
+
+    /**
+     * @description Rules for a user's private collection of door codes.
+     * @path /users/{userId}/door_codes/{doorCodeId}
+     * @allow (get, list, create, update, delete) A user can perform all actions on their own door codes. Example: A user with UID 'user_abc' can create a door code at `/users/user_abc/door_codes/front_door`.
+     * @deny (get) A different user ('user_xyz') is denied access to read a door code at `/users/user_abc/door_codes/front_door`.
+     * @principle Restricts access to a user's own data tree. Enforces that a user can only manage documents within their own subcollections.
+     */
+    match /users/{userId}/door_codes/{doorCodeId} {
+      allow get: if isOwner(userId);
+      allow list: if isOwner(userId);
+      allow create: if isCreatingOwnResource(userId, doorCodeId);
+      allow update: if isUpdatingOwnResource(userId);
+      allow delete: if isExistingOwner(userId);
+    }
+  }
+}

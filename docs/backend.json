@@ -1,29 +1,66 @@
 {
   "entities": {
-    "user": {
-      "title": "User",
-      "description": "Represents a user of the application.",
+    "DoorCode": {
+      "$schema": "http://json-schema.org/draft-07/schema#",
+      "title": "DoorCode",
       "type": "object",
+      "description": "Represents a door code for a specific property.",
       "properties": {
-        "uid": {
+        "id": {
           "type": "string",
-          "description": "The unique identifier for the user."
+          "description": "Unique identifier for the DoorCode entity."
         },
-        "email": {
+        "location": {
           "type": "string",
-          "format": "email",
-          "description": "The user's email address."
+          "description": "The physical location of the door (e.g., 'Front Door', 'Garage')."
         },
-        "role": {
+        "code": {
           "type": "string",
-          "enum": ["admin", "user"],
-          "description": "The role of the user."
+          "description": "The door code itself."
+        },
+        "lastChanged": {
+          "type": "string",
+          "description": "The date and time the door code was last changed.",
+          "format": "date-time"
         }
       },
-      "required": ["uid", "email", "role"]
+      "required": [
+        "id",
+        "location",
+        "code",
+        "lastChanged"
+      ]
     }
   },
   "auth": {
-    "providers": ["email"]
+    "providers": [
+      "password",
+      "anonymous"
+    ]
+  },
+  "firestore": {
+    "structure": [
+      {
+        "path": "/users/{userId}/door_codes/{doorCodeId}",
+        "definition": {
+          "entityName": "DoorCode",
+          "schema": {
+            "$ref": "#/backend/entities/DoorCode"
+          },
+          "description": "Stores door codes for a specific user. Path-based ownership ensures only the authenticated user can access their own door codes.",
+          "params": [
+            {
+              "name": "userId",
+              "description": "The unique identifier of the user."
+            },
+            {
+              "name": "doorCodeId",
+              "description": "The unique identifier of the door code."
+            }
+          ]
+        }
+      }
+    ],
+    "reasoning": "The Firestore structure is designed to store door codes associated with properties. It follows the principle of path-based ownership under each user. Each user has their own collection of door codes, enabling easy management and security rule creation. The structure prioritizes Authorization Independence, avoiding complex `get()` calls in security rules by ensuring that authorization context is directly tied to the user ID derived from authentication.  The path `/users/{userId}/door_codes/{doorCodeId}` uses hierarchical paths for user-owned data, which provides clarity and consistency, as well as makes it easy to create ownership-based security rules. This structure also facilitates secure `list` operations by scoping door codes to individual users."
   }
 }
