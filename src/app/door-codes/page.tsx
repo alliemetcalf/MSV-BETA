@@ -1,6 +1,6 @@
 'use client';
 
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useMemo } from 'react';
 import { useUser, useFirestore, useMemoFirebase } from '@/firebase';
 import {
   collection,
@@ -45,6 +45,12 @@ import {
   SelectTrigger,
   SelectValue,
 } from '@/components/ui/select';
+import {
+  Accordion,
+  AccordionContent,
+  AccordionItem,
+  AccordionTrigger,
+} from '@/components/ui/accordion';
 import { Loader2, PlusCircle, Edit, Trash2 } from 'lucide-react';
 import { DoorCode, DoorLockType, PropertyType } from '@/types/door-code';
 import { format } from 'date-fns';
@@ -87,7 +93,7 @@ export default function DoorCodesPage() {
   const { data: lockTypesData, isLoading: lockTypesLoading } =
     useDoc<{ options: string[] }>(lockTypesDocRef);
   const lockTypes = lockTypesData?.options || [];
-  
+
   const propertiesDocRef = useMemoFirebase(
     () => (user ? doc(firestore, 'siteConfiguration', 'properties') : null),
     [firestore, user]
@@ -96,10 +102,29 @@ export default function DoorCodesPage() {
     useDoc<{ options: string[] }>(propertiesDocRef);
   const properties = propertiesData?.options || [];
 
+  const groupedDoorCodes = useMemo(() => {
+    if (!doorCodes) return {};
+    return doorCodes.reduce(
+      (acc, code) => {
+        const { property } = code;
+        if (!acc[property]) {
+          acc[property] = [];
+        }
+        acc[property].push(code);
+        return acc;
+      },
+      {} as Record<string, DoorCode[]>
+    );
+  }, [doorCodes]);
 
   const handleAddClick = () => {
     setEditingCode(null);
-    setFormData({ location: '', code: '', doorLockType: lockTypes[0] || '', property: properties[0] || '' });
+    setFormData({
+      location: '',
+      code: '',
+      doorLockType: lockTypes[0] || '',
+      property: properties[0] || '',
+    });
     setIsDialogOpen(true);
   };
 
@@ -133,13 +158,20 @@ export default function DoorCodesPage() {
     setFormData((prev) => ({ ...prev, [id]: value }));
   };
 
-  const handleSelectChange = (field: 'doorLockType' | 'property') => (value: string) => {
-    setFormData((prev) => ({ ...prev, [field]: value }));
-  };
+  const handleSelectChange =
+    (field: 'doorLockType' | 'property') => (value: string) => {
+      setFormData((prev) => ({ ...prev, [field]: value }));
+    };
 
   const handleFormSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    if (!user || !formData.location || !formData.code || !formData.doorLockType || !formData.property)
+    if (
+      !user ||
+      !formData.location ||
+      !formData.code ||
+      !formData.doorLockType ||
+      !formData.property
+    )
       return;
 
     const codeData = {
@@ -148,7 +180,6 @@ export default function DoorCodesPage() {
     };
 
     if (editingCode) {
-      // Update existing code
       const docRef = doc(
         firestore,
         'users',
@@ -158,7 +189,6 @@ export default function DoorCodesPage() {
       );
       await updateDoc(docRef, codeData);
     } else {
-      // Add new code
       if (!doorCodesCollectionRef) return;
       await addDoc(doorCodesCollectionRef, codeData);
     }
@@ -172,7 +202,7 @@ export default function DoorCodesPage() {
       </div>
     );
   }
-  
+
   const isLoading = codesLoading || lockTypesLoading || propertiesLoading;
 
   return (
@@ -199,57 +229,77 @@ export default function DoorCodesPage() {
               <p className="text-destructive">Error: {codesError.message}</p>
             )}
             {!isLoading && !codesError && (
-              <Table>
-                <TableHeader>
-                  <TableRow>
-                    <TableHead>Property</TableHead>
-                    <TableHead>Location</TableHead>
-                    <TableHead>Lock Type</TableHead>
-                    <TableHead>Code</TableHead>
-                    <TableHead>Last Changed</TableHead>
-                    <TableHead className="text-right">Actions</TableHead>
-                  </TableRow>
-                </TableHeader>
-                <TableBody>
-                  {doorCodes && doorCodes.length > 0 ? (
-                    doorCodes.map((code) => (
-                      <TableRow key={code.id}>
-                        <TableCell>{code.property}</TableCell>
-                        <TableCell>{code.location}</TableCell>
-                        <TableCell>{code.doorLockType}</TableCell>
-                        <TableCell className="font-mono">{code.code}</TableCell>
-                        <TableCell>
-                          {code.lastChanged?.toDate &&
-                            format(code.lastChanged.toDate(), 'PPP p')}
-                        </TableCell>
-                        <TableCell className="text-right">
-                          <Button
-                            variant="ghost"
-                            size="icon"
-                            onClick={() => handleEditClick(code)}
-                          >
-                            <Edit className="h-4 w-4" />
-                          </Button>
-                          <Button
-                            variant="ghost"
-                            size="icon"
-                            onClick={() => handleDeleteClick(code.id)}
-                            className="text-destructive hover:text-destructive/80"
-                          >
-                            <Trash2 className="h-4 w-4" />
-                          </Button>
-                        </TableCell>
-                      </TableRow>
-                    ))
-                  ) : (
-                    <TableRow>
-                      <TableCell colSpan={6} className="text-center">
-                        No door codes found.
-                      </TableCell>
-                    </TableRow>
-                  )}
-                </TableBody>
-              </Table>
+              <>
+                {doorCodes && doorCodes.length > 0 ? (
+                  <Accordion type="multiple" className="w-full">
+                    {Object.entries(groupedDoorCodes).map(
+                      ([property, codes]) => (
+                        <AccordionItem value={property} key={property}>
+                          <AccordionTrigger className="text-xl font-semibold">
+                            {property}
+                          </AccordionTrigger>
+                          <AccordionContent>
+                            <Table>
+                              <TableHeader>
+                                <TableRow>
+                                  <TableHead>Location</TableHead>
+                                  <TableHead>Lock Type</TableHead>
+                                  <TableHead>Code</TableHead>
+                                  <TableHead>Last Changed</TableHead>
+                                  <TableHead className="text-right">
+                                    Actions
+                                  </TableHead>
+                                </TableRow>
+                              </TableHeader>
+                              <TableBody>
+                                {codes.map((code) => (
+                                  <TableRow key={code.id}>
+                                    <TableCell>{code.location}</TableCell>
+                                    <TableCell>{code.doorLockType}</TableCell>
+                                    <TableCell className="font-mono">
+                                      {code.code}
+                                    </TableCell>
+                                    <TableCell>
+                                      {code.lastChanged?.toDate &&
+                                        format(
+                                          code.lastChanged.toDate(),
+                                          'PPP p'
+                                        )}
+                                    </TableCell>
+                                    <TableCell className="text-right">
+                                      <Button
+                                        variant="ghost"
+                                        size="icon"
+                                        onClick={() => handleEditClick(code)}
+                                      >
+                                        <Edit className="h-4 w-4" />
+                                      </Button>
+                                      <Button
+                                        variant="ghost"
+                                        size="icon"
+                                        onClick={() =>
+                                          handleDeleteClick(code.id)
+                                        }
+                                        className="text-destructive hover:text-destructive/80"
+                                      >
+                                        <Trash2 className="h-4 w-4" />
+                                      </Button>
+                                    </TableCell>
+                                  </TableRow>
+                                ))}
+                              </TableBody>
+                            </Table>
+                          </AccordionContent>
+                        </AccordionItem>
+                      )
+                    )}
+                  </Accordion>
+                ) : (
+                  <div className="text-center text-muted-foreground py-8">
+                    No door codes found. Click "Add Code" to get started.
+                  </div>
+                )}
+              </>
             )}
           </CardContent>
         </Card>
@@ -267,7 +317,7 @@ export default function DoorCodesPage() {
           </DialogHeader>
           <form onSubmit={handleFormSubmit}>
             <div className="grid gap-4 py-4">
-               <div className="grid grid-cols-4 items-center gap-4">
+              <div className="grid grid-cols-4 items-center gap-4">
                 <Label htmlFor="property" className="text-right">
                   Property
                 </Label>
