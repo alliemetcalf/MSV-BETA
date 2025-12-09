@@ -48,6 +48,7 @@ export function LockTypesManager() {
     toast({
       title: 'Success',
       description,
+      duration: 5000,
     });
   };
 

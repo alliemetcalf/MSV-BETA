@@ -48,6 +48,7 @@ export function PropertiesManager() {
     toast({
       title: 'Success',
       description,
+      duration: 5000,
     });
   };
 
