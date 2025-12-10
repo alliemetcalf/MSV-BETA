@@ -14,7 +14,7 @@ service cloud.firestore {
     
     // Role-based access helpers
     function getUserRole(uid) {
-      // Get the user's role from their profile document in the /users collection.
+      // Get the user's role from their user profile document in the /users collection.
       return get(/databases/$(database)/documents/users/$(uid)).data.role;
     }
 
@@ -54,13 +54,14 @@ service cloud.firestore {
     }
     
     // Tenants can be read, listed, and written by any signed-in user.
-    match /tenants/{document=**} {
-      allow read, write: if isSignedIn();
+    match /tenants/{tenantId} {
+      allow get, list: if isSignedIn();
+      allow write: if isAdmin();
     }
 
     // Property profiles can be read by any signed-in user, but only written by admins.
-    match /properties/{document=**} {
-      allow read: if isSignedIn();
+    match /properties/{propertyId} {
+      allow get, list: if isSignedIn();
       allow write: if isAdmin();
     }
   }
