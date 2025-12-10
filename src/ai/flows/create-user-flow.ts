@@ -52,12 +52,11 @@ const createUserFlow = ai.defineFlow(
         password: input.password,
       });
 
-      // Instead of custom claims, create a user profile document with the role.
+      // Create a user profile document with the role.
       const db = getFirestore();
       await db.collection('users').doc(userRecord.uid).set({
         role: input.role,
-        email: userRecord.email,
-        displayName: userRecord.displayName || '',
+        email: input.email,
       });
 
       return {

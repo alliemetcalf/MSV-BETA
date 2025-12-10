@@ -16,10 +16,16 @@
         "role": {
           "type": "string",
           "description": "The user's role in the system.",
-          "enum": ["admin", "user", "assistant"]
+          "enum": [
+            "admin",
+            "user",
+            "assistant"
+          ]
         }
       },
-      "required": ["role"]
+      "required": [
+        "role"
+      ]
     },
     "DoorCode": {
       "title": "DoorCode",
@@ -84,7 +90,10 @@
           "description": "A URL to an image of the instruction sheet."
         }
       },
-      "required": ["id", "name"]
+      "required": [
+        "id",
+        "name"
+      ]
     },
     "LockTypesConfiguration": {
       "title": "LockTypesConfiguration",
@@ -151,7 +160,10 @@
           "description": "General notes about the tenant."
         }
       },
-      "required": ["name", "property"]
+      "required": [
+        "name",
+        "property"
+      ]
     }
   },
   "auth": {
@@ -195,7 +207,7 @@
         "schema": {
           "$ref": "#/entities/Tenant"
         },
-        "description": "Stores information about individual tenants. Forcing redeploy to apply security rules."
+        "description": "Stores information about individual tenants."
       }
     ]
   }
