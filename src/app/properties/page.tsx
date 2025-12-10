@@ -58,7 +58,7 @@ import {
 } from '@/components/ui/accordion';
 import { Badge } from '@/components/ui/badge';
 import { Separator } from '@/components/ui/separator';
-import { subMonths, startOfMonth, endOfMonth } from 'date-fns';
+import { subMonths, startOfMonth, endOfMonth, format } from 'date-fns';
 import { cn } from '@/lib/utils';
 
 const moneyFormatter = new Intl.NumberFormat('en-US', {
