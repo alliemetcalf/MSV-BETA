@@ -2,8 +2,12 @@ rules_version = '2';
 
 service firebase.storage {
   match /b/msv4.appspot.com/o {
-    match /{allPaths=**} {
-      allow read, write: if true;
+    // Match any file path under the 'uploads' folder where the {userId}
+    // in the path matches the UID of the authenticated user.
+    match /uploads/{userId}/{allPaths=**} {
+      // Allow read and write operations (create, update, delete)
+      // only if the requesting user is the owner of the folder.
+      allow read, write: if request.auth != null && request.auth.uid == userId;
     }
   }
 }

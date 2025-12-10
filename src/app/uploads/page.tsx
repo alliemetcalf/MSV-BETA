@@ -1,8 +1,8 @@
 
 'use client';
 
-import { useState, useEffect, useRef } from 'react';
-import { useStorage, useUser, useAuth } from '@/firebase';
+import { useState, useEffect, useRef, useMemo } from 'react';
+import { useStorage, useUser, useAuth, useMemoFirebase } from '@/firebase';
 import {
   ref,
   uploadBytesResumable,
@@ -52,6 +52,11 @@ export default function UploadsPage() {
   const [isListingFiles, setIsListingFiles] = useState(true);
   const fileInputRef = useRef<HTMLInputElement>(null);
 
+  const userFilesRef = useMemoFirebase(
+    () => (storage && user ? ref(storage, `uploads/${user.uid}`) : null),
+    [storage, user]
+  );
+
   useEffect(() => {
     if (!isUserLoading && !user) {
       router.push('/login');
@@ -59,37 +64,40 @@ export default function UploadsPage() {
   }, [user, isUserLoading, router]);
 
   const listFiles = async () => {
-      if (!storage || !user) return;
-      setIsListingFiles(true);
-      try {
-        const listRef = ref(storage, '');
-        const res = await listAll(listRef);
-        
-        const files = await Promise.all(
-          res.items.map(async (itemRef) => {
-            const url = await getDownloadURL(itemRef);
-            return { name: itemRef.name, url };
-          })
-        );
-        setUploadedFiles(files);
-      } catch (error) {
-        console.error('Error listing files:', error);
-        toast({
-          variant: 'destructive',
-          title: 'Error listing files',
-          description:
-            error instanceof Error ? error.message : 'An unknown error occurred.',
-        });
-      } finally {
+    if (!userFilesRef) {
         setIsListingFiles(false);
-      }
+        return;
     };
+    setIsListingFiles(true);
+    try {
+      const res = await listAll(userFilesRef);
+      const files = await Promise.all(
+        res.items.map(async (itemRef) => {
+          const url = await getDownloadURL(itemRef);
+          return { name: itemRef.name, url };
+        })
+      );
+      setUploadedFiles(files);
+    } catch (error) {
+      console.error('Error listing files:', error);
+      toast({
+        variant: 'destructive',
+        title: 'Error listing files',
+        description:
+          error instanceof Error
+            ? error.message
+            : 'An unknown error occurred.',
+      });
+    } finally {
+      setIsListingFiles(false);
+    }
+  };
 
   useEffect(() => {
-    if (storage && user) {
+    if (userFilesRef) {
       listFiles();
     }
-  }, [storage, user, toast]);
+  }, [userFilesRef]);
 
   const handleFileSelect = (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
@@ -99,11 +107,11 @@ export default function UploadsPage() {
   };
 
   const handleFileUpload = (file: File) => {
-    if (!storage) {
+    if (!storage || !user) {
       toast({
         variant: 'destructive',
         title: 'Upload Error',
-        description: 'Storage service is not available.',
+        description: 'You must be logged in to upload files.',
       });
       return;
     }
@@ -111,7 +119,8 @@ export default function UploadsPage() {
     setIsUploading(true);
     setUploadProgress(0);
 
-    const storageRef = ref(storage, file.name);
+    // Upload to user-specific folder
+    const storageRef = ref(storage, `uploads/${user.uid}/${file.name}`);
     const metadata = { contentType: file.type };
     const uploadTask: UploadTask = uploadBytesResumable(storageRef, file, metadata);
 
@@ -160,7 +169,7 @@ export default function UploadsPage() {
           <CardHeader>
             <CardTitle>File Upload</CardTitle>
             <CardDescription>
-              Upload a file to Firebase Storage and view all uploaded files.
+              Upload a file to your personal storage folder.
             </CardDescription>
           </CardHeader>
           <CardContent className="space-y-4">
@@ -189,9 +198,9 @@ export default function UploadsPage() {
 
         <Card>
           <CardHeader>
-            <CardTitle>Uploaded Files</CardTitle>
+            <CardTitle>Your Uploaded Files</CardTitle>
             <CardDescription>
-              List of files in the root of your storage bucket.
+              List of files in your personal storage folder.
             </CardDescription>
           </CardHeader>
           <CardContent>
