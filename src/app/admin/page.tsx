@@ -15,6 +15,7 @@ import {
 import { IdTokenResult } from 'firebase/auth';
 import { AddUserForm } from '@/components/admin/AddUserForm';
 import { PropertiesManager } from '@/components/admin/PropertiesManager';
+import { UserRoleManager } from '@/components/admin/UserRoleManager';
 
 export default function AdminPage() {
   const auth = useAuth();
@@ -64,7 +65,10 @@ export default function AdminPage() {
             </CardDescription>
           </CardHeader>
         </Card>
-        <AddUserForm />
+        <div className="grid md:grid-cols-2 gap-8">
+          <AddUserForm />
+          <UserRoleManager />
+        </div>
         <div className="grid md:grid-cols-2 gap-8">
           <LockTypesManager />
           <PropertiesManager />

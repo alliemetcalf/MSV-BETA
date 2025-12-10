@@ -16,7 +16,7 @@ import serviceAccount from '@/../firebase-service-account.json';
 const CreateUserInputSchema = z.object({
   email: z.string().email(),
   password: z.string().min(6),
-  role: z.enum(['admin', 'user']),
+  role: z.enum(['admin', 'user', 'assistant']),
 });
 export type CreateUserInput = z.infer<typeof CreateUserInputSchema>;
 

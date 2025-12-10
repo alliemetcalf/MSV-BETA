@@ -20,17 +20,23 @@ import {
   FormMessage,
 } from '@/components/ui/form';
 import { Input } from '@/components/ui/input';
-import { Checkbox } from '@/components/ui/checkbox';
 import { useToast } from '@/hooks/use-toast';
 import { createUser } from '@/ai/flows/create-user-flow';
 import { Loader2, UserPlus } from 'lucide-react';
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from '@/components/ui/select';
 
 const addUserFormSchema = z.object({
   email: z.string().email({ message: 'Invalid email address.' }),
   password: z
     .string()
     .min(6, { message: 'Password must be at least 6 characters.' }),
-  isAdmin: z.boolean().default(false),
+  role: z.enum(['admin', 'user', 'assistant']).default('user'),
 });
 
 export function AddUserForm() {
@@ -42,7 +48,7 @@ export function AddUserForm() {
     defaultValues: {
       email: '',
       password: '',
-      isAdmin: false,
+      role: 'user',
     },
   });
 
@@ -52,7 +58,7 @@ export function AddUserForm() {
       const result = await createUser({
         email: values.email,
         password: values.password,
-        role: values.isAdmin ? 'admin' : 'user',
+        role: values.role,
       });
       if (result.success) {
         toast({
@@ -116,19 +122,26 @@ export function AddUserForm() {
             />
             <FormField
               control={form.control}
-              name="isAdmin"
+              name="role"
               render={({ field }) => (
-                <FormItem className="flex flex-row items-start space-x-3 space-y-0 rounded-md border p-4">
-                  <FormControl>
-                    <Checkbox
-                      checked={field.value}
-                      onCheckedChange={field.onChange}
-                    />
-                  </FormControl>
-                  <div className="space-y-1 leading-none">
-                    <FormLabel>Make Admin</FormLabel>
-                    <FormMessage />
-                  </div>
+                <FormItem>
+                  <FormLabel>Role</FormLabel>
+                  <Select
+                    onValueChange={field.onChange}
+                    defaultValue={field.value}
+                  >
+                    <FormControl>
+                      <SelectTrigger>
+                        <SelectValue placeholder="Select a role" />
+                      </SelectTrigger>
+                    </FormControl>
+                    <SelectContent>
+                      <SelectItem value="user">User</SelectItem>
+                      <SelectItem value="admin">Admin</SelectItem>
+                      <SelectItem value="assistant">Assistant</SelectItem>
+                    </SelectContent>
+                  </Select>
+                  <FormMessage />
                 </FormItem>
               )}
             />
