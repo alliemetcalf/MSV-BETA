@@ -1,6 +1,6 @@
 'use client';
 
-import React, { useState, useEffect } from 'react';
+import React from 'react';
 import {
   useUser,
   useFirestore,
@@ -17,10 +17,13 @@ import {
   CardTitle,
   CardDescription,
   CardContent,
+  CardFooter,
 } from '@/components/ui/card';
-import { Loader2, Building, MapPin } from 'lucide-react';
+import { Loader2, Building, MapPin, User as UserIcon } from 'lucide-react';
 import { Property } from '@/types/property';
+import { Tenant } from '@/types/tenant';
 import { useRouter } from 'next/navigation';
+import { Separator } from '@/components/ui/separator';
 
 export default function PropertiesPage() {
   const auth = useAuth();
@@ -28,7 +31,7 @@ export default function PropertiesPage() {
   const firestore = useFirestore();
   const router = useRouter();
 
-  useEffect(() => {
+  React.useEffect(() => {
     if (!isUserLoading && !user) {
       router.push('/login');
     }
@@ -45,17 +48,43 @@ export default function PropertiesPage() {
     error: propertiesError,
   } = useCollection<Property>(propertiesCollectionRef);
 
+  const tenantsCollectionRef = useMemoFirebase(
+    () => (user && firestore ? collection(firestore, 'tenants') : null),
+    [firestore, user]
+  );
+  
+  const { 
+    data: tenants, 
+    isLoading: tenantsLoading,
+    error: tenantsError,
+  } = useCollection<Tenant>(tenantsCollectionRef);
+
+  const tenantsByProperty = React.useMemo(() => {
+    if (!tenants) return {};
+    return tenants.reduce((acc, tenant) => {
+      if (!acc[tenant.property]) {
+        acc[tenant.property] = [];
+      }
+      acc[tenant.property].push(tenant);
+      return acc;
+    }, {} as Record<string, Tenant[]>);
+  }, [tenants]);
+
   const sortedProperties = React.useMemo(() => {
     return properties ? [...properties].sort((a, b) => a.name.localeCompare(b.name)) : [];
   }, [properties]);
 
-  if (isUserLoading || !user) {
+  const pageIsLoading = isUserLoading || propertiesLoading || tenantsLoading;
+
+  if (pageIsLoading || !user) {
     return (
       <div className="flex h-screen w-full items-center justify-center bg-background">
         <Loader2 className="h-10 w-10 animate-spin text-primary" />
       </div>
     );
   }
+
+  const pageError = propertiesError || tenantsError;
 
   return (
     <MainLayout>
@@ -68,51 +97,62 @@ export default function PropertiesPage() {
             </CardDescription>
           </CardHeader>
           <CardContent>
-            {propertiesLoading && (
-              <div className="flex justify-center py-8">
-                <Loader2 className="mx-auto h-8 w-8 animate-spin" />
-              </div>
+            {pageError && (
+              <p className="text-destructive text-center py-8">Error: {pageError.message}</p>
             )}
-            {propertiesError && (
-              <p className="text-destructive text-center py-8">Error: {propertiesError.message}</p>
-            )}
-            {!propertiesLoading && sortedProperties.length > 0 ? (
+            {!pageIsLoading && !pageError && sortedProperties.length > 0 ? (
               <div className="grid gap-6 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4">
-                {sortedProperties.map((property) => (
-                  <Card key={property.id} className="overflow-hidden flex flex-col">
-                    <div className="relative w-full aspect-video bg-muted">
-                      {property.photoUrl ? (
-                         <Image
-                          src={property.photoUrl}
-                          alt={`Photo of ${property.name}`}
-                          fill
-                          className="object-cover"
-                        />
-                      ) : (
-                        <div className="flex items-center justify-center h-full">
-                           <Building className="w-12 h-12 text-muted-foreground" />
-                        </div>
+                {sortedProperties.map((property) => {
+                  const propertyTenants = tenantsByProperty[property.name] || [];
+                  return (
+                    <Card key={property.id} className="overflow-hidden flex flex-col">
+                      <div className="relative w-full aspect-video bg-muted">
+                        {property.photoUrl ? (
+                           <Image
+                            src={property.photoUrl}
+                            alt={`Photo of ${property.name}`}
+                            fill
+                            className="object-cover"
+                          />
+                        ) : (
+                          <div className="flex items-center justify-center h-full">
+                             <Building className="w-12 h-12 text-muted-foreground" />
+                          </div>
+                        )}
+                      </div>
+                      <CardHeader>
+                        <CardTitle>{property.name}</CardTitle>
+                        {property.address && (
+                          <CardDescription className="flex items-center gap-2 pt-1">
+                            <MapPin className="w-4 h-4" />
+                            {property.address}
+                          </CardDescription>
+                        )}
+                      </CardHeader>
+                      <CardContent className="flex-grow">
+                        <p className="text-sm text-muted-foreground line-clamp-4">
+                          {property.description || 'No description available.'}
+                        </p>
+                      </CardContent>
+                      {propertyTenants.length > 0 && (
+                        <CardFooter className="flex-col items-start gap-2 pt-4 border-t">
+                           <h4 className="text-sm font-semibold text-foreground">Tenants</h4>
+                           <div className="w-full space-y-2">
+                            {propertyTenants.map(tenant => (
+                                <div key={tenant.id} className="flex items-center gap-2 text-sm text-muted-foreground">
+                                    <UserIcon className="w-4 h-4" />
+                                    <span>{tenant.name}</span>
+                                </div>
+                            ))}
+                           </div>
+                        </CardFooter>
                       )}
-                    </div>
-                    <CardHeader>
-                      <CardTitle>{property.name}</CardTitle>
-                      {property.address && (
-                        <CardDescription className="flex items-center gap-2 pt-1">
-                          <MapPin className="w-4 h-4" />
-                          {property.address}
-                        </CardDescription>
-                      )}
-                    </CardHeader>
-                    <CardContent className="flex-grow">
-                      <p className="text-sm text-muted-foreground line-clamp-4">
-                        {property.description || 'No description available.'}
-                      </p>
-                    </CardContent>
-                  </Card>
-                ))}
+                    </Card>
+                  )
+                })}
               </div>
             ) : (
-              !propertiesLoading && (
+              !pageIsLoading && (
                 <div className="text-center text-muted-foreground py-8">
                   No properties found. Admins can add properties from the Admin page.
                 </div>
