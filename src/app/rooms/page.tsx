@@ -1,14 +1,21 @@
 'use client';
 
-import React from 'react';
+import React, { useState, useEffect, useMemo } from 'react';
 import {
   useUser,
   useFirestore,
   useMemoFirebase,
   useCollection,
+  useDoc,
   useAuth,
 } from '@/firebase';
-import { collection } from 'firebase/firestore';
+import {
+  collection,
+  doc,
+  updateDoc,
+  serverTimestamp,
+  Timestamp,
+} from 'firebase/firestore';
 import { MainLayout } from '@/components/MainLayout';
 import {
   Card,
@@ -24,12 +31,32 @@ import {
   AccordionTrigger,
 } from '@/components/ui/accordion';
 import {
+  Dialog,
+  DialogContent,
+  DialogHeader,
+  DialogTitle,
+  DialogDescription,
+  DialogFooter,
+  DialogClose,
+} from '@/components/ui/dialog';
+import { Button } from '@/components/ui/button';
+import { Input } from '@/components/ui/input';
+import { Label } from '@/components/ui/label';
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from '@/components/ui/select';
+import {
   Loader2,
   Mail,
   Phone,
-  DoorOpen,
   Building,
   KeyRound,
+  Edit,
+  Info,
 } from 'lucide-react';
 import { Property } from '@/types/property';
 import { Tenant } from '@/types/tenant';
@@ -40,14 +67,19 @@ import {
 } from '@/ai/flows/get-all-door-codes-flow';
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
 import { Badge } from '@/components/ui/badge';
-import type { DoorCode } from '@/types/door-code';
+import type { DoorCode, DoorLockType } from '@/types/door-code';
+import Image from 'next/image';
+import { format } from 'date-fns';
 
+type EnrichedDoorCode = DoorCode & {
+  userId: string;
+};
 interface RoomProfile {
   id: string;
   roomName: string;
   property: Property;
   tenant: Tenant;
-  doorCodes: DoorCode[];
+  doorCodes: EnrichedDoorCode[];
 }
 
 function getInitials(name: string) {
@@ -65,12 +97,35 @@ export default function RoomsPage() {
   const firestore = useFirestore();
   const router = useRouter();
 
-  React.useEffect(() => {
+  // --- Dialog and Form State ---
+  const [isFormDialogOpen, setIsFormDialogOpen] = useState(false);
+  const [isInstructionDialogOpen, setIsInstructionDialogOpen] = useState(false);
+  const [selectedInstruction, setSelectedInstruction] = useState<DoorLockType | null>(null);
+  const [editingCode, setEditingCode] = useState<EnrichedDoorCode | null>(null);
+
+  const [formData, setFormData] = useState<{
+    location: string;
+    code: string;
+    adminProgrammingCode: string;
+    guestCode: string;
+    doorLockType: string;
+    property: string;
+  }>({
+    location: '',
+    code: '',
+    adminProgrammingCode: '',
+    guestCode: '',
+    doorLockType: '',
+    property: '',
+  });
+
+  useEffect(() => {
     if (!isUserLoading && !user) {
       router.push('/login');
     }
   }, [user, isUserLoading, router]);
 
+  // --- Data Fetching ---
   const propertiesCollectionRef = useMemoFirebase(
     () => (user && firestore ? collection(firestore, 'properties') : null),
     [firestore, user]
@@ -86,11 +141,12 @@ export default function RoomsPage() {
     useCollection<Tenant>(tenantsCollectionRef);
 
   const [allDoorCodes, setAllDoorCodes] =
-    React.useState<GetAllDoorCodesOutput | null>(null);
-  const [doorCodesLoading, setDoorCodesLoading] = React.useState(true);
+    useState<GetAllDoorCodesOutput | null>(null);
+  const [doorCodesLoading, setDoorCodesLoading] = useState(true);
 
-  React.useEffect(() => {
+  useEffect(() => {
     if (user) {
+      setDoorCodesLoading(true);
       getAllDoorCodes()
         .then(setAllDoorCodes)
         .catch(console.error)
@@ -98,47 +154,46 @@ export default function RoomsPage() {
     }
   }, [user]);
 
-  const groupedRoomsByProperty = React.useMemo(() => {
+  const lockTypesDocRef = useMemoFirebase(
+    () => (user && firestore ? doc(firestore, 'siteConfiguration', 'lockTypes') : null),
+    [firestore, user]
+  );
+  const { data: lockTypesData, isLoading: lockTypesLoading } =
+    useDoc<{ types: DoorLockType[] }>(lockTypesDocRef);
+  const lockTypes = lockTypesData?.types || [];
+
+  // --- Data Processing ---
+  const groupedRoomsByProperty = useMemo(() => {
     if (!tenants || !properties || !allDoorCodes) {
       return {};
     }
 
-    const flatDoorCodes = allDoorCodes.flatMap((u) => u.codes);
+    const flatDoorCodes = allDoorCodes.flatMap((u) => u.codes.map(c => ({...c, userId: u.uid})));
     const propertiesMap = new Map(properties.map((p) => [p.name, p]));
 
-    const rooms: RoomProfile[] = tenants.map((tenant) => {
-      const property = propertiesMap.get(tenant.property);
-      if (!property) return null;
+    const rooms: RoomProfile[] = tenants
+      .map((tenant) => {
+        const property = propertiesMap.get(tenant.property);
+        if (!property) return null;
 
-      // Find door codes associated with this tenant's room in this property
-      const roomDoorCodes = flatDoorCodes.filter((code) => {
-        if (code.property !== tenant.property) return false;
+        const roomDoorCodes = flatDoorCodes.filter((code) => {
+          if (code.property !== tenant.property) return false;
+          const roomIdentifier = tenant.room.toLowerCase();
+          const locationIdentifier = code.location.toLowerCase();
+          if (roomIdentifier === locationIdentifier) return true;
+          const roomRegex = new RegExp(`\\b${roomIdentifier}\\b`, 'i');
+          return roomRegex.test(locationIdentifier);
+        });
 
-        // Create a regex to match the room number as a whole word to avoid partial matches (e.g., "1" in "10").
-        // This handles cases like "Room 1", "1", "Master Bedroom 1", etc.
-        const roomIdentifier = tenant.room.toLowerCase();
-        const locationIdentifier = code.location.toLowerCase();
-        
-        // Exact match is always preferred
-        if (roomIdentifier === locationIdentifier) {
-            return true;
-        }
-
-        // Use regex for word boundary matching
-        const roomRegex = new RegExp(`\\b${roomIdentifier}\\b`, 'i');
-        const locationRegex = new RegExp(`\\b${locationIdentifier}\\b`, 'i');
-
-        return roomRegex.test(locationIdentifier) || locationRegex.test(roomIdentifier);
-      });
-
-      return {
-        id: tenant.id,
-        roomName: tenant.room,
-        property,
-        tenant,
-        doorCodes: roomDoorCodes,
-      };
-    }).filter((r): r is RoomProfile => r !== null);
+        return {
+          id: tenant.id,
+          roomName: tenant.room,
+          property,
+          tenant,
+          doorCodes: roomDoorCodes,
+        };
+      })
+      .filter((r): r is RoomProfile => r !== null);
 
     return rooms.reduce(
       (acc, room) => {
@@ -146,19 +201,80 @@ export default function RoomsPage() {
           acc[room.property.name] = [];
         }
         acc[room.property.name].push(room);
-        acc[room.property.name].sort((a,b) => a.roomName.localeCompare(b.roomName, undefined, { numeric: true}));
+        acc[room.property.name].sort((a, b) =>
+          a.roomName.localeCompare(b.roomName, undefined, { numeric: true })
+        );
         return acc;
       },
       {} as Record<string, RoomProfile[]>
     );
   }, [tenants, properties, allDoorCodes]);
-  
-  const sortedPropertyNames = React.useMemo(() => {
+
+  const sortedPropertyNames = useMemo(() => {
     return Object.keys(groupedRoomsByProperty).sort((a, b) => a.localeCompare(b));
   }, [groupedRoomsByProperty]);
 
+  // --- Event Handlers ---
+  const handleEditClick = (code: EnrichedDoorCode) => {
+    setEditingCode(code);
+    setFormData({
+      location: code.location,
+      code: code.code || '',
+      adminProgrammingCode: code.adminProgrammingCode || '',
+      guestCode: code.guestCode || '',
+      doorLockType: code.doorLockType || '',
+      property: code.property || '',
+    });
+    setIsFormDialogOpen(true);
+  };
+
+  const handleViewInstructions = (doorLockTypeName: string) => {
+    const instruction = lockTypes.find((lt) => lt.name === doorLockTypeName);
+    if (instruction) {
+      setSelectedInstruction(instruction);
+      setIsInstructionDialogOpen(true);
+    }
+  };
+
+  const handleDialogClose = () => {
+    setIsFormDialogOpen(false);
+    setEditingCode(null);
+  };
+
+  const handleFormChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const { id, value } = e.target;
+    setFormData((prev) => ({ ...prev, [id]: value }));
+  };
+
+  const handleSelectChange = (field: 'doorLockType' | 'property') => (value: string) => {
+    setFormData((prev) => ({ ...prev, [field]: value }));
+  };
+
+  const handleFormSubmit = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!firestore || !editingCode) return;
+
+    const codeData: Omit<DoorCode, 'id'> = {
+      ...formData,
+      lastChanged: serverTimestamp() as Timestamp,
+    };
+    
+    const docRef = doc(firestore, 'users', editingCode.userId, 'doorCodes', editingCode.id);
+    await updateDoc(docRef, codeData);
+
+    // Refresh all door codes data to show the update
+    setDoorCodesLoading(true);
+    getAllDoorCodes()
+      .then(setAllDoorCodes)
+      .catch(console.error)
+      .finally(() => setDoorCodesLoading(false));
+
+    handleDialogClose();
+  };
+
+  // --- Render Logic ---
   const pageIsLoading =
-    isUserLoading || propertiesLoading || tenantsLoading || doorCodesLoading;
+    isUserLoading || propertiesLoading || tenantsLoading || doorCodesLoading || lockTypesLoading;
 
   if (pageIsLoading || !user) {
     return (
@@ -206,49 +322,51 @@ export default function RoomsPage() {
                             </CardTitle>
                           </CardHeader>
                           <CardContent className="flex-grow space-y-4">
-                            {/* Tenant Info */}
                             <div className="space-y-2">
-                                <h4 className="font-semibold text-muted-foreground">Tenant</h4>
-                                <div className="flex items-center gap-4">
+                              <h4 className="font-semibold text-muted-foreground">Tenant</h4>
+                              <div className="flex items-center gap-4">
                                 <Avatar className="h-16 w-16">
-                                    <AvatarImage
+                                  <AvatarImage
                                     src={room.tenant.photoUrl}
                                     alt={room.tenant.name}
-                                    />
-                                    <AvatarFallback>
+                                  />
+                                  <AvatarFallback>
                                     {getInitials(room.tenant.name)}
-                                    </AvatarFallback>
+                                  </AvatarFallback>
                                 </Avatar>
                                 <div className="space-y-1 text-sm">
-                                    <p className="font-bold text-foreground">{room.tenant.name}</p>
-                                    <div className="flex items-center gap-2 text-muted-foreground">
-                                        <Mail className="w-4 h-4"/>
-                                        <a href={`mailto:${room.tenant.email}`} className="hover:underline">{room.tenant.email}</a>
-                                    </div>
-                                    <div className="flex items-center gap-2 text-muted-foreground">
-                                        <Phone className="w-4 h-4"/>
-                                        <a href={`tel:${room.tenant.phone}`} className="hover:underline">{room.tenant.phone}</a>
-                                    </div>
+                                  <p className="font-bold text-foreground">{room.tenant.name}</p>
+                                  <div className="flex items-center gap-2 text-muted-foreground">
+                                    <Mail className="w-4 h-4"/>
+                                    <a href={`mailto:${room.tenant.email}`} className="hover:underline">{room.tenant.email}</a>
+                                  </div>
+                                  <div className="flex items-center gap-2 text-muted-foreground">
+                                    <Phone className="w-4 h-4"/>
+                                    <a href={`tel:${room.tenant.phone}`} className="hover:underline">{room.tenant.phone}</a>
+                                  </div>
                                 </div>
-                                </div>
+                              </div>
                             </div>
-                            
-                            {/* Door Codes */}
-                             {room.doorCodes.length > 0 && (
-                                <div className="space-y-2">
-                                    <h4 className="font-semibold text-muted-foreground">Door Codes</h4>
-                                    <div className="space-y-1">
-                                        {room.doorCodes.map(code => (
-                                            <div key={code.id} className="flex items-center justify-between text-sm p-2 rounded-md bg-muted/50">
-                                                <div className="flex items-center gap-2">
-                                                    <KeyRound className="w-4 h-4 text-primary"/>
-                                                    <span>{code.location}</span>
-                                                </div>
-                                                <span className="font-mono text-xs bg-background px-2 py-1 rounded">{code.code}</span>
-                                            </div>
-                                        ))}
+                            {room.doorCodes.length > 0 && (
+                              <div className="space-y-2">
+                                <h4 className="font-semibold text-muted-foreground">Door Codes</h4>
+                                <div className="space-y-1">
+                                  {room.doorCodes.map(code => (
+                                    <div key={code.id} className="flex items-center justify-between text-sm p-2 rounded-md bg-muted/50">
+                                      <div className="flex items-center gap-2">
+                                        <KeyRound className="w-4 h-4 text-primary"/>
+                                        <span>{code.location}</span>
+                                      </div>
+                                      <div className="flex items-center gap-1">
+                                        <span className="font-mono text-xs bg-background px-2 py-1 rounded">{code.code}</span>
+                                        <Button variant="ghost" size="icon" className="h-6 w-6" onClick={() => handleEditClick(code)}>
+                                            <Edit className="h-4 w-4"/>
+                                        </Button>
+                                      </div>
                                     </div>
+                                  ))}
                                 </div>
+                              </div>
                             )}
                           </CardContent>
                         </Card>
@@ -265,6 +383,145 @@ export default function RoomsPage() {
           </CardContent>
         </Card>
       </div>
+
+      {/* Edit Door Code Dialog */}
+      <Dialog open={isFormDialogOpen} onOpenChange={setIsFormDialogOpen}>
+        <DialogContent>
+          <DialogHeader>
+            <DialogTitle>Edit Door Code</DialogTitle>
+            <DialogDescription>
+                <div className='flex justify-between items-center'>
+                    <span>Update the details for this door code.</span>
+                    {editingCode && (
+                        <Button variant="outline" size="sm" onClick={() => handleViewInstructions(editingCode.doorLockType)}>
+                            <Info className="mr-2 h-4 w-4" />
+                            View Instructions
+                        </Button>
+                    )}
+                </div>
+            </DialogDescription>
+          </DialogHeader>
+          <form onSubmit={handleFormSubmit}>
+            <div className="grid gap-4 py-4">
+              <div className="grid grid-cols-4 items-center gap-4">
+                <Label htmlFor="property" className="text-right">
+                  Property
+                </Label>
+                <Input id="property" value={formData.property} className="col-span-3" readOnly disabled/>
+              </div>
+              <div className="grid grid-cols-4 items-center gap-4">
+                <Label htmlFor="location" className="text-right">
+                  Location
+                </Label>
+                <Input
+                  id="location"
+                  value={formData.location}
+                  onChange={handleFormChange}
+                  className="col-span-3"
+                  required
+                />
+              </div>
+              <div className="grid grid-cols-4 items-center gap-4">
+                <Label htmlFor="doorLockType" className="text-right">
+                  Lock Type
+                </Label>
+                <Select
+                  onValueChange={handleSelectChange('doorLockType')}
+                  value={formData.doorLockType}
+                  required
+                >
+                  <SelectTrigger className="col-span-3">
+                    <SelectValue placeholder="Select a lock type" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    {lockTypes.map((type) => (
+                      <SelectItem key={type.id} value={type.name}>
+                        {type.name}
+                      </SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+              </div>
+              <div className="grid grid-cols-4 items-center gap-4">
+                <Label htmlFor="code" className="text-right">
+                  Code
+                </Label>
+                <Input
+                  id="code"
+                  value={formData.code}
+                  onChange={handleFormChange}
+                  className="col-span-3"
+                />
+              </div>
+              <div className="grid grid-cols-4 items-center gap-4">
+                <Label htmlFor="adminProgrammingCode" className="text-right">
+                  Admin Code
+                </Label>
+                <Input
+                  id="adminProgrammingCode"
+                  value={formData.adminProgrammingCode}
+                  onChange={handleFormChange}
+                  className="col-span-3"
+                />
+              </div>
+              <div className="grid grid-cols-4 items-center gap-4">
+                <Label htmlFor="guestCode" className="text-right">
+                  Guest Code
+                </Label>
+                <Input
+                  id="guestCode"
+                  value={formData.guestCode}
+                  onChange={handleFormChange}
+                  className="col-span-3"
+                />
+              </div>
+            </div>
+            <DialogFooter>
+              <Button type="button" variant="outline" onClick={handleDialogClose}>
+                Cancel
+              </Button>
+              <Button type="submit">Save</Button>
+            </DialogFooter>
+          </form>
+        </DialogContent>
+      </Dialog>
+      
+      {/* View Instructions Dialog */}
+      <Dialog open={isInstructionDialogOpen} onOpenChange={setIsInstructionDialogOpen}>
+        <DialogContent className="max-w-3xl">
+          <DialogHeader>
+            <DialogTitle>{selectedInstruction?.name} - Instructions</DialogTitle>
+          </DialogHeader>
+          {selectedInstruction && (
+             <div className="grid gap-4 py-4 max-h-[70vh] overflow-y-auto">
+               <div>
+                  <h3 className="font-semibold mb-2">Text Instructions</h3>
+                  <p className="text-sm text-muted-foreground whitespace-pre-wrap">
+                    {selectedInstruction.textInstructions || "No text instructions provided."}
+                  </p>
+               </div>
+                {selectedInstruction.instructionImageUrl && (
+                  <div>
+                    <h3 className="font-semibold mb-2">Instruction Sheet</h3>
+                     <div className="relative w-full aspect-video">
+                        <Image 
+                          src={selectedInstruction.instructionImageUrl}
+                          alt={`${selectedInstruction.name} instruction sheet`}
+                          fill
+                          className="object-contain rounded-md border"
+                        />
+                      </div>
+                  </div>
+                )}
+             </div>
+          )}
+          <DialogFooter>
+            <DialogClose asChild>
+              <Button>Close</Button>
+            </DialogClose>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
     </MainLayout>
   );
 }
