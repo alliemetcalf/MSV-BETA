@@ -84,20 +84,18 @@ export default function DoorCodesPage() {
   const { data: userProfile, isLoading: profileLoading } = useDoc<UserProfile>(userProfileRef);
   
   const doorCodesQuery = useMemoFirebase(() => {
-    // Return null if we are still loading critical information
-    if (!firestore || !user || profileLoading) {
-      return null;
+    if (!firestore || !user || !userProfile) {
+        return null;
     }
     
-    // Once profile is loaded, check the role
-    const isAdmin = userProfile?.role === 'admin';
+    const isAdmin = userProfile.role === 'admin';
 
     if (isAdmin) {
       return query(collectionGroup(firestore, 'doorCodes'));
     } else {
       return collection(firestore, 'users', user.uid, 'doorCodes');
     }
-  }, [firestore, user, userProfile, profileLoading]);
+  }, [firestore, user, userProfile]);
 
   const { data: doorCodes, isLoading: codesLoading, error: codesError } = useCollection<DoorCode>(doorCodesQuery);
 
@@ -289,7 +287,9 @@ export default function DoorCodesPage() {
     handleDialogClose();
   };
 
-  if (isUserLoading || profileLoading || !user) {
+  const isPageLoading = isUserLoading || profileLoading;
+
+  if (isPageLoading) {
     return (
       <div className="flex h-screen w-full items-center justify-center bg-background">
         <Loader2 className="h-10 w-10 animate-spin text-primary" />
@@ -298,7 +298,7 @@ export default function DoorCodesPage() {
   }
   
   const isAdmin = userProfile?.role === 'admin';
-  const isLoading = codesLoading || lockTypesLoading || propertiesLoading;
+  const isDataLoading = codesLoading || lockTypesLoading || propertiesLoading;
 
   return (
     <MainLayout>
@@ -317,13 +317,15 @@ export default function DoorCodesPage() {
             </Button>
           </CardHeader>
           <CardContent>
-            {isLoading && (
-              <Loader2 className="mx-auto h-8 w-8 animate-spin" />
+            {isDataLoading && (
+              <div className="flex justify-center py-8">
+                <Loader2 className="h-8 w-8 animate-spin" />
+              </div>
             )}
             {codesError && (
               <p className="text-destructive">Error: {codesError.message}</p>
             )}
-            {!isLoading && !codesError && (
+            {!isDataLoading && !codesError && (
               <>
                 {doorCodes && doorCodes.length > 0 ? (
                   <Accordion type="multiple" className="w-full" defaultValue={Object.keys(groupedDoorCodes)}>
