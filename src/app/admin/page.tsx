@@ -17,6 +17,7 @@ import { PropertiesManager } from '@/components/admin/PropertiesManager';
 import { UserRoleManager } from '@/components/admin/UserRoleManager';
 import { TenantsManager } from '@/components/admin/TenantsManager';
 import { ExpenseCategoryManager } from '@/components/admin/ExpenseCategoryManager';
+import { VendorsManager } from '@/components/admin/VendorsManager';
 
 export default function AdminPage() {
   const auth = useAuth();
@@ -63,6 +64,9 @@ export default function AdminPage() {
         <div className="grid md:grid-cols-2 gap-8">
           <TenantsManager />
           <ExpenseCategoryManager />
+        </div>
+        <div className="grid md:grid-cols-2 gap-8">
+            <VendorsManager />
         </div>
       </div>
     </MainLayout>

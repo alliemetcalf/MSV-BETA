@@ -203,6 +203,10 @@
           "type": "string",
           "description": "The category of the expense (e.g., 'Repairs', 'Utilities')."
         },
+        "vendor": {
+          "type": "string",
+          "description": "The vendor or supplier for the expense."
+        },
         "property": {
           "type": "string",
           "description": "The property associated with the expense, if any."
@@ -252,6 +256,39 @@
           "description": "An array of expense category objects.",
           "items": {
             "$ref": "#/entities/ExpenseCategory"
+          }
+        }
+      }
+    },
+    "Vendor": {
+      "title": "Vendor",
+      "type": "object",
+      "description": "Represents a single vendor or supplier.",
+      "properties": {
+        "id": {
+          "type": "string",
+          "description": "A unique identifier for the vendor."
+        },
+        "name": {
+          "type": "string",
+          "description": "The name of the vendor."
+        }
+      },
+      "required": [
+        "id",
+        "name"
+      ]
+    },
+    "VendorsConfiguration": {
+      "title": "VendorsConfiguration",
+      "type": "object",
+      "description": "A list of available vendors.",
+      "properties": {
+        "vendors": {
+          "type": "array",
+          "description": "An array of vendor objects.",
+          "items": {
+            "$ref": "#/entities/Vendor"
           }
         }
       }
@@ -336,6 +373,13 @@
           "$ref": "#/entities/ExpenseCategoriesConfiguration"
         },
         "description": "Stores the list of available expense categories."
+      },
+      {
+        "path": "/siteConfiguration/vendors",
+        "schema": {
+          "$ref": "#/entities/VendorsConfiguration"
+        },
+        "description": "Stores the list of available vendors."
       },
       {
         "path": "/properties/{propertyId}",

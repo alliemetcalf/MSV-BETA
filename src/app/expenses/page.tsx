@@ -17,6 +17,7 @@ import {
   updateDoc,
   deleteDoc,
   Timestamp,
+  setDoc,
 } from 'firebase/firestore';
 import {
   ref,
@@ -42,9 +43,10 @@ import { cn } from '@/lib/utils';
 import { useToast } from '@/hooks/use-toast';
 import Image from 'next/image';
 import { Loader2, PlusCircle, Edit, Trash2, CalendarIcon, Paperclip, X } from 'lucide-react';
-import { Expense, ExpenseCategory } from '@/types/expense';
+import { Expense, ExpenseCategory, Vendor } from '@/types/expense';
 import { Property } from '@/types/property';
 import { Tenant } from '@/types/tenant';
+import { Combobox, ComboboxOption } from '@/components/ui/combobox';
 
 
 const moneyFormatter = new Intl.NumberFormat('en-US', {
@@ -71,6 +73,7 @@ export default function ExpensesPage() {
     amount: string;
     description: string;
     category: string;
+    vendor: string;
     property: string;
     room: string;
     receiptUrl?: string;
@@ -79,6 +82,7 @@ export default function ExpensesPage() {
     amount: '',
     description: '',
     category: '',
+    vendor: '',
     property: '',
     room: '',
     receiptUrl: '',
@@ -106,6 +110,19 @@ export default function ExpensesPage() {
   );
   const { data: categoriesData, isLoading: categoriesLoading } = useDoc<{ categories: ExpenseCategory[] }>(categoriesDocRef);
   const categories = useMemo(() => categoriesData?.categories || [], [categoriesData]);
+
+  const vendorsDocRef = useMemoFirebase(
+    () => (user && firestore ? doc(firestore, 'siteConfiguration', 'vendors') : null),
+    [firestore, user]
+  );
+  const { data: vendorsData, isLoading: vendorsLoading } = useDoc<{ vendors: Vendor[] }>(vendorsDocRef);
+  const [vendors, setVendors] = useState<Vendor[]>([]);
+  useEffect(() => {
+    if(vendorsData?.vendors) {
+      setVendors(vendorsData.vendors);
+    }
+  }, [vendorsData]);
+
 
   const propertiesCollectionRef = useMemoFirebase(
     () => (user && firestore ? collection(firestore, 'properties') : null),
@@ -148,6 +165,7 @@ export default function ExpensesPage() {
       amount: '',
       description: '',
       category: '',
+      vendor: '',
       property: '',
       room: '',
       receiptUrl: '',
@@ -162,6 +180,7 @@ export default function ExpensesPage() {
       amount: String(expense.amount),
       description: expense.description,
       category: expense.category,
+      vendor: expense.vendor || '',
       property: expense.property || '',
       room: expense.room || '',
       receiptUrl: expense.receiptUrl || '',
@@ -205,6 +224,7 @@ export default function ExpensesPage() {
       amount,
       description: formData.description,
       category: formData.category,
+      vendor: formData.vendor || null,
       property: formData.property === NONE_VALUE ? null : formData.property,
       room: formData.room === NONE_VALUE ? null : formData.room,
       receiptUrl: formData.receiptUrl || null,
@@ -266,7 +286,30 @@ export default function ExpensesPage() {
     }
   }
 
-  const isLoading = isUserLoading || expensesLoading || categoriesLoading || propertiesLoading || tenantsLoading;
+  const handleVendorChange = async (value: string) => {
+    const isExisting = vendors.some(v => v.name.toLowerCase() === value.toLowerCase());
+    if (value && !isExisting && vendorsDocRef) {
+      const newVendor: Vendor = { id: new Date().toISOString(), name: value };
+      const updatedVendors = [...vendors, newVendor].sort((a, b) => a.name.localeCompare(b.name));
+      await setDoc(vendorsDocRef, { vendors: updatedVendors }, { merge: true });
+      setVendors(updatedVendors);
+      setFormData(p => ({...p, vendor: value }));
+      toast({ title: "Vendor Added", description: `"${value}" has been added to vendors.` });
+    } else {
+      setFormData(p => ({...p, vendor: value }));
+    }
+  };
+
+  const vendorOptions: ComboboxOption[] = useMemo(() => {
+    const existing = vendors.map(v => ({ value: v.name, label: v.name }));
+    const current = formData.vendor;
+    if (current && !vendors.some(v => v.name.toLowerCase() === current.toLowerCase())) {
+        return [...existing, {value: current, label: `Add "${current}"`}].sort((a,b) => a.label.localeCompare(b.label));
+    }
+    return existing;
+  }, [vendors, formData.vendor]);
+
+  const isLoading = isUserLoading || expensesLoading || categoriesLoading || propertiesLoading || tenantsLoading || vendorsLoading;
 
   if (isLoading) {
     return <div className="flex h-screen w-full items-center justify-center bg-background"><Loader2 className="h-10 w-10 animate-spin text-primary" /></div>;
@@ -291,6 +334,7 @@ export default function ExpensesPage() {
                   <TableRow>
                     <TableHead>Date</TableHead>
                     <TableHead>Description</TableHead>
+                    <TableHead>Vendor</TableHead>
                     <TableHead>Category</TableHead>
                     <TableHead>Property/Room</TableHead>
                     <TableHead className="text-right">Amount</TableHead>
@@ -302,6 +346,7 @@ export default function ExpensesPage() {
                     <TableRow key={expense.id}>
                       <TableCell>{format(expense.date.toDate(), 'PPP')}</TableCell>
                       <TableCell>{expense.description}</TableCell>
+                      <TableCell>{expense.vendor}</TableCell>
                       <TableCell>{expense.category}</TableCell>
                       <TableCell>{expense.property}{expense.room ? ` / ${expense.room}` : ''}</TableCell>
                       <TableCell className="text-right font-mono">{moneyFormatter.format(expense.amount)}</TableCell>
@@ -349,6 +394,20 @@ export default function ExpensesPage() {
               <div className="grid grid-cols-4 items-center gap-4">
                 <Label htmlFor="description" className="text-right">Description</Label>
                 <Input id="description" value={formData.description} onChange={(e) => setFormData(p => ({...p, description: e.target.value}))} className="col-span-3" required />
+              </div>
+              <div className="grid grid-cols-4 items-center gap-4">
+                <Label htmlFor="vendor" className="text-right">Vendor</Label>
+                <div className="col-span-3">
+                  <Combobox 
+                    options={vendorOptions}
+                    value={formData.vendor}
+                    onChange={handleVendorChange}
+                    placeholder="Select or add a vendor"
+                    searchPlaceholder="Search vendors..."
+                    emptyPlaceholder="No vendor found."
+                    onInputChange={(input) => setFormData(p => ({...p, vendor: input}))}
+                  />
+                </div>
               </div>
               <div className="grid grid-cols-4 items-center gap-4">
                 <Label htmlFor="category" className="text-right">Category</Label>
