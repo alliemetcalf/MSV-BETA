@@ -11,6 +11,8 @@ import {
   deleteDoc,
   serverTimestamp,
   Timestamp,
+  query,
+  collectionGroup
 } from 'firebase/firestore';
 import { MainLayout } from '@/components/MainLayout';
 import {
@@ -57,13 +59,15 @@ import { Loader2, PlusCircle, Edit, Trash2, Info } from 'lucide-react';
 import { DoorCode, DoorLockType, PropertyType } from '@/types/door-code';
 import { format } from 'date-fns';
 import { useRouter } from 'next/navigation';
-import { getAllDoorCodes, GetAllDoorCodesOutput } from '@/ai/flows/get-all-door-codes-flow';
+
 
 interface UserProfile {
   role: 'admin' | 'user' | 'assistant';
+  displayName?: string;
+  email?: string;
 }
 
-type EnrichedDoorCode = GetAllDoorCodesOutput[0]['codes'][0] & {
+type EnrichedDoorCode = DoorCode & {
   userEmail?: string;
   userId: string;
 };
@@ -84,9 +88,6 @@ export default function DoorCodesPage() {
   const [isInstructionDialogOpen, setIsInstructionDialogOpen] = useState(false);
   const [selectedInstruction, setSelectedInstruction] = useState<DoorLockType | null>(null);
   const [editingCode, setEditingCode] = useState<DoorCode | EnrichedDoorCode | null>(null);
-
-  const [allUsersCodes, setAllUsersCodes] = useState<EnrichedDoorCode[] | null>(null);
-  const [allCodesLoading, setAllCodesLoading] = useState(false);
 
   const [formData, setFormData] = useState<{
     location: string;
@@ -110,45 +111,19 @@ export default function DoorCodesPage() {
     }
   }, [user, isUserLoading, router]);
 
-  const fetchAllCodes = () => {
+  // Unified query for door codes
+  const doorCodesQuery = useMemoFirebase(() => {
+    if (!firestore || !user) return null;
     if (isAdmin) {
-      setAllCodesLoading(true);
-      getAllDoorCodes().then(data => {
-        const enrichedCodes = data.flatMap(userWithCodes => 
-          userWithCodes.codes.map(code => ({
-            ...code,
-            lastChanged: code.lastChanged ? Timestamp.fromDate(new Date(code.lastChanged)) : null,
-            userEmail: userWithCodes.email,
-            userId: userWithCodes.uid,
-          })) as EnrichedDoorCode[]
-        );
-        setAllUsersCodes(enrichedCodes);
-      }).catch(error => {
-        console.error("Failed to fetch all door codes:", error);
-      }).finally(() => setAllCodesLoading(false));
+      // Admin query: gets all door codes from all users
+      return query(collectionGroup(firestore, 'doorCodes'));
+    } else {
+      // User query: gets door codes for only the current user
+      return collection(firestore, 'users', user.uid, 'doorCodes');
     }
-  }
+  }, [firestore, user, isAdmin]);
 
-  useEffect(() => {
-    if (isAdmin && user) {
-     fetchAllCodes();
-    }
-  }, [isAdmin, user]);
-
-
-  const doorCodesCollectionRef = useMemoFirebase(
-    () => (!isAdmin && user && firestore ? collection(firestore, 'users', user.uid, 'doorCodes') : null),
-    [firestore, user, isAdmin]
-  );
-
-  const {
-    data: personalDoorCodes,
-    isLoading: personalCodesLoading,
-    error: codesError,
-  } = useCollection<DoorCode>(doorCodesCollectionRef);
-
-  const doorCodes = isAdmin ? allUsersCodes : personalDoorCodes;
-  const codesLoading = isAdmin ? allCodesLoading : personalCodesLoading;
+  const { data: doorCodes, isLoading: codesLoading, error: codesError } = useCollection<DoorCode>(doorCodesQuery);
 
   const lockTypesDocRef = useMemoFirebase(
     () => (user && firestore ? doc(firestore, 'siteConfiguration', 'lockTypes') : null),
@@ -177,7 +152,7 @@ export default function DoorCodesPage() {
         acc[property].push(code);
         return acc;
       },
-      {} as Record<string, (DoorCode | EnrichedDoorCode)[]>
+      {} as Record<string, DoorCode[]>
     );
 
     for (const property in grouped) {
@@ -202,7 +177,7 @@ export default function DoorCodesPage() {
     setIsFormDialogOpen(true);
   };
 
-  const handleEditClick = (code: DoorCode | EnrichedDoorCode) => {
+  const handleEditClick = (code: DoorCode) => {
     setEditingCode(code);
     setFormData({
       location: code.location,
@@ -215,20 +190,19 @@ export default function DoorCodesPage() {
     setIsFormDialogOpen(true);
   };
 
-  const handleDeleteClick = async (code: DoorCode | EnrichedDoorCode) => {
-    let userIdForDeletion = user?.uid;
-    if(isAdmin && 'userId' in code) {
-      userIdForDeletion = code.userId;
-    }
+  const handleDeleteClick = async (code: DoorCode) => {
+    if (!firestore) return;
+    
+    // The path for a collectionGroup query is different, so we construct the ref from its path components.
+    const pathSegments = code.id.split('/');
+    const userIdForDeletion = pathSegments[1];
+    const codeId = pathSegments[3];
 
-    if (!userIdForDeletion || !firestore) return;
+    if (!userIdForDeletion || !codeId) return;
     
     if (confirm('Are you sure you want to delete this door code?')) {
-      const docRef = doc(firestore, 'users', userIdForDeletion, 'doorCodes', code.id);
+      const docRef = doc(firestore, 'users', userIdForDeletion, 'doorCodes', codeId);
       await deleteDoc(docRef);
-      if(isAdmin) {
-        fetchAllCodes();
-      }
     }
   };
   
@@ -266,37 +240,24 @@ export default function DoorCodesPage() {
   const handleFormSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     
-    let userIdForWrite = user?.uid;
-
-    if (!userIdForWrite || !firestore || !formData.location || !formData.doorLockType || !formData.property) return;
+    if (!user || !firestore || !formData.location || !formData.doorLockType || !formData.property) return;
     
-    if (isAdmin && editingCode && 'userId' in editingCode) {
-      userIdForWrite = editingCode.userId;
-    }
-
-
     const codeData = {
       ...formData,
       lastChanged: serverTimestamp(),
     };
 
     if (editingCode) {
-      const docRef = doc(
-        firestore,
-        'users',
-        userIdForWrite,
-        'doorCodes',
-        editingCode.id
-      );
-      await updateDoc(docRef, codeData);
+        const pathSegments = editingCode.id.split('/');
+        const userIdForWrite = pathSegments[1];
+        const codeId = pathSegments[3];
+        const docRef = doc(firestore, 'users', userIdForWrite, 'doorCodes', codeId);
+        await updateDoc(docRef, codeData);
     } else {
-      const collectionRef = collection(firestore, 'users', userIdForWrite, 'doorCodes');
+      const collectionRef = collection(firestore, 'users', user.uid, 'doorCodes');
       await addDoc(collectionRef, codeData);
     }
 
-    if(isAdmin) {
-     fetchAllCodes();
-    }
     handleDialogClose();
   };
 
@@ -321,12 +282,10 @@ export default function DoorCodesPage() {
                 {isAdmin ? 'Viewing all user door codes as an admin.' : 'Manage your property door codes here.'}
               </CardDescription>
             </div>
-            {!isAdmin && (
-              <Button onClick={handleAddClick}>
-                <PlusCircle className="mr-2 h-4 w-4" />
-                Add Code
-              </Button>
-            )}
+            <Button onClick={handleAddClick}>
+              <PlusCircle className="mr-2 h-4 w-4" />
+              Add Code
+            </Button>
           </CardHeader>
           <CardContent>
             {isLoading && (
@@ -349,7 +308,6 @@ export default function DoorCodesPage() {
                             <Table>
                               <TableHeader>
                                 <TableRow>
-                                  {isAdmin && <TableHead>User</TableHead>}
                                   <TableHead>Location</TableHead>
                                   <TableHead>Lock Type</TableHead>
                                   <TableHead>Code</TableHead>
@@ -364,7 +322,6 @@ export default function DoorCodesPage() {
                               <TableBody>
                                 {codes.map((code) => (
                                   <TableRow key={code.id}>
-                                    {isAdmin && 'userEmail' in code && <TableCell>{code.userEmail}</TableCell>}
                                     <TableCell>{code.location}</TableCell>
                                     <TableCell>
                                       <div className="flex items-center gap-2">
@@ -386,7 +343,7 @@ export default function DoorCodesPage() {
                                     <TableCell>
                                       {code.lastChanged && 'toDate' in code.lastChanged &&
                                         format(
-                                          code.lastChanged.toDate(),
+                                          (code.lastChanged as Timestamp).toDate(),
                                           'PPP p'
                                         )}
                                     </TableCell>
@@ -436,7 +393,7 @@ export default function DoorCodesPage() {
               {editingCode ? 'Edit Door Code' : 'Add New Door Code'}
             </DialogTitle>
             <DialogDescription>
-              Fill in the details for the door code. {isAdmin && editingCode && 'userId' in editingCode && `(Editing for ${'userEmail' in editingCode && editingCode.userEmail ? editingCode.userEmail : editingCode.userId})`}
+              Fill in the details for the door code.
             </DialogDescription>
           </DialogHeader>
           <form onSubmit={handleFormSubmit}>
