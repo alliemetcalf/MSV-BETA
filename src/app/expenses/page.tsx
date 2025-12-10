@@ -61,6 +61,7 @@ const moneyFormatter = new Intl.NumberFormat('en-US', {
 });
 
 const NONE_VALUE = '_NONE_';
+const CREATE_NEW_VALUE = '_CREATE_NEW_';
 
 const currentYear = new Date().getFullYear();
 const years = Array.from({ length: 10 }, (_, i) => currentYear - i);
@@ -81,6 +82,10 @@ export default function ExpensesPage() {
   const [isConfirmDialogOpen, setIsConfirmDialogOpen] = useState(false);
   const [expenseToDelete, setExpenseToDelete] = useState<Expense | null>(null);
   
+  const [isVendorDialogOpen, setIsVendorDialogOpen] = useState(false);
+  const [newVendorName, setNewVendorName] = useState('');
+  const [isSavingVendor, setIsSavingVendor] = useState(false);
+
   const [formData, setFormData] = useState<{
     year: number;
     month: number;
@@ -165,8 +170,16 @@ export default function ExpensesPage() {
   }, [tenants]);
 
   const availableRooms = useMemo(() => {
-    return formData.property ? Array.from(roomsByProperty[formData.property] || []).sort((a,b) => a.localeCompare(b, undefined, { numeric: true })) : [];
-  }, [formData.property, roomsByProperty]);
+    const allRooms = new Set<string>();
+    if (formData.property && tenants) {
+        tenants.forEach(tenant => {
+            if (tenant.property === formData.property && tenant.room) {
+                allRooms.add(tenant.room);
+            }
+        });
+    }
+    return Array.from(allRooms).sort((a, b) => a.localeCompare(b, undefined, { numeric: true }));
+  }, [formData.property, tenants]);
 
   const sortedExpenses = useMemo(() => {
     if (!expenses) return [];
@@ -330,6 +343,38 @@ export default function ExpensesPage() {
     setFormData(newDate);
   };
 
+  const handleVendorSelectChange = (value: string) => {
+    if (value === CREATE_NEW_VALUE) {
+        setIsVendorDialogOpen(true);
+    } else {
+        setFormData(p => ({ ...p, vendor: value }));
+    }
+  };
+  
+  const handleSaveNewVendor = async () => {
+    if (!vendorsDocRef || !newVendorName.trim()) {
+        toast({ variant: 'destructive', title: 'Invalid Name', description: 'Vendor name cannot be empty.' });
+        return;
+    }
+    if (vendors.some(v => v.name.toLowerCase() === newVendorName.trim().toLowerCase())) {
+        toast({ variant: 'destructive', title: 'Duplicate Vendor', description: 'This vendor already exists.' });
+        return;
+    }
+    setIsSavingVendor(true);
+    try {
+        const newVendor: Vendor = { id: new Date().toISOString(), name: newVendorName.trim() };
+        const updatedVendors = [...vendors, newVendor].sort((a,b) => a.name.localeCompare(b.name));
+        await setDoc(vendorsDocRef, { vendors: updatedVendors }, { merge: true });
+        toast({ title: 'Vendor Added', description: `Successfully added "${newVendor.name}".` });
+        setFormData(p => ({ ...p, vendor: newVendor.name }));
+        setNewVendorName('');
+        setIsVendorDialogOpen(false);
+    } catch (error) {
+        toast({ variant: 'destructive', title: 'Error', description: 'Could not save the new vendor.' });
+    } finally {
+        setIsSavingVendor(false);
+    }
+  };
 
   const isLoading = isUserLoading || expensesLoading || categoriesLoading || propertiesLoading || tenantsLoading || vendorsLoading;
 
@@ -338,181 +383,218 @@ export default function ExpensesPage() {
   }
 
   return (
-    <MainLayout>
-      <div className="w-full max-w-6xl px-4">
-        <Card>
-          <CardHeader className="flex flex-row items-center justify-between">
-            <div>
-              <CardTitle>Expenses</CardTitle>
-              <CardDescription>Track and manage all business expenses.</CardDescription>
-            </div>
-            <Button onClick={handleAddClick}><PlusCircle className="mr-2 h-4 w-4" />Add Expense</Button>
-          </CardHeader>
-          <CardContent>
-            {expensesError && <p className="text-destructive text-center py-8">Error: {expensesError.message}</p>}
-            {!expensesError && sortedExpenses.length > 0 ? (
-              <Table>
-                <TableHeader>
-                  <TableRow>
-                    <TableHead>Date</TableHead>
-                    <TableHead>Description</TableHead>
-                    <TableHead>Vendor</TableHead>
-                    <TableHead>Category</TableHead>
-                    <TableHead>Property/Room</TableHead>
-                    <TableHead className="text-right">Amount</TableHead>
-                    <TableHead className="text-right">Actions</TableHead>
-                  </TableRow>
-                </TableHeader>
-                <TableBody>
-                  {sortedExpenses.map(expense => (
-                    <TableRow key={expense.id}>
-                      <TableCell>{format(expense.date.toDate(), 'PPP')}</TableCell>
-                      <TableCell>{expense.description}</TableCell>
-                      <TableCell>{expense.vendor}</TableCell>
-                      <TableCell>{expense.category}</TableCell>
-                      <TableCell>{expense.property}{expense.room ? ` / ${expense.room}` : ''}</TableCell>
-                      <TableCell className="text-right font-mono">{moneyFormatter.format(expense.amount)}</TableCell>
-                      <TableCell className="text-right">
-                        <Button variant="ghost" size="icon" onClick={() => handleEditClick(expense)}><Edit className="w-4 h-4" /></Button>
-                        <Button variant="ghost" size="icon" onClick={() => handleDeleteClick(expense)} className="text-destructive hover:text-destructive/80"><Trash2 className="w-4 h-4"/></Button>
-                      </TableCell>
+    <>
+      <MainLayout>
+        <div className="w-full max-w-6xl px-4">
+          <Card>
+            <CardHeader className="flex flex-row items-center justify-between">
+              <div>
+                <CardTitle>Expenses</CardTitle>
+                <CardDescription>Track and manage all business expenses.</CardDescription>
+              </div>
+              <Button onClick={handleAddClick}><PlusCircle className="mr-2 h-4 w-4" />Add Expense</Button>
+            </CardHeader>
+            <CardContent>
+              {expensesError && <p className="text-destructive text-center py-8">Error: {expensesError.message}</p>}
+              {!expensesError && sortedExpenses.length > 0 ? (
+                <Table>
+                  <TableHeader>
+                    <TableRow>
+                      <TableHead>Date</TableHead>
+                      <TableHead>Description</TableHead>
+                      <TableHead>Vendor</TableHead>
+                      <TableHead>Category</TableHead>
+                      <TableHead>Property/Room</TableHead>
+                      <TableHead className="text-right">Amount</TableHead>
+                      <TableHead className="text-right">Actions</TableHead>
                     </TableRow>
-                  ))}
-                </TableBody>
-              </Table>
-            ) : (
-              !expensesError && <div className="text-center text-muted-foreground py-8">No expenses found. Click "Add Expense" to start.</div>
-            )}
-          </CardContent>
-        </Card>
-      </div>
+                  </TableHeader>
+                  <TableBody>
+                    {sortedExpenses.map(expense => (
+                      <TableRow key={expense.id}>
+                        <TableCell>{format(expense.date.toDate(), 'PPP')}</TableCell>
+                        <TableCell>{expense.description}</TableCell>
+                        <TableCell>{expense.vendor}</TableCell>
+                        <TableCell>{expense.category}</TableCell>
+                        <TableCell>{expense.property}{expense.room ? ` / ${expense.room}` : ''}</TableCell>
+                        <TableCell className="text-right font-mono">{moneyFormatter.format(expense.amount)}</TableCell>
+                        <TableCell className="text-right">
+                          <Button variant="ghost" size="icon" onClick={() => handleEditClick(expense)}><Edit className="w-4 h-4" /></Button>
+                          <Button variant="ghost" size="icon" onClick={() => handleDeleteClick(expense)} className="text-destructive hover:text-destructive/80"><Trash2 className="w-4 h-4"/></Button>
+                        </TableCell>
+                      </TableRow>
+                    ))}
+                  </TableBody>
+                </Table>
+              ) : (
+                !expensesError && <div className="text-center text-muted-foreground py-8">No expenses found. Click "Add Expense" to start.</div>
+              )}
+            </CardContent>
+          </Card>
+        </div>
 
-      <Dialog open={isFormOpen} onOpenChange={setIsFormOpen}>
-        <DialogContent className="sm:max-w-lg">
-          <DialogHeader>
-            <DialogTitle>{editingExpense ? 'Edit Expense' : 'Add New Expense'}</DialogTitle>
-            <DialogDescription>Fill in the details for the expense record.</DialogDescription>
-          </DialogHeader>
-          <form onSubmit={handleFormSubmit}>
-            <div className="grid gap-4 py-4">
-              <div className="grid grid-cols-4 items-center gap-4">
-                <Label htmlFor="date" className="text-right">Date</Label>
-                 <div className="col-span-3 grid grid-cols-3 gap-2">
-                    <Select value={String(formData.month)} onValueChange={v => handleDateChange('month', v)}>
-                        <SelectTrigger><SelectValue/></SelectTrigger>
-                        <SelectContent>
-                            {months.map(m => <SelectItem key={m.value} value={String(m.value)}>{m.label}</SelectItem>)}
-                        </SelectContent>
-                    </Select>
-                     <Select value={String(formData.day)} onValueChange={v => handleDateChange('day', v)}>
-                        <SelectTrigger><SelectValue/></SelectTrigger>
-                        <SelectContent>
-                            {Array.from({ length: daysInMonth }, (_, i) => i + 1).map(d => <SelectItem key={d} value={String(d)}>{d}</SelectItem>)}
-                        </SelectContent>
-                    </Select>
-                    <Select value={String(formData.year)} onValueChange={v => handleDateChange('year', v)}>
-                        <SelectTrigger><SelectValue/></SelectTrigger>
-                        <SelectContent>
-                            {years.map(y => <SelectItem key={y} value={String(y)}>{y}</SelectItem>)}
-                        </SelectContent>
-                    </Select>
-                 </div>
-              </div>
-              <div className="grid grid-cols-4 items-center gap-4">
-                <Label htmlFor="amount" className="text-right">Amount</Label>
-                <Input id="amount" type="number" step="0.01" value={formData.amount} onChange={(e) => setFormData(p => ({...p, amount: e.target.value}))} className="col-span-3" required />
-              </div>
-              <div className="grid grid-cols-4 items-center gap-4">
-                <Label htmlFor="description" className="text-right">Description</Label>
-                <Input id="description" value={formData.description} onChange={(e) => setFormData(p => ({...p, description: e.target.value}))} className="col-span-3" required />
-              </div>
-              <div className="grid grid-cols-4 items-center gap-4">
-                <Label htmlFor="vendor" className="text-right">Vendor</Label>
-                 <Select onValueChange={(v) => setFormData(p => ({...p, vendor: v}))} value={formData.vendor}>
-                  <SelectTrigger className="col-span-3"><SelectValue placeholder="Select a vendor (optional)" /></SelectTrigger>
-                  <SelectContent>
-                    <SelectItem value={NONE_VALUE}>None</SelectItem>
-                    {vendors.map(v => <SelectItem key={v.id} value={v.name}>{v.name}</SelectItem>)}
-                  </SelectContent>
-                </Select>
-              </div>
-              <div className="grid grid-cols-4 items-center gap-4">
-                <Label htmlFor="category" className="text-right">Category</Label>
-                <Select onValueChange={(v) => setFormData(p => ({...p, category: v}))} value={formData.category} required>
-                  <SelectTrigger className="col-span-3"><SelectValue placeholder="Select a category" /></SelectTrigger>
-                  <SelectContent>
-                    {categories.map(cat => <SelectItem key={cat.id} value={cat.name}>{cat.name}</SelectItem>)}
-                  </SelectContent>
-                </Select>
-              </div>
-              <div className="grid grid-cols-4 items-center gap-4">
-                <Label htmlFor="property" className="text-right">Property</Label>
-                <Select onValueChange={(v) => setFormData(p => ({...p, property: v, room: ''}))} value={formData.property}>
-                  <SelectTrigger className="col-span-3"><SelectValue placeholder="Select a property (optional)" /></SelectTrigger>
-                  <SelectContent>
-                    <SelectItem value={NONE_VALUE}>None (Company Expense)</SelectItem>
-                    {propertyNames.map(prop => <SelectItem key={prop} value={prop}>{prop}</SelectItem>)}
-                  </SelectContent>
-                </Select>
-              </div>
-              {formData.property && formData.property !== NONE_VALUE && availableRooms.length > 0 && (
+        <Dialog open={isFormOpen} onOpenChange={setIsFormOpen}>
+          <DialogContent className="sm:max-w-lg">
+            <DialogHeader>
+              <DialogTitle>{editingExpense ? 'Edit Expense' : 'Add New Expense'}</DialogTitle>
+              <DialogDescription>Fill in the details for the expense record.</DialogDescription>
+            </DialogHeader>
+            <form onSubmit={handleFormSubmit}>
+              <div className="grid gap-4 py-4">
                 <div className="grid grid-cols-4 items-center gap-4">
-                  <Label htmlFor="room" className="text-right">Room</Label>
-                  <Select onValueChange={(v) => setFormData(p => ({...p, room: v}))} value={formData.room}>
-                    <SelectTrigger className="col-span-3"><SelectValue placeholder="Select a room (optional)" /></SelectTrigger>
+                  <Label htmlFor="date" className="text-right">Date</Label>
+                   <div className="col-span-3 grid grid-cols-3 gap-2">
+                      <Select value={String(formData.month)} onValueChange={v => handleDateChange('month', v)}>
+                          <SelectTrigger><SelectValue/></SelectTrigger>
+                          <SelectContent>
+                              {months.map(m => <SelectItem key={m.value} value={String(m.value)}>{m.label}</SelectItem>)}
+                          </SelectContent>
+                      </Select>
+                       <Select value={String(formData.day)} onValueChange={v => handleDateChange('day', v)}>
+                          <SelectTrigger><SelectValue/></SelectTrigger>
+                          <SelectContent>
+                              {Array.from({ length: daysInMonth }, (_, i) => i + 1).map(d => <SelectItem key={d} value={String(d)}>{d}</SelectItem>)}
+                          </SelectContent>
+                      </Select>
+                      <Select value={String(formData.year)} onValueChange={v => handleDateChange('year', v)}>
+                          <SelectTrigger><SelectValue/></SelectTrigger>
+                          <SelectContent>
+                              {years.map(y => <SelectItem key={y} value={String(y)}>{y}</SelectItem>)}
+                          </SelectContent>
+                      </Select>
+                   </div>
+                </div>
+                <div className="grid grid-cols-4 items-center gap-4">
+                  <Label htmlFor="amount" className="text-right">Amount</Label>
+                  <Input id="amount" type="number" step="0.01" value={formData.amount} onChange={(e) => setFormData(p => ({...p, amount: e.target.value}))} className="col-span-3" required />
+                </div>
+                <div className="grid grid-cols-4 items-center gap-4">
+                  <Label htmlFor="description" className="text-right">Description</Label>
+                  <Input id="description" value={formData.description} onChange={(e) => setFormData(p => ({...p, description: e.target.value}))} className="col-span-3" required />
+                </div>
+                <div className="grid grid-cols-4 items-center gap-4">
+                  <Label htmlFor="vendor" className="text-right">Vendor</Label>
+                   <Select onValueChange={handleVendorSelectChange} value={formData.vendor}>
+                    <SelectTrigger className="col-span-3"><SelectValue placeholder="Select a vendor (optional)" /></SelectTrigger>
                     <SelectContent>
-                       <SelectItem value={NONE_VALUE}>None (Property-level Expense)</SelectItem>
-                      {availableRooms.map(room => <SelectItem key={room} value={room}>{room}</SelectItem>)}
+                      <SelectItem value={CREATE_NEW_VALUE}>
+                        <span className="flex items-center gap-2 text-primary">
+                            <PlusCircle className="h-4 w-4" /> Create new vendor...
+                        </span>
+                      </SelectItem>
+                      <SelectItem value={NONE_VALUE}>None</SelectItem>
+                      {vendors.map(v => <SelectItem key={v.id} value={v.name}>{v.name}</SelectItem>)}
                     </SelectContent>
                   </Select>
                 </div>
-              )}
-               <div className="grid grid-cols-4 items-start gap-4">
-                  <Label htmlFor="receipt" className="text-right pt-2">Receipt</Label>
-                  <div className="col-span-3 space-y-2">
-                    {formData.receiptUrl ? (
-                      <div className="relative group w-32 h-32 border rounded-md">
-                        <Image src={formData.receiptUrl} alt="Receipt" layout="fill" className="object-cover rounded-md" />
-                        <Button variant="destructive" size="icon" className="absolute -top-2 -right-2 h-6 w-6 rounded-full opacity-0 group-hover:opacity-100" onClick={handleReceiptDelete}><X className="h-4 w-4" /></Button>
-                      </div>
-                    ) : (
-                      <>
-                        <Label htmlFor="receipt-upload" className="cursor-pointer inline-flex items-center justify-center rounded-md text-sm font-medium border border-input bg-background h-10 px-4 py-2 hover:bg-accent hover:text-accent-foreground">
-                            <Paperclip className="mr-2 h-4 w-4" /> Upload File
-                        </Label>
-                        <Input id="receipt-upload" type="file" accept="image/*" className="hidden" onChange={e => e.target.files && handleReceiptUpload(e.target.files[0])} disabled={isUploading} />
-                        {isUploading && <Progress value={uploadProgress} className="w-full h-2 mt-2" />}
-                      </>
-                    )}
+                <div className="grid grid-cols-4 items-center gap-4">
+                  <Label htmlFor="category" className="text-right">Category</Label>
+                  <Select onValueChange={(v) => setFormData(p => ({...p, category: v}))} value={formData.category} required>
+                    <SelectTrigger className="col-span-3"><SelectValue placeholder="Select a category" /></SelectTrigger>
+                    <SelectContent>
+                      {categories.map(cat => <SelectItem key={cat.id} value={cat.name}>{cat.name}</SelectItem>)}
+                    </SelectContent>
+                  </Select>
+                </div>
+                <div className="grid grid-cols-4 items-center gap-4">
+                  <Label htmlFor="property" className="text-right">Property</Label>
+                  <Select onValueChange={(v) => setFormData(p => ({...p, property: v, room: ''}))} value={formData.property}>
+                    <SelectTrigger className="col-span-3"><SelectValue placeholder="Select a property (optional)" /></SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value={NONE_VALUE}>None (Company Expense)</SelectItem>
+                      {propertyNames.map(prop => <SelectItem key={prop} value={prop}>{prop}</SelectItem>)}
+                    </SelectContent>
+                  </Select>
+                </div>
+                {formData.property && formData.property !== NONE_VALUE && availableRooms.length > 0 && (
+                  <div className="grid grid-cols-4 items-center gap-4">
+                    <Label htmlFor="room" className="text-right">Room</Label>
+                    <Select onValueChange={(v) => setFormData(p => ({...p, room: v}))} value={formData.room}>
+                      <SelectTrigger className="col-span-3"><SelectValue placeholder="Select a room (optional)" /></SelectTrigger>
+                      <SelectContent>
+                         <SelectItem value={NONE_VALUE}>None (Property-level Expense)</SelectItem>
+                        {availableRooms.map(room => <SelectItem key={room} value={room}>{room}</SelectItem>)}
+                      </SelectContent>
+                    </Select>
                   </div>
-               </div>
-            </div>
-            <DialogFooter>
-              <Button type="button" variant="outline" onClick={() => setIsFormOpen(false)}>Cancel</Button>
-              <Button type="submit" disabled={isSubmitting || isUploading}>
-                {isSubmitting && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
-                Save
-              </Button>
-            </DialogFooter>
-          </form>
-        </DialogContent>
-      </Dialog>
-      
-      <AlertDialog open={isConfirmDialogOpen} onOpenChange={setIsConfirmDialogOpen}>
-        <AlertDialogContent>
-          <AlertDialogHeader>
-            <AlertDialogTitle>Are you sure?</AlertDialogTitle>
-            <AlertDialogDescription>
-              This action cannot be undone. This will permanently delete the expense
-              record.
-            </AlertDialogDescription>
-          </AlertDialogHeader>
-          <AlertDialogFooter>
-            <AlertDialogCancel>Cancel</AlertDialogCancel>
-            <AlertDialogAction onClick={confirmDelete}>Delete</AlertDialogAction>
-          </AlertDialogFooter>
-        </AlertDialogContent>
-      </AlertDialog>
-    </MainLayout>
+                )}
+                 <div className="grid grid-cols-4 items-start gap-4">
+                    <Label htmlFor="receipt" className="text-right pt-2">Receipt</Label>
+                    <div className="col-span-3 space-y-2">
+                      {formData.receiptUrl ? (
+                        <div className="relative group w-32 h-32 border rounded-md">
+                          <Image src={formData.receiptUrl} alt="Receipt" layout="fill" className="object-cover rounded-md" />
+                          <Button variant="destructive" size="icon" className="absolute -top-2 -right-2 h-6 w-6 rounded-full opacity-0 group-hover:opacity-100" onClick={handleReceiptDelete}><X className="h-4 w-4" /></Button>
+                        </div>
+                      ) : (
+                        <>
+                          <Label htmlFor="receipt-upload" className="cursor-pointer inline-flex items-center justify-center rounded-md text-sm font-medium border border-input bg-background h-10 px-4 py-2 hover:bg-accent hover:text-accent-foreground">
+                              <Paperclip className="mr-2 h-4 w-4" /> Upload File
+                          </Label>
+                          <Input id="receipt-upload" type="file" accept="image/*" className="hidden" onChange={e => e.target.files && handleReceiptUpload(e.target.files[0])} disabled={isUploading} />
+                          {isUploading && <Progress value={uploadProgress} className="w-full h-2 mt-2" />}
+                        </>
+                      )}
+                    </div>
+                 </div>
+              </div>
+              <DialogFooter>
+                <Button type="button" variant="outline" onClick={() => setIsFormOpen(false)}>Cancel</Button>
+                <Button type="submit" disabled={isSubmitting || isUploading}>
+                  {isSubmitting && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
+                  Save
+                </Button>
+              </DialogFooter>
+            </form>
+          </DialogContent>
+        </Dialog>
+        
+        <AlertDialog open={isConfirmDialogOpen} onOpenChange={setIsConfirmDialogOpen}>
+          <AlertDialogContent>
+            <AlertDialogHeader>
+              <AlertDialogTitle>Are you sure?</AlertDialogTitle>
+              <AlertDialogDescription>
+                This action cannot be undone. This will permanently delete the expense
+                record.
+              </AlertDialogDescription>
+            </AlertDialogHeader>
+            <AlertDialogFooter>
+              <AlertDialogCancel>Cancel</AlertDialogCancel>
+              <AlertDialogAction onClick={confirmDelete}>Delete</AlertDialogAction>
+            </AlertDialogFooter>
+          </AlertDialogContent>
+        </AlertDialog>
+
+        <Dialog open={isVendorDialogOpen} onOpenChange={(open) => { if (!open) { setIsVendorDialogOpen(false); setFormData(p => ({...p, vendor: ''})); }}}>
+            <DialogContent>
+                <DialogHeader>
+                    <DialogTitle>Create New Vendor</DialogTitle>
+                    <DialogDescription>Add a new vendor to the list.</DialogDescription>
+                </DialogHeader>
+                <div className="grid gap-4 py-4">
+                    <div className="grid grid-cols-4 items-center gap-4">
+                        <Label htmlFor="new-vendor-name" className="text-right">
+                            Vendor Name
+                        </Label>
+                        <Input
+                            id="new-vendor-name"
+                            value={newVendorName}
+                            onChange={(e) => setNewVendorName(e.target.value)}
+                            className="col-span-3"
+                            autoFocus
+                        />
+                    </div>
+                </div>
+                <DialogFooter>
+                    <Button variant="outline" onClick={() => { setIsVendorDialogOpen(false); setFormData(p => ({...p, vendor: ''})); }}>Cancel</Button>
+                    <Button onClick={handleSaveNewVendor} disabled={isSavingVendor}>
+                        {isSavingVendor && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
+                        Save Vendor
+                    </Button>
+                </DialogFooter>
+            </DialogContent>
+        </Dialog>
+      </MainLayout>
+    </>
   );
 }
