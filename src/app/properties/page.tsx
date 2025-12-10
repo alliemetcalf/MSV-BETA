@@ -20,16 +20,31 @@ import {
   CardFooter,
 } from '@/components/ui/card';
 import {
+  Dialog,
+  DialogContent,
+  DialogHeader,
+  DialogTitle,
+  DialogClose,
+  DialogFooter,
+} from '@/components/ui/dialog';
+import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
+import { Button } from '@/components/ui/button';
+import {
   Loader2,
   Building,
   MapPin,
   User as UserIcon,
   DoorOpen,
+  Mail,
+  Phone,
 } from 'lucide-react';
 import { Property } from '@/types/property';
 import { Tenant } from '@/types/tenant';
 import { useRouter } from 'next/navigation';
-import { getAllDoorCodes, GetAllDoorCodesOutput } from '@/ai/flows/get-all-door-codes-flow';
+import {
+  getAllDoorCodes,
+  GetAllDoorCodesOutput,
+} from '@/ai/flows/get-all-door-codes-flow';
 import {
   Accordion,
   AccordionContent,
@@ -37,11 +52,25 @@ import {
   AccordionTrigger,
 } from '@/components/ui/accordion';
 
+function getInitials(name: string) {
+  if (!name) return '??';
+  const parts = name.split(' ');
+  if (parts.length > 1) {
+    return `${parts[0][0]}${parts[parts.length - 1][0]}`.toUpperCase();
+  }
+  return name.substring(0, 2).toUpperCase();
+}
+
 export default function PropertiesPage() {
   const auth = useAuth();
   const { user, isUserLoading } = useUser(auth);
   const firestore = useFirestore();
   const router = useRouter();
+
+  const [selectedTenant, setSelectedTenant] = React.useState<Tenant | null>(
+    null
+  );
+  const [isTenantDialogOpen, setIsTenantDialogOpen] = React.useState(false);
 
   React.useEffect(() => {
     if (!isUserLoading && !user) {
@@ -68,12 +97,13 @@ export default function PropertiesPage() {
     isLoading: tenantsLoading,
     error: tenantsError,
   } = useCollection<Tenant>(tenantsCollectionRef);
-  
-  const [allDoorCodes, setAllDoorCodes] = React.useState<GetAllDoorCodesOutput | null>(null);
+
+  const [allDoorCodes, setAllDoorCodes] =
+    React.useState<GetAllDoorCodesOutput | null>(null);
   const [doorCodesLoading, setDoorCodesLoading] = React.useState(true);
-  
+
   React.useEffect(() => {
-    if(user) {
+    if (user) {
       getAllDoorCodes()
         .then(setAllDoorCodes)
         .catch(console.error)
@@ -83,32 +113,46 @@ export default function PropertiesPage() {
 
   const tenantsByProperty = React.useMemo(() => {
     if (!tenants) return {};
-    return tenants.reduce((acc, tenant) => {
-      if (!acc[tenant.property]) {
-        acc[tenant.property] = [];
-      }
-      acc[tenant.property].push(tenant);
-      return acc;
-    }, {} as Record<string, Tenant[]>);
+    return tenants.reduce(
+      (acc, tenant) => {
+        if (!acc[tenant.property]) {
+          acc[tenant.property] = [];
+        }
+        acc[tenant.property].push(tenant);
+        return acc;
+      },
+      {} as Record<string, Tenant[]>
+    );
   }, [tenants]);
 
   const doorCodesByProperty = React.useMemo(() => {
     if (!allDoorCodes) return {};
-    const flatCodes = allDoorCodes.flatMap(user => user.codes);
-    return flatCodes.reduce((acc, code) => {
+    const flatCodes = allDoorCodes.flatMap((user) => user.codes);
+    return flatCodes.reduce(
+      (acc, code) => {
         if (!acc[code.property]) {
-            acc[code.property] = [];
+          acc[code.property] = [];
         }
         acc[code.property].push(code);
         return acc;
-    }, {} as Record<string, typeof flatCodes>);
+      },
+      {} as Record<string, typeof flatCodes>
+    );
   }, [allDoorCodes]);
 
   const sortedProperties = React.useMemo(() => {
-    return properties ? [...properties].sort((a, b) => a.name.localeCompare(b.name)) : [];
+    return properties
+      ? [...properties].sort((a, b) => a.name.localeCompare(b.name))
+      : [];
   }, [properties]);
 
-  const pageIsLoading = isUserLoading || propertiesLoading || tenantsLoading || doorCodesLoading;
+  const handleTenantClick = (tenant: Tenant) => {
+    setSelectedTenant(tenant);
+    setIsTenantDialogOpen(true);
+  };
+
+  const pageIsLoading =
+    isUserLoading || propertiesLoading || tenantsLoading || doorCodesLoading;
 
   if (pageIsLoading || !user) {
     return (
@@ -132,19 +176,25 @@ export default function PropertiesPage() {
           </CardHeader>
           <CardContent>
             {pageError && (
-              <p className="text-destructive text-center py-8">Error: {pageError.message}</p>
+              <p className="text-destructive text-center py-8">
+                Error: {pageError.message}
+              </p>
             )}
             {!pageIsLoading && !pageError && sortedProperties.length > 0 ? (
               <div className="grid gap-6 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4">
                 {sortedProperties.map((property) => {
                   const propertyTenants = tenantsByProperty[property.name] || [];
-                  const propertyDoorCodes = doorCodesByProperty[property.name] || [];
-                  
+                  const propertyDoorCodes =
+                    doorCodesByProperty[property.name] || [];
+
                   return (
-                    <Card key={property.id} className="overflow-hidden flex flex-col">
+                    <Card
+                      key={property.id}
+                      className="overflow-hidden flex flex-col"
+                    >
                       <div className="relative w-full aspect-video bg-muted">
                         {property.photoUrl ? (
-                           <Image
+                          <Image
                             src={property.photoUrl}
                             alt={`Photo of ${property.name}`}
                             fill
@@ -152,7 +202,7 @@ export default function PropertiesPage() {
                           />
                         ) : (
                           <div className="flex items-center justify-center h-full">
-                             <Building className="w-12 h-12 text-muted-foreground" />
+                            <Building className="w-12 h-12 text-muted-foreground" />
                           </div>
                         )}
                       </div>
@@ -171,9 +221,12 @@ export default function PropertiesPage() {
                         </p>
                       </CardContent>
                       <CardFooter className="flex-col items-start gap-2 pt-4 border-t px-0">
-                         <Accordion type="multiple" className="w-full">
-                          {(propertyTenants.length > 0) && (
-                            <AccordionItem value="tenants" className="px-6 border-b-0">
+                        <Accordion type="multiple" className="w-full">
+                          {propertyTenants.length > 0 && (
+                            <AccordionItem
+                              value="tenants"
+                              className="px-6 border-b-0"
+                            >
                               <AccordionTrigger className="py-2">
                                 <h4 className="text-sm font-semibold text-foreground flex items-center gap-2">
                                   <UserIcon className="w-4 h-4" />
@@ -182,51 +235,129 @@ export default function PropertiesPage() {
                               </AccordionTrigger>
                               <AccordionContent className="pb-0">
                                 <div className="w-full space-y-2 pt-2">
-                                  {propertyTenants.map(tenant => (
-                                      <div key={tenant.id} className="flex items-center gap-2 text-sm text-muted-foreground">
-                                          <span>{tenant.name} ({tenant.room || 'N/A'})</span>
-                                      </div>
+                                  {propertyTenants.map((tenant) => (
+                                    <div
+                                      key={tenant.id}
+                                      className="flex items-center gap-2 text-sm"
+                                    >
+                                      <Button
+                                        variant="link"
+                                        className="p-0 h-auto text-muted-foreground hover:text-primary"
+                                        onClick={() => handleTenantClick(tenant)}
+                                      >
+                                        {tenant.name} ({tenant.room || 'N/A'})
+                                      </Button>
+                                    </div>
                                   ))}
                                 </div>
                               </AccordionContent>
                             </AccordionItem>
                           )}
-                          {(propertyDoorCodes.length > 0) && (
-                            <AccordionItem value="door-codes" className="px-6 border-b-0">
-                                <AccordionTrigger className="py-2">
-                                  <h4 className="text-sm font-semibold text-foreground flex items-center gap-2">
-                                    <DoorOpen className="w-4 h-4" />
-                                    Door Codes ({propertyDoorCodes.length})
-                                  </h4>
-                                </AccordionTrigger>
-                                <AccordionContent className="pb-0">
-                                  <div className="w-full space-y-2 pt-2">
-                                  {propertyDoorCodes.map(code => (
-                                      <div key={code.id} className="flex items-center justify-between gap-2 text-sm text-muted-foreground">
-                                          <span>{code.location}</span>
-                                          <span className="font-mono text-xs bg-muted px-2 py-1 rounded">{code.code}</span>
-                                      </div>
+                          {propertyDoorCodes.length > 0 && (
+                            <AccordionItem
+                              value="door-codes"
+                              className="px-6 border-b-0"
+                            >
+                              <AccordionTrigger className="py-2">
+                                <h4 className="text-sm font-semibold text-foreground flex items-center gap-2">
+                                  <DoorOpen className="w-4 h-4" />
+                                  Door Codes ({propertyDoorCodes.length})
+                                </h4>
+                              </AccordionTrigger>
+                              <AccordionContent className="pb-0">
+                                <div className="w-full space-y-2 pt-2">
+                                  {propertyDoorCodes.map((code) => (
+                                    <div
+                                      key={code.id}
+                                      className="flex items-center justify-between gap-2 text-sm text-muted-foreground"
+                                    >
+                                      <span>{code.location}</span>
+                                      <span className="font-mono text-xs bg-muted px-2 py-1 rounded">
+                                        {code.code}
+                                      </span>
+                                    </div>
                                   ))}
-                                  </div>
-                                </AccordionContent>
+                                </div>
+                              </AccordionContent>
                             </AccordionItem>
                           )}
                         </Accordion>
                       </CardFooter>
                     </Card>
-                  )
+                  );
                 })}
               </div>
             ) : (
               !pageIsLoading && (
                 <div className="text-center text-muted-foreground py-8">
-                  No properties found. Admins can add properties from the Admin page.
+                  No properties found. Admins can add properties from the Admin
+                  page.
                 </div>
               )
             )}
           </CardContent>
         </Card>
       </div>
+      <Dialog open={isTenantDialogOpen} onOpenChange={setIsTenantDialogOpen}>
+        <DialogContent>
+          <DialogHeader>
+            <DialogTitle>Tenant Information</DialogTitle>
+          </DialogHeader>
+          {selectedTenant && (
+            <div className="grid gap-4 py-4">
+              <div className="flex items-center gap-4">
+                <Avatar className="h-24 w-24">
+                  <AvatarImage
+                    src={selectedTenant.photoUrl}
+                    alt={selectedTenant.name}
+                  />
+                  <AvatarFallback>
+                    {getInitials(selectedTenant.name)}
+                  </AvatarFallback>
+                </Avatar>
+                <div className="flex-1">
+                  <h2 className="text-2xl font-bold">{selectedTenant.name}</h2>
+                  <p className="text-muted-foreground">
+                    Room: {selectedTenant.room || 'N/A'}
+                  </p>
+                </div>
+              </div>
+              <div className="space-y-2 text-sm pt-4">
+                <div className="flex items-center gap-2">
+                  <Mail className="w-4 h-4 text-muted-foreground" />
+                  <a
+                    href={`mailto:${selectedTenant.email}`}
+                    className="hover:underline"
+                  >
+                    {selectedTenant.email || 'No email'}
+                  </a>
+                </div>
+                <div className="flex items-center gap-2">
+                  <Phone className="w-4 h-4 text-muted-foreground" />
+                  <a
+                    href={`tel:${selectedTenant.phone}`}
+                    className="hover:underline"
+                  >
+                    {selectedTenant.phone || 'No phone'}
+                  </a>
+                </div>
+                {selectedTenant.notes && (
+                  <div className="pt-2">
+                    <p className="text-xs text-muted-foreground italic">
+                      "{selectedTenant.notes}"
+                    </p>
+                  </div>
+                )}
+              </div>
+            </div>
+          )}
+          <DialogFooter>
+            <DialogClose asChild>
+              <Button>Close</Button>
+            </DialogClose>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
     </MainLayout>
   );
 }
