@@ -1,3 +1,4 @@
+
 'use server';
 /**
  * @fileOverview A flow for admins to fetch all door codes from all users.
@@ -62,6 +63,7 @@ const getAllDoorCodesFlow = ai.defineFlow(
       if (!doorCodesSnapshot.empty) {
         const codes = doorCodesSnapshot.docs.map(doc => {
           const data = doc.data();
+          const lastChanged = data.lastChanged?.toDate ? data.lastChanged.toDate().toISOString() : undefined;
           return {
             id: doc.id,
             location: data.location || '',
@@ -70,7 +72,7 @@ const getAllDoorCodesFlow = ai.defineFlow(
             guestCode: data.guestCode || '',
             doorLockType: data.doorLockType || '',
             property: data.property || '',
-            lastChanged: data.lastChanged?.toDate()?.toISOString(),
+            lastChanged: lastChanged,
           };
         });
 

@@ -1,3 +1,4 @@
+
 'use client';
 
 import { useState, useEffect, useMemo } from 'react';
@@ -11,6 +12,8 @@ import {
   deleteDoc,
   serverTimestamp,
   Timestamp,
+  collectionGroup,
+  query,
 } from 'firebase/firestore';
 import { MainLayout } from '@/components/MainLayout';
 import {
@@ -90,23 +93,23 @@ export default function DoorCodesPage() {
       return null;
     }
     return collection(firestore, 'users', user.uid, 'doorCodes');
-  }, [firestore, user, userProfile]);
+  }, [firestore, user, userProfile?.role]);
 
   const { data: userDoorCodes, isLoading: userCodesLoading, error: userCodesError } = useCollection<DoorCode>(doorCodesQuery);
-
+  
   const doorCodes = userProfile?.role === 'admin' 
     ? allUsersCodes.flatMap(u => u.codes.map(c => ({...c, userId: u.uid, userEmail: u.email}))) 
     : userDoorCodes;
 
   useEffect(() => {
-    if (userProfile?.role === 'admin' && !isFetchingAllCodes) {
+    if (userProfile?.role === 'admin') {
       setIsFetchingAllCodes(true);
       getAllDoorCodes()
         .then(setAllUsersCodes)
         .catch(console.error)
         .finally(() => setIsFetchingAllCodes(false));
     }
-  }, [userProfile, isFetchingAllCodes]);
+  }, [userProfile?.role]);
 
 
   const [isFormDialogOpen, setIsFormDialogOpen] = useState(false);
