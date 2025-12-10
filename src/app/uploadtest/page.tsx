@@ -23,6 +23,7 @@ import {
   TableHeader,
   TableRow,
 } from '@/components/ui/table';
+import { Button } from '@/components/ui/button';
 import { Loader2 } from 'lucide-react';
 import Link from 'next/link';
 import { useRouter } from 'next/navigation';
@@ -50,8 +51,8 @@ export default function UploadTestPage() {
 
   useEffect(() => {
     const listFiles = async () => {
+      // Defensively wait for both storage and user to be available.
       if (!storage || !user) {
-        // Wait until storage and user are available
         if(!isUserLoading) {
            setIsListingFiles(false);
         }
