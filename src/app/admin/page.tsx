@@ -1,7 +1,7 @@
 'use client';
 import { MainLayout } from '@/components/MainLayout';
 import { useUser, useAuth } from '@/firebase';
-import { Loader2, Users, Shield, Lock, Building, Wallet, ShoppingCart, Coins } from 'lucide-react';
+import { Loader2, Users, Shield, Lock, Building, Wallet, ShoppingCart, Coins, CreditCard } from 'lucide-react';
 import { useRouter } from 'next/navigation';
 import { useEffect } from 'react';
 import {
@@ -24,6 +24,7 @@ import { ExpenseCategoryManager } from '@/components/admin/ExpenseCategoryManage
 import { VendorsManager } from '@/components/admin/VendorsManager';
 import { LockTypesManager } from '@/components/admin/LockTypesManager';
 import { IncomeTypeManager } from '@/components/admin/IncomeTypeManager';
+import { PaymentMethodsManager } from '@/components/admin/PaymentMethodsManager';
 
 export default function AdminPage() {
   const auth = useAuth();
@@ -106,6 +107,7 @@ export default function AdminPage() {
                  <IncomeTypeManager />
                  <ExpenseCategoryManager />
                  <VendorsManager />
+                 <PaymentMethodsManager />
               </div>
             </AccordionContent>
           </AccordionItem>
@@ -130,3 +132,5 @@ export default function AdminPage() {
     </MainLayout>
   );
 }
+
+    

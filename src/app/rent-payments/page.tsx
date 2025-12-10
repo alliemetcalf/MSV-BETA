@@ -43,14 +43,13 @@ import { Loader2, PlusCircle, Edit, Trash2 } from 'lucide-react';
 import { Tenant } from '@/types/tenant';
 import { RentPayment } from '@/types/rent-payment';
 import { IncomeType } from '@/types/income';
+import { PaymentMethod } from '@/types/payment-method';
 
 
 const moneyFormatter = new Intl.NumberFormat('en-US', {
   style: 'currency',
   currency: 'USD',
 });
-
-const paymentMethods = ['Zelle', 'Cash', 'Check', 'Venmo', 'Other'];
 
 const currentYear = new Date().getFullYear();
 const years = Array.from({ length: 10 }, (_, i) => currentYear - i);
@@ -121,6 +120,14 @@ export default function RentPaymentsPage() {
   );
   const { data: incomeTypesData, isLoading: incomeTypesLoading } = useDoc<{ types: IncomeType[] }>(incomeTypesDocRef);
   const incomeTypes = useMemo(() => incomeTypesData?.types.sort((a,b) => a.name.localeCompare(b.name)) || [], [incomeTypesData]);
+  
+  const paymentMethodsDocRef = useMemoFirebase(
+    () => (user && firestore ? doc(firestore, 'siteConfiguration', 'paymentMethods') : null),
+    [firestore, user]
+  );
+  const { data: paymentMethodsData, isLoading: paymentMethodsLoading } = useDoc<{ methods: PaymentMethod[] }>(paymentMethodsDocRef);
+  const paymentMethods = useMemo(() => paymentMethodsData?.methods.sort((a,b) => a.name.localeCompare(b.name)) || [], [paymentMethodsData]);
+
 
   const sortedPayments = useMemo(() => {
     if (!payments) return [];
@@ -243,7 +250,7 @@ export default function RentPaymentsPage() {
   };
 
 
-  const isLoading = isUserLoading || paymentsLoading || tenantsLoading || incomeTypesLoading;
+  const isLoading = isUserLoading || paymentsLoading || tenantsLoading || incomeTypesLoading || paymentMethodsLoading;
 
   if (isLoading) {
     return <div className="flex h-screen w-full items-center justify-center bg-background"><Loader2 className="h-10 w-10 animate-spin text-primary" /></div>;
@@ -359,7 +366,7 @@ export default function RentPaymentsPage() {
                 <Select onValueChange={(v) => setFormData(p => ({...p, paymentMethod: v}))} value={formData.paymentMethod} required>
                   <SelectTrigger className="col-span-3"><SelectValue placeholder="Select a payment method" /></SelectTrigger>
                   <SelectContent>
-                    {paymentMethods.map(method => <SelectItem key={method} value={method}>{method}</SelectItem>)}
+                    {paymentMethods.map(method => <SelectItem key={method.id} value={method.name}>{method.name}</SelectItem>)}
                   </SelectContent>
                 </Select>
               </div>
@@ -397,3 +404,5 @@ export default function RentPaymentsPage() {
     </MainLayout>
   );
 }
+
+    

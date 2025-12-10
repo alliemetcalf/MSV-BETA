@@ -383,7 +383,10 @@
           "description": "The name of the income type (e.g., Rent, Late Fee)."
         }
       },
-      "required": ["id", "name"]
+      "required": [
+        "id",
+        "name"
+      ]
     },
     "IncomeTypesConfiguration": {
       "title": "IncomeTypesConfiguration",
@@ -395,6 +398,39 @@
           "description": "An array of income type objects.",
           "items": {
             "$ref": "#/entities/IncomeType"
+          }
+        }
+      }
+    },
+    "PaymentMethod": {
+      "title": "PaymentMethod",
+      "type": "object",
+      "description": "Represents a single payment method.",
+      "properties": {
+        "id": {
+          "type": "string",
+          "description": "A unique identifier for the payment method."
+        },
+        "name": {
+          "type": "string",
+          "description": "The name of the payment method (e.g., Zelle, Cash)."
+        }
+      },
+      "required": [
+        "id",
+        "name"
+      ]
+    },
+    "PaymentMethodsConfiguration": {
+      "title": "PaymentMethodsConfiguration",
+      "type": "object",
+      "description": "A list of available payment methods.",
+      "properties": {
+        "methods": {
+          "type": "array",
+          "description": "An array of payment method objects.",
+          "items": {
+            "$ref": "#/entities/PaymentMethod"
           }
         }
       }
@@ -451,6 +487,13 @@
         "description": "Stores the list of available income types."
       },
       {
+        "path": "/siteConfiguration/paymentMethods",
+        "schema": {
+          "$ref": "#/entities/PaymentMethodsConfiguration"
+        },
+        "description": "Stores the list of available payment methods."
+      },
+      {
         "path": "/properties/{propertyId}",
         "schema": {
           "$ref": "#/entities/Property"
@@ -481,3 +524,5 @@
     ]
   }
 }
+
+    
