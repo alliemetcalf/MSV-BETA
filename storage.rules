@@ -2,33 +2,11 @@ rules_version = '2';
 
 service firebase.storage {
   match /b/{bucket}/o {
-
-    // Rule 1: Allow authenticated users to LIST the contents of the bucket.
-    // This is required for the file list functionality to work.
-    // The `list` permission is non-recursive and applies to the root.
-    allow list: if request.auth != null;
-
-    // Rule 2: Allow authenticated users to READ any file.
-    // This allows viewing/downloading files after they have been listed.
+    // TEMPORARY DEBUGGING RULE:
+    // Allow all reads and writes to all files.
+    // This is insecure and should be locked down after testing.
     match /{allPaths=**} {
-      allow read: if request.auth != null;
-    }
-    
-    // Rule 3: Allow authenticated users to WRITE to the 'lock-type-instructions' path.
-    // This is for the image uploads in the admin panel.
-    match /lock-type-instructions/{lockTypeId}/{fileName} {
-      allow write: if request.auth != null && 
-                    request.resource.size < 5 * 1024 * 1024 &&
-                    request.resource.contentType.matches('image/.*');
-    }
-
-    // Rule 4: Generic rule to allow authenticated users to write files to the root.
-    // This is for the main "Uploads" page functionality.
-    // We separate this from read/list to be more secure.
-    match /{fileName} {
-       // This rule applies to files directly in the root.
-       // It doesn't use {allPaths=**} so it won't clash with the folder-specific rule above.
-      allow write: if request.auth != null;
+      allow read, write;
     }
   }
 }
