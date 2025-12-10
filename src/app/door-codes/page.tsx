@@ -82,7 +82,9 @@ export default function DoorCodesPage() {
     [firestore, user]
   );
   const { data: userProfile, isLoading: profileLoading } = useDoc<UserProfile>(userProfileRef);
-  const isAdmin = userProfile?.role === 'admin';
+  
+  // isAdmin is only true after the profile has loaded and the role is 'admin'
+  const isAdmin = !profileLoading && userProfile?.role === 'admin';
 
   const [isFormDialogOpen, setIsFormDialogOpen] = useState(false);
   const [isInstructionDialogOpen, setIsInstructionDialogOpen] = useState(false);
@@ -111,17 +113,15 @@ export default function DoorCodesPage() {
     }
   }, [user, isUserLoading, router]);
 
-  // Unified query for door codes
+  // This query will only run after we know the user's status (admin or not)
   const doorCodesQuery = useMemoFirebase(() => {
-    if (!firestore || !user) return null;
+    if (!firestore || !user || profileLoading) return null; // <-- Wait for profile to load
     if (isAdmin) {
-      // Admin query: gets all door codes from all users
       return query(collectionGroup(firestore, 'doorCodes'));
     } else {
-      // User query: gets door codes for only the current user
       return collection(firestore, 'users', user.uid, 'doorCodes');
     }
-  }, [firestore, user, isAdmin]);
+  }, [firestore, user, isAdmin, profileLoading]);
 
   const { data: doorCodes, isLoading: codesLoading, error: codesError } = useCollection<DoorCode>(doorCodesQuery);
 
@@ -198,7 +198,18 @@ export default function DoorCodesPage() {
     const userIdForDeletion = pathSegments[1];
     const codeId = pathSegments[3];
 
-    if (!userIdForDeletion || !codeId) return;
+    if (!userIdForDeletion || !codeId) { 
+        // This case handles user-owned codes, which have a simple ID.
+        if (user && code.id) {
+             if (confirm('Are you sure you want to delete this door code?')) {
+                const docRef = doc(firestore, 'users', user.uid, 'doorCodes', code.id);
+                await deleteDoc(docRef);
+            }
+            return;
+        }
+        console.error("Could not determine path to delete door code.");
+        return;
+    }
     
     if (confirm('Are you sure you want to delete this door code?')) {
       const docRef = doc(firestore, 'users', userIdForDeletion, 'doorCodes', codeId);
@@ -251,6 +262,19 @@ export default function DoorCodesPage() {
         const pathSegments = editingCode.id.split('/');
         const userIdForWrite = pathSegments[1];
         const codeId = pathSegments[3];
+
+        if (!userIdForWrite || !codeId) {
+             // This case handles user-owned codes, which have a simple ID.
+            if (user && editingCode.id) {
+                const docRef = doc(firestore, 'users', user.uid, 'doorCodes', editingCode.id);
+                await updateDoc(docRef, codeData);
+                handleDialogClose();
+                return;
+            }
+            console.error("Could not determine path to update door code.");
+            return;
+        }
+
         const docRef = doc(firestore, 'users', userIdForWrite, 'doorCodes', codeId);
         await updateDoc(docRef, codeData);
     } else {
@@ -269,7 +293,7 @@ export default function DoorCodesPage() {
     );
   }
 
-  const isLoading = codesLoading || lockTypesLoading || propertiesLoading;
+  const isLoading = codesLoading || lockTypesLoading || propertiesLoading || profileLoading;
 
   return (
     <MainLayout>
