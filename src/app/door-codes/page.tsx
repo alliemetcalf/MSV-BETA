@@ -358,7 +358,6 @@ export default function DoorCodesPage() {
                             <Table>
                               <TableHeader>
                                 <TableRow>
-                                  {isAdmin && <TableHead>User</TableHead>}
                                   <TableHead>Location</TableHead>
                                   <TableHead>Lock Type</TableHead>
                                   <TableHead>Code</TableHead>
@@ -373,7 +372,6 @@ export default function DoorCodesPage() {
                               <TableBody>
                                 {codes.map((code) => (
                                   <TableRow key={code.id}>
-                                    {isAdmin && 'userEmail' in code && <TableCell>{code.userEmail}</TableCell>}
                                     <TableCell>{code.location}</TableCell>
                                     <TableCell>
                                       <div className="flex items-center gap-2">
