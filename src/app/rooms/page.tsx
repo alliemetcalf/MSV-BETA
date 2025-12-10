@@ -180,9 +180,15 @@ export default function RoomsPage() {
           if (code.property !== tenant.property) return false;
           const roomIdentifier = tenant.room.toLowerCase();
           const locationIdentifier = code.location.toLowerCase();
-          if (roomIdentifier === locationIdentifier) return true;
+          
+          // Use a regex for a whole word match to avoid "Room 1" matching "Room 10"
           const roomRegex = new RegExp(`\\b${roomIdentifier}\\b`, 'i');
-          return roomRegex.test(locationIdentifier);
+          if (roomRegex.test(locationIdentifier)) return true;
+
+          // Fallback for simple equality
+          if (roomIdentifier === locationIdentifier) return true;
+          
+          return false;
         });
 
         return {
@@ -389,7 +395,7 @@ export default function RoomsPage() {
         <DialogContent>
           <DialogHeader>
             <DialogTitle>Edit Door Code</DialogTitle>
-            <DialogDescription>
+             <div className="text-sm text-muted-foreground">
                 <div className='flex justify-between items-center'>
                     <span>Update the details for this door code.</span>
                     {editingCode && (
@@ -399,7 +405,7 @@ export default function RoomsPage() {
                         </Button>
                     )}
                 </div>
-            </DialogDescription>
+            </div>
           </DialogHeader>
           <form onSubmit={handleFormSubmit}>
             <div className="grid gap-4 py-4">
