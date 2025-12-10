@@ -17,7 +17,6 @@ import {
   updateDoc,
   deleteDoc,
 } from 'firebase/firestore';
-import { ref, uploadBytesResumable, getDownloadURL } from 'firebase/storage';
 import Image from 'next/image';
 import {
   Card,
@@ -66,6 +65,7 @@ import { useToast } from '@/hooks/use-toast';
 import { Progress } from '../ui/progress';
 import { Switch } from '@/components/ui/switch';
 import { Badge } from '../ui/badge';
+import { ref, uploadBytesResumable, getDownloadURL } from 'firebase/storage';
 
 const moneyFormatter = new Intl.NumberFormat('en-US', {
   style: 'currency',
@@ -221,14 +221,14 @@ export function TenantsManager() {
   );
   const { data: propertiesData, isLoading: propertiesLoading } =
     useCollection<Property>(propertiesCollectionRef);
-  const properties = propertiesData?.map(p => p.name).sort() || [];
-  
+  const properties = propertiesData?.map((p) => p.name).sort() || [];
+
   const sortedTenants = useMemo(() => {
     if (!tenants) return [];
-    return [...tenants].sort((a,b) => {
-        if (a.property < b.property) return -1;
-        if (a.property > b.property) return 1;
-        return a.name.localeCompare(b.name);
+    return [...tenants].sort((a, b) => {
+      if (a.property < b.property) return -1;
+      if (a.property > b.property) return 1;
+      return a.name.localeCompare(b.name);
     });
   }, [tenants]);
 
@@ -263,7 +263,7 @@ export function TenantsManager() {
     });
     setIsFormDialogOpen(true);
   };
-  
+
   const handleDeleteClick = async (tenantId: string) => {
     if (!firestore) return;
     if (confirm('Are you sure you want to delete this tenant?')) {
@@ -290,26 +290,26 @@ export function TenantsManager() {
     e: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement>
   ) => {
     const { id, value, type } = e.target;
-    setFormData((prev) => ({ 
-        ...prev, 
-        [id]: type === 'number' ? parseFloat(value) : value 
+    setFormData((prev) => ({
+      ...prev,
+      [id]: type === 'number' ? parseFloat(value) : value,
     }));
   };
 
   const handleSelectChange = (value: string) => {
     setFormData((prev) => ({ ...prev, property: value }));
   };
-  
+
   const handleSwitchChange = (checked: boolean) => {
     setFormData((prev) => ({ ...prev, active: checked }));
-  }
+  };
 
   const handleUploadComplete = async (url: string) => {
     setFormData((prev) => ({ ...prev, photoUrl: url }));
-    if(editingTenant && firestore){
-        const docRef = doc(firestore, 'tenants', editingTenant.id);
-        await updateDoc(docRef, { photoUrl: url });
-        toast({ title: 'Success', description: 'Tenant photo updated.' });
+    if (editingTenant && firestore) {
+      const docRef = doc(firestore, 'tenants', editingTenant.id);
+      await updateDoc(docRef, { photoUrl: url });
+      toast({ title: 'Success', description: 'Tenant photo updated.' });
     }
   };
 
@@ -326,9 +326,9 @@ export function TenantsManager() {
 
     try {
       const dataToSave = {
-          ...formData,
-          photoUrl: formData.photoUrl || '',
-          rent: Number(formData.rent) || 0,
+        ...formData,
+        photoUrl: formData.photoUrl || '',
+        rent: Number(formData.rent) || 0,
       };
       if (editingTenant) {
         const docRef = doc(firestore, 'tenants', editingTenant.id);
@@ -340,7 +340,10 @@ export function TenantsManager() {
           dataToSave
         );
         setEditingTenant({ ...dataToSave, id: newDocRef.id });
-        toast({ title: 'Success', description: 'Tenant added. You can now upload a photo.' });
+        toast({
+          title: 'Success',
+          description: 'Tenant added. You can now upload a photo.',
+        });
         return;
       }
       handleDialogClose();
@@ -376,73 +379,77 @@ export function TenantsManager() {
               <Loader2 className="mx-auto h-8 w-8 animate-spin" />
             </div>
           ) : tenantsError ? (
-            <p className="text-destructive text-center py-8">Error: {tenantsError.message}</p>
+            <p className="text-destructive text-center py-8">
+              Error: {tenantsError.message}
+            </p>
           ) : sortedTenants && sortedTenants.length > 0 ? (
             <Table>
-                <TableHeader>
-                    <TableRow>
-                    <TableHead>Name</TableHead>
-                    <TableHead>Property</TableHead>
-                    <TableHead>Room</TableHead>
-                    <TableHead>Rent</TableHead>
-                    <TableHead>Status</TableHead>
-                    <TableHead className="text-right">Actions</TableHead>
-                    </TableRow>
-                </TableHeader>
-                <TableBody>
-                    {sortedTenants.map((tenant) => (
-                    <TableRow key={tenant.id}>
-                        <TableCell className="flex items-center gap-2">
-                        <div className="w-8 h-8 rounded-full bg-muted overflow-hidden flex-shrink-0">
-                            {tenant.photoUrl ? (
-                            <Image
-                                src={tenant.photoUrl}
-                                alt={tenant.name}
-                                width={32}
-                                height={32}
-                                className="object-cover w-full h-full"
-                            />
-                            ) : (
-                            <div className="w-full h-full flex items-center justify-center">
-                                <UserIcon className="w-5 h-5 text-muted-foreground" />
-                            </div>
-                            )}
-                        </div>
-                        {tenant.name}
-                        </TableCell>
-                        <TableCell>{tenant.property}</TableCell>
-                        <TableCell>{tenant.room}</TableCell>
-                        <TableCell>{moneyFormatter.format(tenant.rent || 0)}</TableCell>
-                        <TableCell>
-                            <Badge variant={tenant.active ? "secondary" : "outline"}>
-                                {tenant.active ? 'Active' : 'Inactive'}
-                            </Badge>
-                        </TableCell>
-                        <TableCell className="text-right">
-                        <Button
-                            variant="ghost"
-                            size="icon"
-                            onClick={() => handleEditClick(tenant)}
-                        >
-                            <Edit className="w-4 h-4" />
-                        </Button>
-                        <Button
-                            variant="ghost"
-                            size="icon"
-                            onClick={() => handleDeleteClick(tenant.id)}
-                            className="text-destructive hover:text-destructive/80"
-                        >
-                            <Trash2 className="w-4 h-4" />
-                        </Button>
-                        </TableCell>
-                    </TableRow>
-                    ))}
-                </TableBody>
+              <TableHeader>
+                <TableRow>
+                  <TableHead>Name</TableHead>
+                  <TableHead>Property</TableHead>
+                  <TableHead>Room</TableHead>
+                  <TableHead>Rent</TableHead>
+                  <TableHead>Status</TableHead>
+                  <TableHead className="text-right">Actions</TableHead>
+                </TableRow>
+              </TableHeader>
+              <TableBody>
+                {sortedTenants.map((tenant) => (
+                  <TableRow key={tenant.id}>
+                    <TableCell className="flex items-center gap-2">
+                      <div className="w-8 h-8 rounded-full bg-muted overflow-hidden flex-shrink-0">
+                        {tenant.photoUrl ? (
+                          <Image
+                            src={tenant.photoUrl}
+                            alt={tenant.name}
+                            width={32}
+                            height={32}
+                            className="object-cover w-full h-full"
+                          />
+                        ) : (
+                          <div className="w-full h-full flex items-center justify-center">
+                            <UserIcon className="w-5 h-5 text-muted-foreground" />
+                          </div>
+                        )}
+                      </div>
+                      {tenant.name}
+                    </TableCell>
+                    <TableCell>{tenant.property}</TableCell>
+                    <TableCell>{tenant.room}</TableCell>
+                    <TableCell>
+                      {moneyFormatter.format(tenant.rent || 0)}
+                    </TableCell>
+                    <TableCell>
+                      <Badge variant={tenant.active ? 'secondary' : 'outline'}>
+                        {tenant.active ? 'Active' : 'Inactive'}
+                      </Badge>
+                    </TableCell>
+                    <TableCell className="text-right">
+                      <Button
+                        variant="ghost"
+                        size="icon"
+                        onClick={() => handleEditClick(tenant)}
+                      >
+                        <Edit className="w-4 h-4" />
+                      </Button>
+                      <Button
+                        variant="ghost"
+                        size="icon"
+                        onClick={() => handleDeleteClick(tenant.id)}
+                        className="text-destructive hover:text-destructive/80"
+                      >
+                        <Trash2 className="w-4 h-4" />
+                      </Button>
+                    </TableCell>
+                  </TableRow>
+                ))}
+              </TableBody>
             </Table>
           ) : (
-             <div className="text-center text-muted-foreground py-8">
-                No tenants found. Click "Add Tenant" to get started.
-             </div>
+            <div className="text-center text-muted-foreground py-8">
+              No tenants found. Click "Add Tenant" to get started.
+            </div>
           )}
         </CardContent>
       </Card>
@@ -466,14 +473,14 @@ export function TenantsManager() {
               />
               <div className="grid grid-cols-4 items-center gap-4">
                 <Label htmlFor="active" className="text-right">
-                    Active
+                  Active
                 </Label>
-                <div className='col-span-3 flex items-center'>
-                    <Switch
-                        id="active"
-                        checked={formData.active}
-                        onCheckedChange={handleSwitchChange}
-                    />
+                <div className="col-span-3 flex items-center">
+                  <Switch
+                    id="active"
+                    checked={formData.active}
+                    onCheckedChange={handleSwitchChange}
+                  />
                 </div>
               </div>
               <div className="grid grid-cols-4 items-center gap-4">
