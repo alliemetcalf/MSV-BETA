@@ -22,6 +22,16 @@ import { MainLayout } from '@/components/MainLayout';
 import { Card, CardHeader, CardTitle, CardDescription, CardContent } from '@/components/ui/card';
 import { Table, TableHeader, TableRow, TableHead, TableBody, TableCell } from '@/components/ui/table';
 import { Button } from '@/components/ui/button';
+import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+} from "@/components/ui/alert-dialog"
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription, DialogFooter, DialogClose } from '@/components/ui/dialog';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
@@ -53,6 +63,9 @@ export default function RentPaymentsPage() {
   const [isFormOpen, setIsFormOpen] = useState(false);
   const [editingPayment, setEditingPayment] = useState<RentPayment | null>(null);
   const [isSubmitting, setIsSubmitting] = useState(false);
+  
+  const [isConfirmDialogOpen, setIsConfirmDialogOpen] = useState(false);
+  const [paymentToDelete, setPaymentToDelete] = useState<RentPayment | null>(null);
 
   const [formData, setFormData] = useState<{
     tenantId: string;
@@ -132,15 +145,21 @@ export default function RentPaymentsPage() {
     setIsFormOpen(true);
   };
 
-  const handleDeleteClick = async (payment: RentPayment) => {
-    if (!firestore) return;
-    if (confirm('Are you sure you want to delete this rent payment?')) {
-      try {
-        await deleteDoc(doc(firestore, 'rentPayments', payment.id));
-        toast({ title: 'Payment Deleted', description: 'The payment has been successfully removed.' });
-      } catch (error) {
-        toast({ variant: 'destructive', title: 'Error Deleting', description: 'Could not delete the payment.' });
-      }
+  const handleDeleteClick = (payment: RentPayment) => {
+    setPaymentToDelete(payment);
+    setIsConfirmDialogOpen(true);
+  };
+
+  const confirmDelete = async () => {
+    if (!firestore || !paymentToDelete) return;
+    try {
+      await deleteDoc(doc(firestore, 'rentPayments', paymentToDelete.id));
+      toast({ title: 'Payment Deleted', description: 'The payment has been successfully removed.' });
+    } catch (error) {
+      toast({ variant: 'destructive', title: 'Error Deleting', description: 'Could not delete the payment.' });
+    } finally {
+      setIsConfirmDialogOpen(false);
+      setPaymentToDelete(null);
     }
   };
 
@@ -224,7 +243,7 @@ export default function RentPaymentsPage() {
               <CardTitle>Rent Payments</CardTitle>
               <CardDescription>Track and manage all tenant rent payments.</CardDescription>
             </div>
-            <Button onClick={handleAddClick}><PlusCircle /> Add Payment</Button>
+            <Button onClick={handleAddClick}><PlusCircle className="mr-2 h-4 w-4" /> Add Payment</Button>
           </CardHeader>
           <CardContent>
             {paymentsError && <p className="text-destructive text-center py-8">Error: {paymentsError.message}</p>}
@@ -251,8 +270,8 @@ export default function RentPaymentsPage() {
                       <TableCell>{payment.notes}</TableCell>
                       <TableCell className="text-right font-mono">{moneyFormatter.format(payment.amount)}</TableCell>
                       <TableCell className="text-right">
-                        <Button variant="ghost" size="icon" onClick={() => handleEditClick(payment)}><Edit /></Button>
-                        <Button variant="ghost" size="icon" onClick={() => handleDeleteClick(payment)} className="text-destructive hover:text-destructive/80"><Trash2 /></Button>
+                        <Button variant="ghost" size="icon" onClick={() => handleEditClick(payment)}><Edit className="h-4 w-4" /></Button>
+                        <Button variant="ghost" size="icon" onClick={() => handleDeleteClick(payment)} className="text-destructive hover:text-destructive/80"><Trash2 className="h-4 w-4" /></Button>
                       </TableCell>
                     </TableRow>
                   ))}
@@ -334,6 +353,21 @@ export default function RentPaymentsPage() {
         </DialogContent>
       </Dialog>
       
+       <AlertDialog open={isConfirmDialogOpen} onOpenChange={setIsConfirmDialogOpen}>
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>Are you sure?</AlertDialogTitle>
+            <AlertDialogDescription>
+              This action cannot be undone. This will permanently delete the rent
+              payment record.
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel>Cancel</AlertDialogCancel>
+            <AlertDialogAction onClick={confirmDelete}>Delete</AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
     </MainLayout>
   );
 }
