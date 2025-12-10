@@ -26,7 +26,6 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription, Di
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
-import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
 import { Calendar } from '@/components/ui/calendar';
 import { Textarea } from '@/components/ui/textarea';
 import { cn } from '@/lib/utils';
@@ -253,25 +252,18 @@ export default function RentPaymentsPage() {
               </div>
               <div className="grid grid-cols-4 items-center gap-4">
                 <Label htmlFor="date" className="text-right">Date</Label>
-                <Popover open={isCalendarOpen} onOpenChange={setIsCalendarOpen}>
-                  <PopoverTrigger asChild>
-                    <Button variant="outline" className={cn('col-span-3 justify-start text-left font-normal', !formData.date && 'text-muted-foreground')}>
-                      <CalendarIcon className="mr-2 h-4 w-4" />
-                      {formData.date ? format(formData.date, 'PPP') : <span>Pick a date</span>}
-                    </Button>
-                  </PopoverTrigger>
-                  <PopoverContent className="w-auto p-0">
-                    <Calendar 
-                      mode="single" 
-                      selected={formData.date} 
-                      onSelect={(date) => {
-                        setFormData(p => ({...p, date: date ?? undefined}));
-                        setIsCalendarOpen(false);
-                      }}
-                      initialFocus 
-                    />
-                  </PopoverContent>
-                </Popover>
+                 <Button
+                    type="button"
+                    variant="outline"
+                    className={cn(
+                      'col-span-3 justify-start text-left font-normal',
+                      !formData.date && 'text-muted-foreground'
+                    )}
+                    onClick={() => setIsCalendarOpen(true)}
+                  >
+                    <CalendarIcon className="mr-2 h-4 w-4" />
+                    {formData.date ? format(formData.date, 'PPP') : <span>Pick a date</span>}
+                  </Button>
               </div>
               <div className="grid grid-cols-4 items-center gap-4">
                 <Label htmlFor="amount" className="text-right">Amount</Label>
@@ -299,6 +291,22 @@ export default function RentPaymentsPage() {
               </Button>
             </DialogFooter>
           </form>
+        </DialogContent>
+      </Dialog>
+      
+      <Dialog open={isCalendarOpen} onOpenChange={setIsCalendarOpen}>
+        <DialogContent className="w-auto">
+           <Calendar
+              mode="single"
+              selected={formData.date}
+              onSelect={(date) => {
+                if (date) {
+                  setFormData((p) => ({ ...p, date: date }));
+                  setIsCalendarOpen(false);
+                }
+              }}
+              initialFocus
+            />
         </DialogContent>
       </Dialog>
     </MainLayout>
