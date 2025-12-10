@@ -99,6 +99,8 @@ export default function ExpensesPage() {
   const [uploadProgress, setUploadProgress] = useState<number | null>(null);
   const [isUploading, setIsUploading] = useState(false);
 
+  const [isCalendarOpen, setIsCalendarOpen] = useState(false);
+
   useEffect(() => {
     if (!isUserLoading && !user) {
       router.push('/login');
@@ -143,7 +145,7 @@ export default function ExpensesPage() {
   const roomsByProperty = useMemo(() => {
     if (!tenants) return {};
     return tenants.reduce((acc, tenant) => {
-      if (tenant.property && tenant.room && tenant.active) {
+      if (tenant.property && tenant.room) {
         if (!acc[tenant.property]) acc[tenant.property] = new Set();
         acc[tenant.property].add(tenant.room);
       }
