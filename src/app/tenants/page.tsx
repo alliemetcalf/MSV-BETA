@@ -70,17 +70,19 @@ export default function TenantsPage() {
 
   const groupedTenants = useMemo(() => {
     if (!tenants) return {};
-    return tenants.reduce(
-      (acc, tenant) => {
-        const { property } = tenant;
-        if (!acc[property]) {
-          acc[property] = [];
-        }
-        acc[property].push(tenant);
-        return acc;
-      },
-      {} as Record<string, Tenant[]>
-    );
+    return tenants
+      .filter((tenant) => tenant.active)
+      .reduce(
+        (acc, tenant) => {
+          const { property } = tenant;
+          if (!acc[property]) {
+            acc[property] = [];
+          }
+          acc[property].push(tenant);
+          return acc;
+        },
+        {} as Record<string, Tenant[]>
+      );
   }, [tenants]);
 
   if (isUserLoading || !user) {
@@ -98,7 +100,7 @@ export default function TenantsPage() {
           <CardHeader>
             <CardTitle>Tenant Directory</CardTitle>
             <CardDescription>
-              A directory of all tenants across all properties.
+              A directory of all active tenants across all properties.
             </CardDescription>
           </CardHeader>
           <CardContent>

@@ -66,6 +66,7 @@ import { Progress } from '../ui/progress';
 import { Switch } from '@/components/ui/switch';
 import { Badge } from '../ui/badge';
 import { ref, uploadBytesResumable, getDownloadURL } from 'firebase/storage';
+import { RadioGroup, RadioGroupItem } from '@/components/ui/radio-group';
 
 const moneyFormatter = new Intl.NumberFormat('en-US', {
   style: 'currency',
@@ -205,6 +206,8 @@ export function TenantsManager() {
     active: true,
   });
 
+  const [filter, setFilter] = useState<'all' | 'active' | 'inactive'>('active');
+
   const tenantsCollectionRef = useMemoFirebase(
     () => (user && firestore ? collection(firestore, 'tenants') : null),
     [firestore, user]
@@ -223,14 +226,22 @@ export function TenantsManager() {
     useCollection<Property>(propertiesCollectionRef);
   const properties = propertiesData?.map((p) => p.name).sort() || [];
 
-  const sortedTenants = useMemo(() => {
+  const filteredTenants = useMemo(() => {
     if (!tenants) return [];
-    return [...tenants].sort((a, b) => {
+    const sorted = [...tenants].sort((a, b) => {
       if (a.property < b.property) return -1;
       if (a.property > b.property) return 1;
       return a.name.localeCompare(b.name);
     });
-  }, [tenants]);
+
+    if (filter === 'active') {
+      return sorted.filter((tenant) => tenant.active);
+    }
+    if (filter === 'inactive') {
+      return sorted.filter((tenant) => !tenant.active);
+    }
+    return sorted;
+  }, [tenants, filter]);
 
   const handleAddClick = () => {
     setEditingTenant(null);
@@ -361,19 +372,41 @@ export function TenantsManager() {
   return (
     <>
       <Card>
-        <CardHeader className="flex flex-row items-center justify-between">
-          <div>
-            <CardTitle>Manage Tenants</CardTitle>
-            <CardDescription>
-              Add, edit, or remove tenant information.
-            </CardDescription>
+        <CardHeader>
+          <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
+            <div>
+              <CardTitle>Manage Tenants</CardTitle>
+              <CardDescription>
+                Add, edit, or remove tenant information.
+              </CardDescription>
+            </div>
+            <Button onClick={handleAddClick}>
+              <PlusCircle className="mr-2 h-4 w-4" />
+              Add Tenant
+            </Button>
           </div>
-          <Button onClick={handleAddClick}>
-            <PlusCircle className="mr-2" />
-            Add Tenant
-          </Button>
         </CardHeader>
         <CardContent>
+          <div className="flex items-center justify-end mb-4">
+            <RadioGroup
+              defaultValue="active"
+              onValueChange={(value: 'all' | 'active' | 'inactive') => setFilter(value)}
+              className="flex items-center space-x-4"
+            >
+              <div className="flex items-center space-x-2">
+                <RadioGroupItem value="all" id="r-all" />
+                <Label htmlFor="r-all">All</Label>
+              </div>
+              <div className="flex items-center space-x-2">
+                <RadioGroupItem value="active" id="r-active" />
+                <Label htmlFor="r-active">Active</Label>
+              </div>
+              <div className="flex items-center space-x-2">
+                <RadioGroupItem value="inactive" id="r-inactive" />
+                <Label htmlFor="r-inactive">Inactive</Label>
+              </div>
+            </RadioGroup>
+          </div>
           {isLoading ? (
             <div className="flex justify-center py-8">
               <Loader2 className="mx-auto h-8 w-8 animate-spin" />
@@ -382,7 +415,7 @@ export function TenantsManager() {
             <p className="text-destructive text-center py-8">
               Error: {tenantsError.message}
             </p>
-          ) : sortedTenants && sortedTenants.length > 0 ? (
+          ) : filteredTenants && filteredTenants.length > 0 ? (
             <Table>
               <TableHeader>
                 <TableRow>
@@ -394,7 +427,7 @@ export function TenantsManager() {
                 </TableRow>
               </TableHeader>
               <TableBody>
-                {sortedTenants.map((tenant) => (
+                {filteredTenants.map((tenant) => (
                   <TableRow key={tenant.id}>
                     <TableCell className="flex items-center gap-2">
                       <div className="w-8 h-8 rounded-full bg-muted overflow-hidden flex-shrink-0">
@@ -444,7 +477,7 @@ export function TenantsManager() {
             </Table>
           ) : (
             <div className="text-center text-muted-foreground py-8">
-              No tenants found. Click "Add Tenant" to get started.
+              No tenants found for the selected filter.
             </div>
           )}
         </CardContent>
