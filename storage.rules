@@ -5,11 +5,11 @@ service firebase.storage {
 
     // Rule 1: Allow authenticated users to LIST the contents of the bucket.
     // This is required for the file list functionality to work.
-    // 'list' permission should be on the collection, not on individual documents.
+    // The `list` permission is non-recursive and applies to the root.
     allow list: if request.auth != null;
 
     // Rule 2: Allow authenticated users to READ any file.
-    // This allows viewing files after they have been listed.
+    // This allows viewing/downloading files after they have been listed.
     match /{allPaths=**} {
       allow read: if request.auth != null;
     }
@@ -24,7 +24,10 @@ service firebase.storage {
 
     // Rule 4: Generic rule to allow authenticated users to write files to the root.
     // This is for the main "Uploads" page functionality.
+    // We separate this from read/list to be more secure.
     match /{fileName} {
+       // This rule applies to files directly in the root.
+       // It doesn't use {allPaths=**} so it won't clash with the folder-specific rule above.
       allow write: if request.auth != null;
     }
   }

@@ -35,17 +35,6 @@ export interface FirebaseContextState {
   userError: Error | null; // Error from auth listener
 }
 
-// Return type for useFirebase()
-export interface FirebaseServicesAndUser {
-  firebaseApp: FirebaseApp;
-  firestore: Firestore;
-  auth: Auth;
-  storage: FirebaseStorage;
-  user: User | null;
-  isUserLoading: boolean;
-  userError: Error | null;
-}
-
 // Return type for useUser() - specific to user auth state
 export interface UserHookResult { 
   user: User | null;
@@ -115,61 +104,39 @@ export const FirebaseProvider: React.FC<FirebaseProviderProps> = ({
   );
 };
 
-/**
- * Hook to access core Firebase services and user authentication state.
- * Throws error if core services are not available or used outside provider.
- */
-export const useFirebase = (): Partial<FirebaseServicesAndUser> => {
+function useFirebaseContext() {
   const context = useContext(FirebaseContext);
-
   if (context === undefined) {
-    throw new Error('useFirebase must be used within a FirebaseProvider.');
+    throw new Error('useFirebase hook must be used within a FirebaseProvider.');
   }
-  
-  if (!context.areServicesAvailable || !context.firebaseApp || !context.firestore || !context.auth) {
-    return {
-        user: context.user,
-        isUserLoading: context.isUserLoading,
-        userError: context.userError,
-    }
-  }
-
-  return {
-    firebaseApp: context.firebaseApp,
-    firestore: context.firestore,
-    auth: context.auth,
-    storage: context.storage,
-    user: context.user,
-    isUserLoading: context.isUserLoading,
-    userError: context.userError,
-  };
-};
+  return context;
+}
 
 /** Hook to access Firebase Auth instance. */
 export const useAuth = (): Auth => {
-  const { auth } = useFirebase();
-  if (!auth) throw new Error("Auth service is not available.");
+  const { auth } = useFirebaseContext();
+  if (!auth) throw new Error("Auth service is not available or not yet initialized.");
   return auth;
 };
 
 /** Hook to access Firestore instance. */
 export const useFirestore = (): Firestore => {
-  const { firestore } = useFirebase();
-  if (!firestore) throw new Error("Firestore service is not available.");
+  const { firestore } = useFirebaseContext();
+  if (!firestore) throw new Error("Firestore service is not available or not yet initialized.");
   return firestore;
 };
 
 /** Hook to access Firebase App instance. */
 export const useFirebaseApp = (): FirebaseApp => {
-  const { firebaseApp } = useFirebase();
-  if (!firebaseApp) throw new Error("FirebaseApp service is not available.");
+  const { firebaseApp } = useFirebaseContext();
+  if (!firebaseApp) throw new Error("FirebaseApp service is not available or not yet initialized.");
   return firebaseApp;
 };
 
 /** Hook to access Firebase Storage instance. */
 export const useStorage = (): FirebaseStorage => {
-    const { storage } = useFirebase();
-    if (!storage) throw new Error("Storage service is not available.");
+    const { storage } = useFirebaseContext();
+    if (!storage) throw new Error("Storage service is not available or not yet initialized.");
     return storage;
 };
 
@@ -198,6 +165,6 @@ export function useMemoFirebase<T>(factory: () => T, deps: DependencyList): T {
  * @returns {UserHookResult} Object with user, isUserLoading, userError.
  */
 export const useUser = (): UserHookResult => {
-  const { user, isUserLoading, userError } = useFirebase();
-  return { user: user ?? null, isUserLoading: isUserLoading ?? true, userError: userError ?? null };
+  const { user, isUserLoading, userError } = useFirebaseContext();
+  return { user, isUserLoading, userError };
 };

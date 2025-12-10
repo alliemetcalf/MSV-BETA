@@ -51,11 +51,9 @@ export default function UploadTestPage() {
 
   useEffect(() => {
     const listFiles = async () => {
-      // Defensively wait for both storage and user to be available.
-      if (!storage || !user) {
-        if(!isUserLoading) {
-           setIsListingFiles(false);
-        }
+      // The useStorage() hook now ensures storage is available,
+      // so we just need to wait for the user to be loaded.
+      if (isUserLoading || !storage || !user) {
         return;
       }
       
