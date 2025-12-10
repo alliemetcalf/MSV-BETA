@@ -113,6 +113,39 @@
       "required": [
         "options"
       ]
+    },
+    "Tenant": {
+      "title": "Tenant",
+      "type": "object",
+      "description": "Represents a single tenant with their contact details and property assignment.",
+      "properties": {
+        "name": {
+          "type": "string",
+          "description": "The full name of the tenant."
+        },
+        "phone": {
+          "type": "string",
+          "description": "The tenant's phone number."
+        },
+        "email": {
+          "type": "string",
+          "description": "The tenant's email address.",
+          "format": "email"
+        },
+        "property": {
+          "type": "string",
+          "description": "The property the tenant is residing in."
+        },
+        "room": {
+          "type": "string",
+          "description": "The room number or identifier for the tenant."
+        },
+        "notes": {
+          "type": "string",
+          "description": "General notes about the tenant."
+        }
+      },
+      "required": ["name", "property"]
     }
   },
   "auth": {
@@ -150,6 +183,13 @@
           "$ref": "#/entities/Properties"
         },
         "description": "Stores the list of available properties."
+      },
+      {
+        "path": "/tenants/{tenantId}",
+        "schema": {
+          "$ref": "#/entities/Tenant"
+        },
+        "description": "Stores information about individual tenants."
       }
     ]
   }

@@ -16,6 +16,7 @@ import { IdTokenResult } from 'firebase/auth';
 import { AddUserForm } from '@/components/admin/AddUserForm';
 import { PropertiesManager } from '@/components/admin/PropertiesManager';
 import { UserRoleManager } from '@/components/admin/UserRoleManager';
+import { TenantsManager } from '@/components/admin/TenantsManager';
 
 export default function AdminPage() {
   const auth = useAuth();
@@ -56,7 +57,7 @@ export default function AdminPage() {
 
   return (
     <MainLayout>
-      <div className="w-full max-w-4xl px-4 flex flex-col gap-8">
+      <div className="w-full max-w-6xl px-4 flex flex-col gap-8">
         <Card>
           <CardHeader>
             <CardTitle>Admin Panel</CardTitle>
@@ -73,6 +74,7 @@ export default function AdminPage() {
           <LockTypesManager />
           <PropertiesManager />
         </div>
+         <TenantsManager />
       </div>
     </MainLayout>
   );

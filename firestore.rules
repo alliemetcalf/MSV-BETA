@@ -29,6 +29,12 @@ service cloud.firestore {
       allow write: if isAdmin();
     }
     
+    // Tenants can be read by any signed-in user, but only written by admins.
+    match /tenants/{tenantId} {
+      allow read: if isSignedIn();
+      allow write: if isAdmin();
+    }
+    
     // Fallback rule to allow admins to read any other collection.
     match /{path=**} {
       allow read: if isAdmin();

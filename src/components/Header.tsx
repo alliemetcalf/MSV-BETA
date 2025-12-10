@@ -69,6 +69,7 @@ export function Header() {
   const navItems = [
     { href: '/', label: 'Home' },
     { href: '/door-codes', label: 'Door Codes' },
+    { href: '/tenants', label: 'Tenants' },
   ];
 
   const adminNavItems = [{ href: '/admin', label: 'Admin', icon: ShieldCheck }];
@@ -97,7 +98,6 @@ export function Header() {
                       : 'text-muted-foreground hover:bg-accent hover:text-accent-foreground'
                   )}
                 >
-                  {item.icon && <item.icon className="h-4 w-4" />}
                   {item.label}
                 </Link>
               ))}
