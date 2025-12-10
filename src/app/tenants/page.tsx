@@ -81,17 +81,20 @@ export default function TenantsPage() {
   const groupedTenants = useMemo(() => {
     if (!tenants) return {};
     return tenants
-      .filter((tenant) => tenant.active)
       .reduce(
         (acc, tenant) => {
-          const { property } = tenant;
-          if (!acc[property]) {
-            acc[property] = [];
+          const status = tenant.active ? 'active' : 'inactive';
+          if (!acc[status]) {
+            acc[status] = {};
           }
-          acc[property].push(tenant);
+          const { property } = tenant;
+          if (!acc[status][property]) {
+            acc[status][property] = [];
+          }
+          acc[status][property].push(tenant);
           return acc;
         },
-        {} as Record<string, Tenant[]>
+        {} as Record<'active' | 'inactive', Record<string, Tenant[]>>
       );
   }, [tenants]);
 
@@ -103,6 +106,100 @@ export default function TenantsPage() {
     );
   }
 
+  const renderTenantList = (tenantList: Record<string, Tenant[]>) => {
+    return Object.entries(tenantList)
+      .sort(([a], [b]) => a.localeCompare(b))
+      .map(([property, tenants]) => (
+        <AccordionItem value={property} key={property}>
+          <AccordionTrigger className="text-xl font-semibold">
+            {property}
+          </AccordionTrigger>
+          <AccordionContent>
+            <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
+              {tenants
+                .sort((a, b) => a.name.localeCompare(b.name))
+                .map((tenant) => (
+                  <Card key={tenant.id}>
+                    <CardHeader>
+                      <div className="flex items-center gap-4">
+                        <Avatar className="h-16 w-16">
+                          <AvatarImage
+                            src={tenant.photoUrl}
+                            alt={tenant.name}
+                          />
+                          <AvatarFallback>
+                            {getInitials(tenant.name)}
+                          </AvatarFallback>
+                        </Avatar>
+                        <div className="flex-1">
+                          <div className="flex items-center gap-2">
+                            <CardTitle>{tenant.name}</CardTitle>
+                             <Badge variant={tenant.active ? 'secondary' : 'outline'}>{tenant.active ? 'Active' : 'Inactive'}</Badge>
+                          </div>
+                          <CardDescription>
+                            Room: {tenant.room || 'N/A'}
+                          </CardDescription>
+                        </div>
+                      </div>
+                    </CardHeader>
+                    <CardContent className="space-y-2 text-sm">
+                      <div className="flex items-center gap-2">
+                        <Mail className="w-4 h-4 text-muted-foreground" />
+                        <a
+                          href={`mailto:${tenant.email}`}
+                          className="hover:underline"
+                        >
+                          {tenant.email || 'No email'}
+                        </a>
+                      </div>
+                      <div className="flex items-center gap-2">
+                        <Phone className="w-4 h-4 text-muted-foreground" />
+                        <a
+                          href={`tel:${tenant.phone}`}
+                          className="hover:underline"
+                        >
+                          {tenant.phone || 'No phone'}
+                        </a>
+                      </div>
+                       <div className="flex items-center gap-2">
+                        <DollarSign className="w-4 h-4 text-muted-foreground" />
+                        <span>Rent: {moneyFormatter.format(tenant.rent || 0)}</span>
+                      </div>
+                      {tenant.deposit && (
+                         <div className="flex items-center gap-2">
+                            <Shield className="w-4 h-4 text-muted-foreground" />
+                            <span>Deposit: {moneyFormatter.format(tenant.deposit)}</span>
+                        </div>
+                      )}
+                      {(tenant.leaseEnded || tenant.noticeReceivedDate) && (
+                        <div className="flex items-start gap-2 pt-2 text-destructive">
+                          <CalendarOff className="w-4 h-4 mt-0.5 flex-shrink-0" />
+                          <div className="text-xs font-semibold">
+                            {tenant.noticeReceivedDate && (
+                              <div>30-Day Notice: {format(tenant.noticeReceivedDate.toDate(), 'PPP')}</div>
+                            )}
+                            {tenant.leaseEnded && (
+                              <div>Lease Ends: {format(tenant.leaseEnded.toDate(), 'PPP')}</div>
+                            )}
+                          </div>
+                        </div>
+                      )}
+                      {tenant.notes && (
+                        <div className="pt-2">
+                          <p className="text-xs text-muted-foreground italic">
+                            "{tenant.notes}"
+                          </p>
+                        </div>
+                      )}
+                    </CardContent>
+                  </Card>
+                ))}
+            </div>
+          </AccordionContent>
+        </AccordionItem>
+      ));
+  }
+
   return (
     <MainLayout>
       <div className="w-full max-w-4xl px-4">
@@ -110,7 +207,7 @@ export default function TenantsPage() {
           <CardHeader>
             <CardTitle>Tenant Directory</CardTitle>
             <CardDescription>
-              A directory of all active tenants across all properties.
+              A directory of all tenants across all properties.
             </CardDescription>
           </CardHeader>
           <CardContent>
@@ -121,102 +218,32 @@ export default function TenantsPage() {
               <p className="text-destructive">Error: {tenantsError.message}</p>
             )}
             {!tenantsLoading && tenants && (
-              <Accordion
-                type="multiple"
-                className="w-full"
-              >
-                {Object.entries(groupedTenants)
-                  .sort(([a], [b]) => a.localeCompare(b))
-                  .map(([property, tenantList]) => (
-                    <AccordionItem value={property} key={property}>
-                      <AccordionTrigger className="text-xl font-semibold">
-                        {property}
-                      </AccordionTrigger>
-                      <AccordionContent>
-                        <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
-                          {tenantList
-                            .sort((a, b) => a.name.localeCompare(b.name))
-                            .map((tenant) => (
-                              <Card key={tenant.id}>
-                                <CardHeader>
-                                  <div className="flex items-center gap-4">
-                                    <Avatar className="h-16 w-16">
-                                      <AvatarImage
-                                        src={tenant.photoUrl}
-                                        alt={tenant.name}
-                                      />
-                                      <AvatarFallback>
-                                        {getInitials(tenant.name)}
-                                      </AvatarFallback>
-                                    </Avatar>
-                                    <div className="flex-1">
-                                      <div className="flex items-center gap-2">
-                                        <CardTitle>{tenant.name}</CardTitle>
-                                         <Badge variant={tenant.active ? 'secondary' : 'outline'}>{tenant.active ? 'Active' : 'Inactive'}</Badge>
-                                      </div>
-                                      <CardDescription>
-                                        Room: {tenant.room || 'N/A'}
-                                      </CardDescription>
-                                    </div>
-                                  </div>
-                                </CardHeader>
-                                <CardContent className="space-y-2 text-sm">
-                                  <div className="flex items-center gap-2">
-                                    <Mail className="w-4 h-4 text-muted-foreground" />
-                                    <a
-                                      href={`mailto:${tenant.email}`}
-                                      className="hover:underline"
-                                    >
-                                      {tenant.email || 'No email'}
-                                    </a>
-                                  </div>
-                                  <div className="flex items-center gap-2">
-                                    <Phone className="w-4 h-4 text-muted-foreground" />
-                                    <a
-                                      href={`tel:${tenant.phone}`}
-                                      className="hover:underline"
-                                    >
-                                      {tenant.phone || 'No phone'}
-                                    </a>
-                                  </div>
-                                   <div className="flex items-center gap-2">
-                                    <DollarSign className="w-4 h-4 text-muted-foreground" />
-                                    <span>Rent: {moneyFormatter.format(tenant.rent || 0)}</span>
-                                  </div>
-                                  {tenant.deposit && (
-                                     <div className="flex items-center gap-2">
-                                        <Shield className="w-4 h-4 text-muted-foreground" />
-                                        <span>Deposit: {moneyFormatter.format(tenant.deposit)}</span>
-                                    </div>
-                                  )}
-                                  {(tenant.leaseEnded || tenant.noticeReceivedDate) && (
-                                    <div className="flex items-start gap-2 pt-2 text-destructive">
-                                      <CalendarOff className="w-4 h-4 mt-0.5 flex-shrink-0" />
-                                      <div className="text-xs font-semibold">
-                                        {tenant.noticeReceivedDate && (
-                                          <div>30-Day Notice: {format(tenant.noticeReceivedDate.toDate(), 'PPP')}</div>
-                                        )}
-                                        {tenant.leaseEnded && (
-                                          <div>Lease Ends: {format(tenant.leaseEnded.toDate(), 'PPP')}</div>
-                                        )}
-                                      </div>
-                                    </div>
-                                  )}
-                                  {tenant.notes && (
-                                    <div className="pt-2">
-                                      <p className="text-xs text-muted-foreground italic">
-                                        "{tenant.notes}"
-                                      </p>
-                                    </div>
-                                  )}
-                                </CardContent>
-                              </Card>
-                            ))}
+              <div className="space-y-8">
+                 <div>
+                    <h2 className="text-2xl font-bold mb-4">Active Tenants</h2>
+                    {groupedTenants.active ? (
+                        <Accordion type="multiple" className="w-full">
+                           {renderTenantList(groupedTenants.active)}
+                        </Accordion>
+                    ) : (
+                         <div className="text-center text-muted-foreground py-8">
+                            No active tenants found.
                         </div>
-                      </AccordionContent>
-                    </AccordionItem>
-                  ))}
-              </Accordion>
+                    )}
+                 </div>
+                 <div>
+                    <h2 className="text-2xl font-bold mb-4">Inactive Tenants</h2>
+                     {groupedTenants.inactive ? (
+                        <Accordion type="multiple" className="w-full">
+                           {renderTenantList(groupedTenants.inactive)}
+                        </Accordion>
+                    ) : (
+                         <div className="text-center text-muted-foreground py-8">
+                            No inactive tenants found.
+                        </div>
+                    )}
+                 </div>
+              </div>
             )}
             {!tenantsLoading && (!tenants || tenants.length === 0) && (
               <div className="text-center text-muted-foreground py-8">
