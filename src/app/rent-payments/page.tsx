@@ -246,7 +246,7 @@ export default function RentPaymentsPage() {
                 <Select onValueChange={(v) => setFormData(p => ({...p, tenantId: v}))} value={formData.tenantId} required>
                   <SelectTrigger className="col-span-3"><SelectValue placeholder="Select a tenant" /></SelectTrigger>
                   <SelectContent>
-                    {sortedTenants.map(tenant => <SelectItem key={tenant.id} value={tenant.id}>{tenant.name} ({tenant.property})</SelectItem>)}
+                    {sortedTenants.map(tenant => <SelectItem key={tenant.id} value={tenant.id}>{tenant.name} ({tenant.property} / {tenant.room || 'N/A'})</SelectItem>)}
                   </SelectContent>
                 </Select>
               </div>
