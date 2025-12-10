@@ -8,6 +8,7 @@ import {
   LogOut,
   ShieldCheck,
   User as UserIcon,
+  Home,
 } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { Button } from './ui/button';
@@ -56,6 +57,7 @@ export function Header() {
     { href: '/door-codes', label: 'Door Codes' },
     { href: '/tenants', label: 'Tenants' },
     { href: '/properties', label: 'Properties' },
+    { href: '/rooms', label: 'Rooms' },
   ];
 
   const adminNavItems = [{ href: '/admin', label: 'Admin', icon: ShieldCheck }];
