@@ -35,6 +35,8 @@ interface UploadedFile {
   url: string;
 }
 
+const LIST_TIMEOUT_MS = 15000; // 15 seconds
+
 export default function UploadTestPage() {
   const { user, isUserLoading } = useUser();
   const storage = useStorage();
@@ -54,18 +56,26 @@ export default function UploadTestPage() {
   useEffect(() => {
     const listFiles = async () => {
       if (!storage || !user) {
-        // This condition should not be hit if provider is working, but is a good safeguard.
         return;
       }
       
       setIsListingFiles(true);
       setErrorState(null);
+
+      const timeoutPromise = new Promise((_, reject) => 
+        setTimeout(() => reject(new Error(`Operation timed out after ${LIST_TIMEOUT_MS / 1000} seconds. Check storage rules and bucket name.`)), LIST_TIMEOUT_MS)
+      );
+
       try {
         const listRef = ref(storage, ''); // List root directory
-        const res = await listAll(listRef);
+
+        const listResult: any = await Promise.race([
+            listAll(listRef),
+            timeoutPromise
+        ]);
         
         const files = await Promise.all(
-          res.items.map(async (itemRef) => {
+          listResult.items.map(async (itemRef: any) => {
             const url = await getDownloadURL(itemRef);
             return { name: itemRef.name, url };
           })
@@ -73,14 +83,14 @@ export default function UploadTestPage() {
         setUploadedFiles(files);
       } catch (error: any) {
         console.error('CRITICAL: Error listing files:', error);
-        setErrorState(error); // Set the error state to display it in the UI
+        setErrorState(error);
         toast({
           variant: 'destructive',
           title: 'Error listing files',
           description: error.message || 'An unknown error occurred.',
         });
       } finally {
-        setIsListingFiles(false); // This is critical - ensure spinner is always turned off
+        setIsListingFiles(false);
       }
     };
     
