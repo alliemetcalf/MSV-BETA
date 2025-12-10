@@ -266,7 +266,7 @@ export default function PropertiesPage() {
                               </AccordionTrigger>
                               <AccordionContent className="pb-0">
                                 <div className="w-full space-y-2 pt-2">
-                                  {propertyDoorCodes.map((code) => (
+                                  {propertyDoorCodes.sort((a,b) => a.location.localeCompare(b.location, undefined, { numeric: true })).map((code) => (
                                     <div
                                       key={code.id}
                                       className="flex items-center justify-between gap-2 text-sm text-muted-foreground"
@@ -361,3 +361,5 @@ export default function PropertiesPage() {
     </MainLayout>
   );
 }
+
+    

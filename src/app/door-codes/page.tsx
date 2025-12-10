@@ -355,6 +355,7 @@ export default function DoorCodesPage() {
                                   <TableHead>Admin Code</TableHead>
                                   <TableHead>Guest Code</TableHead>
                                   <TableHead>Last Changed</TableHead>
+                                  {isAdmin && <TableHead>User</TableHead>}
                                   <TableHead className="text-right">
                                     Actions
                                   </TableHead>
@@ -393,6 +394,7 @@ export default function DoorCodesPage() {
                                           'PPP p'
                                         )}
                                     </TableCell>
+                                    {isAdmin && <TableCell>{(code as EnrichedDoorCode).userEmail}</TableCell>}
                                     <TableCell className="text-right">
                                       <Button
                                         variant="ghost"
@@ -584,3 +586,5 @@ export default function DoorCodesPage() {
     </MainLayout>
   );
 }
+
+    
