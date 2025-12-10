@@ -255,6 +255,50 @@
           }
         }
       }
+    },
+    "RentPayment": {
+      "title": "RentPayment",
+      "type": "object",
+      "description": "Represents a single rent payment made by a tenant.",
+      "properties": {
+        "tenantId": {
+          "type": "string",
+          "description": "The ID of the tenant who made the payment."
+        },
+        "tenantName": {
+          "type": "string",
+          "description": "The name of the tenant for display purposes."
+        },
+        "property": {
+          "type": "string",
+          "description": "The property for which rent was paid."
+        },
+        "date": {
+          "type": "string",
+          "format": "date-time",
+          "description": "The date the rent payment was received."
+        },
+        "amount": {
+          "type": "number",
+          "description": "The monetary value of the payment."
+        },
+        "paymentMethod": {
+          "type": "string",
+          "description": "The method of payment (e.g., 'Zelle', 'Cash')."
+        },
+        "notes": {
+          "type": "string",
+          "description": "Additional notes about the payment."
+        }
+      },
+      "required": [
+        "tenantId",
+        "tenantName",
+        "property",
+        "date",
+        "amount",
+        "paymentMethod"
+      ]
     }
   },
   "auth": {
@@ -313,6 +357,13 @@
           "$ref": "#/entities/Expense"
         },
         "description": "Stores all business expenses."
+      },
+      {
+        "path": "/rentPayments/{paymentId}",
+        "schema": {
+          "$ref": "#/entities/RentPayment"
+        },
+        "description": "Stores all recorded rent payments from tenants."
       }
     ]
   }

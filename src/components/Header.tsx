@@ -10,6 +10,7 @@ import {
   User as UserIcon,
   Home,
   Receipt,
+  DollarSign,
 } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { Button } from './ui/button';
@@ -60,6 +61,7 @@ export function Header() {
     { href: '/properties', label: 'Properties' },
     { href: '/rooms', label: 'Rooms' },
     { href: '/expenses', label: 'Expenses' },
+    { href: '/rent-payments', label: 'Rent Payments' },
   ];
 
   const adminNavItems = [{ href: '/admin', label: 'Admin', icon: ShieldCheck }];
@@ -88,6 +90,8 @@ export function Header() {
                       : 'text-muted-foreground hover:bg-accent hover:text-accent-foreground'
                   )}
                 >
+                  {item.label === 'Rent Payments' ? <DollarSign/> : null}
+                  {item.label === 'Expenses' ? <Receipt/> : null}
                   {item.label}
                 </Link>
               ))}

@@ -69,5 +69,10 @@ service cloud.firestore {
     match /expenses/{expenseId} {
       allow read, list, write: if isAdmin();
     }
+
+    // Rent Payments can be managed by admins.
+    match /rentPayments/{paymentId} {
+      allow read, list, write: if isAdmin();
+    }
   }
 }
