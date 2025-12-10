@@ -37,22 +37,26 @@ export default function AdminPage() {
     useDoc<UserProfile>(userProfileRef);
 
   useEffect(() => {
-    if (!isUserLoading && !user) {
-      router.push('/login');
-    }
-  }, [user, isUserLoading, router]);
+    // Wait until both user and profile are done loading
+    if (isUserLoading || isProfileLoading) return;
 
-  useEffect(() => {
-    // Only redirect if loading is finished and the user is confirmed to not be an admin
-    if (!isUserLoading && !isProfileLoading && userProfile && userProfile.role !== 'admin') {
+    // If there's no user, redirect to login
+    if (!user) {
+      router.push('/login');
+      return;
+    }
+
+    // If the user profile is loaded and the user is not an admin, redirect
+    if (userProfile && userProfile.role !== 'admin') {
       router.push('/');
     }
   }, [user, isUserLoading, userProfile, isProfileLoading, router]);
 
-  const isAdmin = !isProfileLoading && userProfile?.role === 'admin';
   const isLoading = isUserLoading || isProfileLoading;
-  
-  if (isLoading || !isAdmin) {
+  const isAdmin = userProfile?.role === 'admin';
+
+  // Show loader until we are sure about the user's auth state and role
+  if (isLoading) {
     return (
       <div className="flex h-screen w-full items-center justify-center bg-background">
         <Loader2 className="h-10 w-10 animate-spin text-primary" />
@@ -60,6 +64,17 @@ export default function AdminPage() {
     );
   }
 
+  // If after loading, the user is not an admin, show a "not authorized" message or redirect again
+  // This covers the case where the redirect effect hasn't fired yet.
+  if (!isAdmin) {
+    return (
+       <div className="flex h-screen w-full items-center justify-center bg-background">
+        <p>You are not authorized to view this page.</p>
+      </div>
+    );
+  }
+
+  // Only render the admin panel if loading is complete and user is an admin
   return (
     <MainLayout>
       <div className="w-full max-w-6xl px-4 flex flex-col gap-8">

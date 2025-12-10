@@ -41,7 +41,7 @@ export function Header() {
   );
   const { data: userProfile, isLoading: isProfileLoading } = useDoc<UserProfile>(userProfileRef);
   
-  const isAdmin = !isProfileLoading && userProfile?.role === 'admin';
+  const isAdmin = userProfile?.role === 'admin';
 
 
   const handleLogout = async () => {
