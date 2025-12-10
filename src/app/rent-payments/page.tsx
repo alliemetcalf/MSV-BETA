@@ -296,14 +296,15 @@ export default function RentPaymentsPage() {
       
       <Dialog open={isCalendarOpen} onOpenChange={setIsCalendarOpen}>
         <DialogContent className="w-auto">
+           <DialogHeader>
+            <DialogTitle>Select a date</DialogTitle>
+          </DialogHeader>
            <Calendar
               mode="single"
               selected={formData.date}
               onSelect={(date) => {
-                if (date) {
-                  setFormData((p) => ({ ...p, date: date }));
-                  setIsCalendarOpen(false);
-                }
+                setFormData((p) => ({ ...p, date: date as Date }));
+                setIsCalendarOpen(false);
               }}
               initialFocus
             />
