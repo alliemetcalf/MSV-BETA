@@ -83,8 +83,24 @@ export default function DoorCodesPage() {
   );
   const { data: userProfile, isLoading: profileLoading } = useDoc<UserProfile>(userProfileRef);
   
-  // isAdmin is only true after the profile has loaded and the role is 'admin'
-  const isAdmin = !profileLoading && userProfile?.role === 'admin';
+  const doorCodesQuery = useMemoFirebase(() => {
+    // Return null if we are still loading critical information
+    if (!firestore || !user || profileLoading) {
+      return null;
+    }
+    
+    // Once profile is loaded, check the role
+    const isAdmin = userProfile?.role === 'admin';
+
+    if (isAdmin) {
+      return query(collectionGroup(firestore, 'doorCodes'));
+    } else {
+      return collection(firestore, 'users', user.uid, 'doorCodes');
+    }
+  }, [firestore, user, userProfile, profileLoading]);
+
+  const { data: doorCodes, isLoading: codesLoading, error: codesError } = useCollection<DoorCode>(doorCodesQuery);
+
 
   const [isFormDialogOpen, setIsFormDialogOpen] = useState(false);
   const [isInstructionDialogOpen, setIsInstructionDialogOpen] = useState(false);
@@ -112,18 +128,6 @@ export default function DoorCodesPage() {
       router.push('/login');
     }
   }, [user, isUserLoading, router]);
-
-  // This query will only run after we know the user's status (admin or not)
-  const doorCodesQuery = useMemoFirebase(() => {
-    if (!firestore || !user || profileLoading) return null; // <-- Wait for profile to load
-    if (isAdmin) {
-      return query(collectionGroup(firestore, 'doorCodes'));
-    } else {
-      return collection(firestore, 'users', user.uid, 'doorCodes');
-    }
-  }, [firestore, user, isAdmin, profileLoading]);
-
-  const { data: doorCodes, isLoading: codesLoading, error: codesError } = useCollection<DoorCode>(doorCodesQuery);
 
   const lockTypesDocRef = useMemoFirebase(
     () => (user && firestore ? doc(firestore, 'siteConfiguration', 'lockTypes') : null),
@@ -292,8 +296,9 @@ export default function DoorCodesPage() {
       </div>
     );
   }
-
-  const isLoading = codesLoading || lockTypesLoading || propertiesLoading || profileLoading;
+  
+  const isAdmin = userProfile?.role === 'admin';
+  const isLoading = codesLoading || lockTypesLoading || propertiesLoading;
 
   return (
     <MainLayout>
