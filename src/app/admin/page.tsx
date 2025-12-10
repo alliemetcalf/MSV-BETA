@@ -1,13 +1,17 @@
 'use client';
 import { MainLayout } from '@/components/MainLayout';
 import { useUser, useAuth } from '@/firebase';
-import { Loader2 } from 'lucide-react';
+import { Loader2, Users, Shield, Lock, Building, Wallet, ShoppingCart } from 'lucide-react';
 import { useRouter } from 'next/navigation';
 import { useEffect } from 'react';
-import { LockTypesManager } from '@/components/admin/LockTypesManager';
+import {
+  Accordion,
+  AccordionContent,
+  AccordionItem,
+  AccordionTrigger,
+} from '@/components/ui/accordion';
 import {
   Card,
-  CardContent,
   CardDescription,
   CardHeader,
   CardTitle,
@@ -18,6 +22,7 @@ import { UserRoleManager } from '@/components/admin/UserRoleManager';
 import { TenantsManager } from '@/components/admin/TenantsManager';
 import { ExpenseCategoryManager } from '@/components/admin/ExpenseCategoryManager';
 import { VendorsManager } from '@/components/admin/VendorsManager';
+import { LockTypesManager } from '@/components/admin/LockTypesManager';
 
 export default function AdminPage() {
   const auth = useAuth();
@@ -30,7 +35,6 @@ export default function AdminPage() {
       router.push('/login');
     }
   }, [user, isUserLoading, router]);
-
 
   // Show loader until we are sure about the user's auth state
   if (isUserLoading || !user) {
@@ -49,25 +53,77 @@ export default function AdminPage() {
           <CardHeader>
             <CardTitle>Admin Panel</CardTitle>
             <CardDescription>
-              Manage site-wide configurations and users here.
+              Manage site-wide configurations and users here. Sections are
+              collapsible.
             </CardDescription>
           </CardHeader>
         </Card>
-        <div className="grid md:grid-cols-2 gap-8">
-          <AddUserForm />
-          <UserRoleManager />
-        </div>
-        <div className="grid md:grid-cols-2 gap-8">
-          <LockTypesManager />
-          <PropertiesManager />
-        </div>
-        <div className="grid md:grid-cols-2 gap-8">
-          <TenantsManager />
-          <ExpenseCategoryManager />
-        </div>
-        <div className="grid md:grid-cols-2 gap-8">
-            <VendorsManager />
-        </div>
+
+        <Accordion type="multiple" className="w-full space-y-4">
+          {/* User Management Section */}
+          <AccordionItem value="user-management" className="border rounded-lg">
+            <AccordionTrigger className="p-4 text-lg font-semibold hover:no-underline">
+              <div className="flex items-center gap-3">
+                <Users className="h-6 w-6 text-primary" />
+                User Management
+              </div>
+            </AccordionTrigger>
+            <AccordionContent className="p-4 pt-0">
+              <div className="grid md:grid-cols-2 gap-8">
+                <AddUserForm />
+                <UserRoleManager />
+              </div>
+            </AccordionContent>
+          </AccordionItem>
+          
+          {/* Property & Tenant Management Section */}
+          <AccordionItem value="property-management" className="border rounded-lg">
+            <AccordionTrigger className="p-4 text-lg font-semibold hover:no-underline">
+              <div className="flex items-center gap-3">
+                <Building className="h-6 w-6 text-primary" />
+                Property & Tenant Management
+              </div>
+            </AccordionTrigger>
+            <AccordionContent className="p-4 pt-0">
+              <div className="grid md:grid-cols-2 gap-8">
+                 <PropertiesManager />
+                 <TenantsManager />
+              </div>
+            </AccordionContent>
+          </AccordionItem>
+
+          {/* Expense Management Section */}
+          <AccordionItem value="expense-management" className="border rounded-lg">
+            <AccordionTrigger className="p-4 text-lg font-semibold hover:no-underline">
+              <div className="flex items-center gap-3">
+                <Wallet className="h-6 w-6 text-primary" />
+                Expense Management
+              </div>
+            </AccordionTrigger>
+            <AccordionContent className="p-4 pt-0">
+              <div className="grid md:grid-cols-2 gap-8">
+                 <ExpenseCategoryManager />
+                 <VendorsManager />
+              </div>
+            </AccordionContent>
+          </AccordionItem>
+          
+           {/* Site Configuration Section */}
+          <AccordionItem value="site-config" className="border rounded-lg">
+            <AccordionTrigger className="p-4 text-lg font-semibold hover:no-underline">
+              <div className="flex items-center gap-3">
+                <Lock className="h-6 w-6 text-primary" />
+                Site Configuration
+              </div>
+            </AccordionTrigger>
+            <AccordionContent className="p-4 pt-0">
+              <div className="grid md:grid-cols-2 gap-8">
+                 <LockTypesManager />
+              </div>
+            </AccordionContent>
+          </AccordionItem>
+
+        </Accordion>
       </div>
     </MainLayout>
   );
