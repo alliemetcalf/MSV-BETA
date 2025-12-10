@@ -31,6 +31,16 @@ import { MainLayout } from '@/components/MainLayout';
 import { Card, CardHeader, CardTitle, CardDescription, CardContent } from '@/components/ui/card';
 import { Table, TableHeader, TableRow, TableHead, TableBody, TableCell } from '@/components/ui/table';
 import { Button } from '@/components/ui/button';
+import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+} from "@/components/ui/alert-dialog"
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription, DialogFooter, DialogClose } from '@/components/ui/dialog';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
@@ -68,6 +78,9 @@ export default function ExpensesPage() {
   const [editingExpense, setEditingExpense] = useState<Expense | null>(null);
   const [isSubmitting, setIsSubmitting] = useState(false);
   
+  const [isConfirmDialogOpen, setIsConfirmDialogOpen] = useState(false);
+  const [expenseToDelete, setExpenseToDelete] = useState<Expense | null>(null);
+  
   const [formData, setFormData] = useState<{
     year: number;
     month: number;
@@ -98,8 +111,6 @@ export default function ExpensesPage() {
 
   const [uploadProgress, setUploadProgress] = useState<number | null>(null);
   const [isUploading, setIsUploading] = useState(false);
-
-  const [isCalendarOpen, setIsCalendarOpen] = useState(false);
 
   useEffect(() => {
     if (!isUserLoading && !user) {
@@ -198,21 +209,28 @@ export default function ExpensesPage() {
     setIsFormOpen(true);
   };
 
-  const handleDeleteClick = async (expense: Expense) => {
-    if (!firestore) return;
-    if (confirm('Are you sure you want to delete this expense?')) {
-      try {
-        if (expense.receiptUrl && storage) {
-          const receiptRef = ref(storage, expense.receiptUrl);
-          await deleteObject(receiptRef).catch(e => console.warn("Could not delete old receipt:", e));
-        }
-        await deleteDoc(doc(firestore, 'expenses', expense.id));
-        toast({ title: 'Expense Deleted', description: 'The expense has been successfully removed.' });
-      } catch (error) {
-        toast({ variant: 'destructive', title: 'Error Deleting', description: 'Could not delete the expense.' });
+  const handleDeleteClick = (expense: Expense) => {
+    setExpenseToDelete(expense);
+    setIsConfirmDialogOpen(true);
+  };
+
+  const confirmDelete = async () => {
+    if (!firestore || !expenseToDelete) return;
+    try {
+      if (expenseToDelete.receiptUrl && storage) {
+        const receiptRef = ref(storage, expenseToDelete.receiptUrl);
+        await deleteObject(receiptRef).catch(e => console.warn("Could not delete old receipt:", e));
       }
+      await deleteDoc(doc(firestore, 'expenses', expenseToDelete.id));
+      toast({ title: 'Expense Deleted', description: 'The expense has been successfully removed.' });
+    } catch (error) {
+      toast({ variant: 'destructive', title: 'Error Deleting', description: 'Could not delete the expense.' });
+    } finally {
+      setIsConfirmDialogOpen(false);
+      setExpenseToDelete(null);
     }
   };
+
 
   const handleFormSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -479,6 +497,22 @@ export default function ExpensesPage() {
           </form>
         </DialogContent>
       </Dialog>
+      
+      <AlertDialog open={isConfirmDialogOpen} onOpenChange={setIsConfirmDialogOpen}>
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>Are you sure?</AlertDialogTitle>
+            <AlertDialogDescription>
+              This action cannot be undone. This will permanently delete the expense
+              record.
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel>Cancel</AlertDialogCancel>
+            <AlertDialogAction onClick={confirmDelete}>Delete</AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
     </MainLayout>
   );
 }
