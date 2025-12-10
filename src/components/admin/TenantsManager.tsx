@@ -831,7 +831,7 @@ export function TenantsManager() {
                         <DateDropdowns
                           date={moveData.moveDate}
                           setDate={(d) => setMoveData(p => ({...p, moveDate: d}))}
-                          disabled={(date) => isBefore(date, startOfDay(new Date()))}
+                          disabledDate={(date) => isBefore(date, startOfDay(new Date()))}
                         />
                     </div>
                 </div>

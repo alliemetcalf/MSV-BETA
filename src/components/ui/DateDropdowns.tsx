@@ -13,10 +13,10 @@ import {
 interface DateDropdownsProps {
   date: Date | undefined
   setDate: (date: Date | undefined) => void
-  disabled?: (date: Date) => boolean
+  disabledDate?: (date: Date) => boolean
 }
 
-export function DateDropdowns({ date, setDate, disabled }: DateDropdownsProps) {
+export function DateDropdowns({ date, setDate, disabledDate }: DateDropdownsProps) {
   const currentYear = new Date().getFullYear()
   const years = Array.from({ length: 20 }, (_, i) => currentYear - 10 + i)
   const months = Array.from({ length: 12 }, (_, i) => i + 1)
@@ -66,7 +66,7 @@ export function DateDropdowns({ date, setDate, disabled }: DateDropdownsProps) {
       <Select
         value={String(selectedYear)}
         onValueChange={handleYearChange}
-        disabled={!!disabled}
+        disabled={!!disabledDate}
       >
         <SelectTrigger>
           <SelectValue placeholder="Year" />
@@ -82,7 +82,7 @@ export function DateDropdowns({ date, setDate, disabled }: DateDropdownsProps) {
       <Select
         value={String(selectedMonth)}
         onValueChange={handleMonthChange}
-        disabled={!!disabled}
+        disabled={!!disabledDate}
       >
         <SelectTrigger>
           <SelectValue placeholder="Month" />
@@ -100,14 +100,18 @@ export function DateDropdowns({ date, setDate, disabled }: DateDropdownsProps) {
       <Select
         value={String(selectedDay)}
         onValueChange={handleDayChange}
-        disabled={!!disabled}
+        disabled={!!disabledDate}
       >
         <SelectTrigger>
           <SelectValue placeholder="Day" />
         </SelectTrigger>
         <SelectContent>
           {days.map((day) => (
-            <SelectItem key={day} value={String(day)}>
+            <SelectItem 
+                key={day} 
+                value={String(day)}
+                disabled={disabledDate ? disabledDate(new Date(selectedYear, selectedMonth -1, day)) : false}
+            >
               {day}
             </SelectItem>
           ))}
