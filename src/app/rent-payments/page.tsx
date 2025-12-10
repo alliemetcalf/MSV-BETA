@@ -18,7 +18,6 @@ import {
   Timestamp,
 } from 'firebase/firestore';
 import { useRouter } from 'next/navigation';
-import { format, getYear, getMonth, getDate } from 'date-fns';
 import { MainLayout } from '@/components/MainLayout';
 import { Card, CardHeader, CardTitle, CardDescription, CardContent } from '@/components/ui/card';
 import { Table, TableHeader, TableRow, TableHead, TableBody, TableCell } from '@/components/ui/table';
@@ -33,7 +32,7 @@ import {
   AlertDialogHeader,
   AlertDialogTitle,
 } from "@/components/ui/alert-dialog"
-import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription, DialogFooter, DialogClose } from '@/components/ui/dialog';
+import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription, DialogFooter } from '@/components/ui/dialog';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
@@ -45,16 +44,13 @@ import { RentPayment } from '@/types/rent-payment';
 import { IncomeType } from '@/types/income';
 import { PaymentMethod } from '@/types/payment-method';
 import { RadioGroup, RadioGroupItem } from '@/components/ui/radio-group';
+import { DatePicker } from '@/components/ui/date-picker';
 
 
 const moneyFormatter = new Intl.NumberFormat('en-US', {
   style: 'currency',
   currency: 'USD',
 });
-
-const currentYear = new Date().getFullYear();
-const years = Array.from({ length: 10 }, (_, i) => currentYear - i);
-const months = Array.from({ length: 12 }, (_, i) => ({ value: i + 1, label: format(new Date(currentYear, i), 'MMMM') }));
 
 export default function RentPaymentsPage() {
   const auth = useAuth();
@@ -73,28 +69,19 @@ export default function RentPaymentsPage() {
 
   const [formData, setFormData] = useState<{
     tenantId: string;
-    year: number;
-    month: number;
-    day: number;
+    date: Date;
     amount: string;
     category: string;
     paymentMethod: string;
     notes: string;
   }>({
     tenantId: '',
-    year: currentYear,
-    month: getMonth(new Date()) + 1,
-    day: getDate(new Date()),
+    date: new Date(),
     amount: '',
     category: '',
     paymentMethod: '',
     notes: '',
   });
-
-   const daysInMonth = useMemo(() => {
-    return new Date(formData.year, formData.month, 0).getDate();
-  }, [formData.year, formData.month]);
-
 
   useEffect(() => {
     if (!isUserLoading && !user) {
@@ -148,9 +135,7 @@ export default function RentPaymentsPage() {
     setTenantFilter('active');
     setFormData({
       tenantId: '',
-      year: currentYear,
-      month: getMonth(new Date()) + 1,
-      day: getDate(new Date()),
+      date: new Date(),
       amount: '',
       category: '',
       paymentMethod: '',
@@ -166,9 +151,7 @@ export default function RentPaymentsPage() {
     setEditingPayment(payment);
     setFormData({
       tenantId: payment.tenantId,
-      year: getYear(paymentDate),
-      month: getMonth(paymentDate) + 1,
-      day: getDate(paymentDate),
+      date: paymentDate,
       amount: String(payment.amount),
       category: payment.category,
       paymentMethod: payment.paymentMethod,
@@ -197,8 +180,8 @@ export default function RentPaymentsPage() {
 
   const handleFormSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    const { tenantId, year, month, day, paymentMethod, category } = formData;
-    if (!firestore || !user || !tenantId || !year || !month || !day || !paymentMethod || !category) {
+    const { tenantId, date, paymentMethod, category } = formData;
+    if (!firestore || !user || !tenantId || !date || !paymentMethod || !category) {
       toast({ variant: 'destructive', title: 'Missing Fields', description: 'Please fill out all required fields.' });
       return;
     }
@@ -218,7 +201,7 @@ export default function RentPaymentsPage() {
         return;
     }
 
-    const paymentDate = new Date(year, month - 1, day);
+    const paymentDate = formData.date;
 
     const dataToSave = {
       tenantId: selectedTenant.id,
@@ -247,20 +230,6 @@ export default function RentPaymentsPage() {
       setIsSubmitting(false);
     }
   };
-  
-  const handleDateChange = (part: 'year' | 'month' | 'day', value: string) => {
-    const numValue = parseInt(value, 10);
-    const newDate = { ...formData, [part]: numValue };
-
-    if (part === 'year' || part === 'month') {
-        const newDaysInMonth = new Date(newDate.year, newDate.month, 0).getDate();
-        if (newDate.day > newDaysInMonth) {
-            newDate.day = newDaysInMonth;
-        }
-    }
-    setFormData(newDate);
-  };
-
 
   const isLoading = isUserLoading || paymentsLoading || tenantsLoading || incomeTypesLoading || paymentMethodsLoading;
 
@@ -298,7 +267,7 @@ export default function RentPaymentsPage() {
                 <TableBody>
                   {sortedPayments.map(payment => (
                     <TableRow key={payment.id}>
-                      <TableCell>{format(payment.date.toDate(), 'PPP')}</TableCell>
+                      <TableCell>{payment.date.toDate().toLocaleDateString()}</TableCell>
                       <TableCell>{payment.tenantName}</TableCell>
                       <TableCell>{payment.property}{payment.room ? ` / ${payment.room}` : ''}</TableCell>
                       <TableCell>{payment.category}</TableCell>
@@ -359,25 +328,8 @@ export default function RentPaymentsPage() {
               </div>
               <div className="grid grid-cols-4 items-center gap-4">
                 <Label htmlFor="date" className="text-right">Date</Label>
-                 <div className="col-span-3 grid grid-cols-3 gap-2">
-                    <Select value={String(formData.month)} onValueChange={v => handleDateChange('month', v)}>
-                        <SelectTrigger><SelectValue/></SelectTrigger>
-                        <SelectContent>
-                            {months.map(m => <SelectItem key={m.value} value={String(m.value)}>{m.label}</SelectItem>)}
-                        </SelectContent>
-                    </Select>
-                     <Select value={String(formData.day)} onValueChange={v => handleDateChange('day', v)}>
-                        <SelectTrigger><SelectValue/></SelectTrigger>
-                        <SelectContent>
-                            {Array.from({ length: daysInMonth }, (_, i) => i + 1).map(d => <SelectItem key={d} value={String(d)}>{d}</SelectItem>)}
-                        </SelectContent>
-                    </Select>
-                    <Select value={String(formData.year)} onValueChange={v => handleDateChange('year', v)}>
-                        <SelectTrigger><SelectValue/></SelectTrigger>
-                        <SelectContent>
-                            {years.map(y => <SelectItem key={y} value={String(y)}>{y}</SelectItem>)}
-                        </SelectContent>
-                    </Select>
+                 <div className="col-span-3">
+                    <DatePicker date={formData.date} setDate={(d) => setFormData(p => ({...p, date: d || new Date()}))} />
                  </div>
               </div>
               <div className="grid grid-cols-4 items-center gap-4">

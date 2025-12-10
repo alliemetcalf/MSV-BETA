@@ -26,7 +26,7 @@ import {
   deleteObject,
 } from 'firebase/storage';
 import { useRouter } from 'next/navigation';
-import { format, getYear, getMonth, getDate } from 'date-fns';
+import { getYear, getMonth, getDate } from 'date-fns';
 import { MainLayout } from '@/components/MainLayout';
 import { Card, CardHeader, CardTitle, CardDescription, CardContent } from '@/components/ui/card';
 import { Table, TableHeader, TableRow, TableHead, TableBody, TableCell } from '@/components/ui/table';
@@ -41,7 +41,7 @@ import {
   AlertDialogHeader,
   AlertDialogTitle,
 } from "@/components/ui/alert-dialog"
-import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription, DialogFooter, DialogClose } from '@/components/ui/dialog';
+import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription, DialogFooter } from '@/components/ui/dialog';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
@@ -53,6 +53,7 @@ import { Loader2, PlusCircle, Edit, Trash2, Paperclip, X } from 'lucide-react';
 import { Expense, ExpenseCategory, Vendor } from '@/types/expense';
 import { Property } from '@/types/property';
 import { Tenant } from '@/types/tenant';
+import { DatePicker } from '@/components/ui/date-picker';
 
 
 const moneyFormatter = new Intl.NumberFormat('en-US', {
@@ -62,10 +63,6 @@ const moneyFormatter = new Intl.NumberFormat('en-US', {
 
 const NONE_VALUE = '_NONE_';
 const CREATE_NEW_VALUE = '_CREATE_NEW_';
-
-const currentYear = new Date().getFullYear();
-const years = Array.from({ length: 10 }, (_, i) => currentYear - i);
-const months = Array.from({ length: 12 }, (_, i) => ({ value: i + 1, label: format(new Date(currentYear, i), 'MMMM') }));
 
 export default function ExpensesPage() {
   const auth = useAuth();
@@ -87,9 +84,7 @@ export default function ExpensesPage() {
   const [isSavingVendor, setIsSavingVendor] = useState(false);
 
   const [formData, setFormData] = useState<{
-    year: number;
-    month: number;
-    day: number;
+    date: Date;
     amount: string;
     description: string;
     category: string;
@@ -98,9 +93,7 @@ export default function ExpensesPage() {
     room: string;
     receiptUrl?: string;
   }>({
-    year: currentYear,
-    month: getMonth(new Date()) + 1,
-    day: getDate(new Date()),
+    date: new Date(),
     amount: '',
     description: '',
     category: '',
@@ -109,10 +102,6 @@ export default function ExpensesPage() {
     room: '',
     receiptUrl: '',
   });
-
-  const daysInMonth = useMemo(() => {
-    return new Date(formData.year, formData.month, 0).getDate();
-  }, [formData.year, formData.month]);
 
   const [uploadProgress, setUploadProgress] = useState<number | null>(null);
   const [isUploading, setIsUploading] = useState(false);
@@ -158,17 +147,6 @@ export default function ExpensesPage() {
   );
   const { data: tenants, isLoading: tenantsLoading } = useCollection<Tenant>(tenantsCollectionRef);
   
-  const roomsByProperty = useMemo(() => {
-    if (!tenants) return {};
-    return tenants.reduce((acc, tenant) => {
-      if (tenant.property && tenant.room) {
-        if (!acc[tenant.property]) acc[tenant.property] = new Set();
-        acc[tenant.property].add(tenant.room);
-      }
-      return acc;
-    }, {} as Record<string, Set<string>>);
-  }, [tenants]);
-
   const availableRooms = useMemo(() => {
     const allRooms = new Set<string>();
     if (formData.property && tenants) {
@@ -190,9 +168,7 @@ export default function ExpensesPage() {
   const handleAddClick = () => {
     setEditingExpense(null);
     setFormData({
-      year: currentYear,
-      month: getMonth(new Date()) + 1,
-      day: getDate(new Date()),
+      date: new Date(),
       amount: '',
       description: '',
       category: '',
@@ -205,12 +181,9 @@ export default function ExpensesPage() {
   };
 
   const handleEditClick = (expense: Expense) => {
-    const expenseDate = expense.date.toDate();
     setEditingExpense(expense);
     setFormData({
-      year: getYear(expenseDate),
-      month: getMonth(expenseDate) + 1,
-      day: getDate(expenseDate),
+      date: expense.date.toDate(),
       amount: String(expense.amount),
       description: expense.description,
       category: expense.category,
@@ -247,8 +220,8 @@ export default function ExpensesPage() {
 
   const handleFormSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    const { year, month, day, category } = formData;
-    if (!firestore || !user || !year || !month || !day || !category) {
+    const { date, category } = formData;
+    if (!firestore || !user || !date || !category) {
       toast({ variant: 'destructive', title: 'Missing Fields', description: 'Please fill out all required fields.' });
       return;
     }
@@ -261,7 +234,7 @@ export default function ExpensesPage() {
       return;
     }
 
-    const expenseDate = new Date(year, month - 1, day);
+    const expenseDate = formData.date;
 
     const dataToSave = {
       date: Timestamp.fromDate(expenseDate),
@@ -329,19 +302,6 @@ export default function ExpensesPage() {
       toast({ variant: 'destructive', title: 'Error', description: 'Could not remove receipt.' });
     }
   }
-  
-  const handleDateChange = (part: 'year' | 'month' | 'day', value: string) => {
-    const numValue = parseInt(value, 10);
-    const newDate = { ...formData, [part]: numValue };
-
-    if (part === 'year' || part === 'month') {
-        const newDaysInMonth = new Date(newDate.year, newDate.month, 0).getDate();
-        if (newDate.day > newDaysInMonth) {
-            newDate.day = newDaysInMonth;
-        }
-    }
-    setFormData(newDate);
-  };
 
   const handleVendorSelectChange = (value: string) => {
     if (value === CREATE_NEW_VALUE) {
@@ -412,7 +372,7 @@ export default function ExpensesPage() {
                   <TableBody>
                     {sortedExpenses.map(expense => (
                       <TableRow key={expense.id}>
-                        <TableCell>{format(expense.date.toDate(), 'PPP')}</TableCell>
+                        <TableCell>{expense.date.toDate().toLocaleDateString()}</TableCell>
                         <TableCell>{expense.description}</TableCell>
                         <TableCell>{expense.vendor}</TableCell>
                         <TableCell>{expense.category}</TableCell>
@@ -443,25 +403,8 @@ export default function ExpensesPage() {
               <div className="grid gap-4 py-4">
                 <div className="grid grid-cols-4 items-center gap-4">
                   <Label htmlFor="date" className="text-right">Date</Label>
-                   <div className="col-span-3 grid grid-cols-3 gap-2">
-                      <Select value={String(formData.month)} onValueChange={v => handleDateChange('month', v)}>
-                          <SelectTrigger><SelectValue/></SelectTrigger>
-                          <SelectContent>
-                              {months.map(m => <SelectItem key={m.value} value={String(m.value)}>{m.label}</SelectItem>)}
-                          </SelectContent>
-                      </Select>
-                       <Select value={String(formData.day)} onValueChange={v => handleDateChange('day', v)}>
-                          <SelectTrigger><SelectValue/></SelectTrigger>
-                          <SelectContent>
-                              {Array.from({ length: daysInMonth }, (_, i) => i + 1).map(d => <SelectItem key={d} value={String(d)}>{d}</SelectItem>)}
-                          </SelectContent>
-                      </Select>
-                      <Select value={String(formData.year)} onValueChange={v => handleDateChange('year', v)}>
-                          <SelectTrigger><SelectValue/></SelectTrigger>
-                          <SelectContent>
-                              {years.map(y => <SelectItem key={y} value={String(y)}>{y}</SelectItem>)}
-                          </SelectContent>
-                      </Select>
+                   <div className="col-span-3">
+                      <DatePicker date={formData.date} setDate={(d) => setFormData(p => ({...p, date: d || new Date()}))} />
                    </div>
                 </div>
                 <div className="grid grid-cols-4 items-center gap-4">
