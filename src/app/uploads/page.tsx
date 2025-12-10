@@ -61,9 +61,9 @@ export default function UploadsPage() {
     if (!storage || !user) return;
     setIsListingFiles(true);
     try {
-      // List all files in the root of the bucket for simplicity
-      const listRef = ref(storage);
+      const listRef = ref(storage, '');
       const res = await listAll(listRef);
+      
       const files = await Promise.all(
         res.items.map(async (itemRef) => {
           const url = await getDownloadURL(itemRef);
