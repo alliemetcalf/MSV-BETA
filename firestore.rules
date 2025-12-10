@@ -33,18 +33,17 @@ service cloud.firestore {
     // - Anyone can read a user's profile.
     // - Only the user themselves or an admin can update a profile.
     // - Admins cannot change a user's role directly on the document, 
-    //   this must be done via the backend flow which this rule allows.
+    //   this must be done via a backend flow.
     match /users/{userId} {
       allow read: if isSignedIn();
       allow write: if isOwner(userId);
-      // Admins can also write, but cannot change the role field directly.
       allow update: if isAdmin() && !(request.resource.data.role is string && resource.data.role != request.resource.data.role);
     }
     
     // User Subcollections (e.g., doorCodes)
     // - Owners can read/write their own subcollections.
-    // - Admins can read/write any user's subcollections.
-    match /users/{userId}/{document=**} {
+    // - Admins can read any user's subcollections.
+    match /users/{userId}/doorCodes/{docId} {
        allow read, write: if isOwner(userId) || isAdmin();
     }
 
@@ -54,7 +53,7 @@ service cloud.firestore {
       allow write: if isAdmin();
     }
     
-    // Tenants can be read/listed and written by any signed-in user.
+    // Tenants can be read, listed, and written by any signed-in user.
     match /tenants/{document=**} {
       allow read, write: if isSignedIn();
     }
