@@ -39,8 +39,9 @@ export function Header() {
     () => (user ? doc(firestore, 'users', user.uid) : null),
     [firestore, user]
   );
-  const { data: userProfile } = useDoc<UserProfile>(userProfileRef);
-  const isAdmin = userProfile?.role === 'admin';
+  const { data: userProfile, isLoading: isProfileLoading } = useDoc<UserProfile>(userProfileRef);
+  
+  const isAdmin = !isProfileLoading && userProfile?.role === 'admin';
 
 
   const handleLogout = async () => {

@@ -43,14 +43,13 @@ export default function AdminPage() {
   }, [user, isUserLoading, router]);
 
   useEffect(() => {
-    if (!isUserLoading && !isProfileLoading) {
-      if (userProfile?.role !== 'admin') {
-        router.push('/');
-      }
+    // Only redirect if loading is finished and the user is confirmed to not be an admin
+    if (!isUserLoading && !isProfileLoading && userProfile && userProfile.role !== 'admin') {
+      router.push('/');
     }
   }, [user, isUserLoading, userProfile, isProfileLoading, router]);
 
-  const isAdmin = userProfile?.role === 'admin';
+  const isAdmin = !isProfileLoading && userProfile?.role === 'admin';
   const isLoading = isUserLoading || isProfileLoading;
   
   if (isLoading || !isAdmin) {
