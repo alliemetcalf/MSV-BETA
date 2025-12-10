@@ -12,8 +12,6 @@ import {
   deleteDoc,
   serverTimestamp,
   Timestamp,
-  collectionGroup,
-  query,
 } from 'firebase/firestore';
 import { MainLayout } from '@/components/MainLayout';
 import {
@@ -85,31 +83,31 @@ export default function DoorCodesPage() {
   );
   const { data: userProfile, isLoading: profileLoading } = useDoc<UserProfile>(userProfileRef);
 
-  const [allUsersCodes, setAllUsersCodes] = useState<GetAllDoorCodesOutput>([]);
+  const [allUsersCodes, setAllUsersCodes] = useState<GetAllDoorCodesOutput | null>(null);
   const [isFetchingAllCodes, setIsFetchingAllCodes] = useState(false);
 
   const doorCodesQuery = useMemoFirebase(() => {
-    if (!firestore || !user || userProfile?.role === 'admin') {
+    if (!user || !firestore || !userProfile || userProfile.role === 'admin') {
       return null;
     }
     return collection(firestore, 'users', user.uid, 'doorCodes');
-  }, [firestore, user, userProfile?.role]);
+  }, [firestore, user, userProfile]);
 
   const { data: userDoorCodes, isLoading: userCodesLoading, error: userCodesError } = useCollection<DoorCode>(doorCodesQuery);
   
   const doorCodes = userProfile?.role === 'admin' 
-    ? allUsersCodes.flatMap(u => u.codes.map(c => ({...c, userId: u.uid, userEmail: u.email}))) 
+    ? (allUsersCodes || []).flatMap(u => u.codes.map(c => ({...c, userId: u.uid, userEmail: u.email}))) 
     : userDoorCodes;
 
   useEffect(() => {
-    if (userProfile?.role === 'admin') {
+    if (userProfile?.role === 'admin' && allUsersCodes === null) {
       setIsFetchingAllCodes(true);
       getAllDoorCodes()
         .then(setAllUsersCodes)
         .catch(console.error)
         .finally(() => setIsFetchingAllCodes(false));
     }
-  }, [userProfile?.role]);
+  }, [userProfile?.role, allUsersCodes]);
 
 
   const [isFormDialogOpen, setIsFormDialogOpen] = useState(false);
@@ -217,6 +215,14 @@ export default function DoorCodesPage() {
     if (confirm('Are you sure you want to delete this door code?')) {
       const docRef = doc(firestore, 'users', userIdForDeletion, 'doorCodes', codeId);
       await deleteDoc(docRef);
+       // If admin made a change, refetch all codes
+      if (userProfile?.role === 'admin') {
+        setIsFetchingAllCodes(true);
+        getAllDoorCodes()
+          .then(setAllUsersCodes)
+          .catch(console.error)
+          .finally(() => setIsFetchingAllCodes(false));
+      }
     }
   };
   
@@ -301,7 +307,7 @@ export default function DoorCodesPage() {
   
   const isAdmin = userProfile?.role === 'admin';
   const codesError = isAdmin ? null : userCodesError;
-  const isDataLoading = (isAdmin ? isFetchingAllCodes : userCodesLoading) || lockTypesLoading || propertiesLoading;
+  const isDataLoading = (isAdmin ? isFetchingAllCodes || allUsersCodes === null : userCodesLoading) || lockTypesLoading || propertiesLoading;
 
   return (
     <MainLayout>
@@ -331,7 +337,7 @@ export default function DoorCodesPage() {
             {!isDataLoading && !codesError && (
               <>
                 {doorCodes && doorCodes.length > 0 ? (
-                  <Accordion type="multiple" className="w-full" defaultValue={Object.keys(groupedDoorCodes)}>
+                  <Accordion type="multiple" className="w-full">
                     {Object.entries(groupedDoorCodes).map(
                       ([property, codes]) => (
                         <AccordionItem value={property} key={property}>
