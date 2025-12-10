@@ -44,6 +44,7 @@ import { Tenant } from '@/types/tenant';
 import { RentPayment } from '@/types/rent-payment';
 import { IncomeType } from '@/types/income';
 import { PaymentMethod } from '@/types/payment-method';
+import { RadioGroup, RadioGroupItem } from '@/components/ui/radio-group';
 
 
 const moneyFormatter = new Intl.NumberFormat('en-US', {
@@ -68,6 +69,7 @@ export default function RentPaymentsPage() {
   
   const [isConfirmDialogOpen, setIsConfirmDialogOpen] = useState(false);
   const [paymentToDelete, setPaymentToDelete] = useState<RentPayment | null>(null);
+  const [tenantFilter, setTenantFilter] = useState<'active' | 'inactive'>('active');
 
   const [formData, setFormData] = useState<{
     tenantId: string;
@@ -112,7 +114,13 @@ export default function RentPaymentsPage() {
     [firestore, user]
   );
   const { data: tenants, isLoading: tenantsLoading } = useCollection<Tenant>(tenantsCollectionRef);
-  const sortedTenants = useMemo(() => tenants?.filter(t => t.active).sort((a,b) => a.name.localeCompare(b.name)) || [], [tenants]);
+
+  const sortedTenants = useMemo(() => {
+    if (!tenants) return [];
+    return tenants
+        .filter(t => tenantFilter === 'active' ? t.active : !t.active)
+        .sort((a,b) => a.name.localeCompare(b.name));
+  }, [tenants, tenantFilter]);
 
   const incomeTypesDocRef = useMemoFirebase(
     () => (user && firestore ? doc(firestore, 'siteConfiguration', 'incomeTypes') : null),
@@ -137,6 +145,7 @@ export default function RentPaymentsPage() {
 
   const handleAddClick = () => {
     setEditingPayment(null);
+    setTenantFilter('active');
     setFormData({
       tenantId: '',
       year: currentYear,
@@ -152,6 +161,8 @@ export default function RentPaymentsPage() {
 
   const handleEditClick = (payment: RentPayment) => {
     const paymentDate = payment.date.toDate();
+    const tenantIsActive = tenants?.find(t => t.id === payment.tenantId)?.active ?? true;
+    setTenantFilter(tenantIsActive ? 'active' : 'inactive');
     setEditingPayment(payment);
     setFormData({
       tenantId: payment.tenantId,
@@ -316,6 +327,26 @@ export default function RentPaymentsPage() {
           </DialogHeader>
           <form onSubmit={handleFormSubmit}>
             <div className="grid gap-4 py-4">
+              <div className="grid grid-cols-4 items-center gap-4">
+                  <Label className="text-right">Tenant Status</Label>
+                  <RadioGroup
+                    value={tenantFilter}
+                    onValueChange={(value: 'active' | 'inactive') => {
+                      setFormData(p => ({...p, tenantId: ''}));
+                      setTenantFilter(value);
+                    }}
+                    className="col-span-3 flex items-center space-x-4"
+                  >
+                    <div className="flex items-center space-x-2">
+                      <RadioGroupItem value="active" id="r-active" />
+                      <Label htmlFor="r-active">Active</Label>
+                    </div>
+                    <div className="flex items-center space-x-2">
+                      <RadioGroupItem value="inactive" id="r-inactive" />
+                      <Label htmlFor="r-inactive">Inactive</Label>
+                    </div>
+                  </RadioGroup>
+              </div>
                <div className="grid grid-cols-4 items-center gap-4">
                 <Label htmlFor="tenantId" className="text-right">Tenant</Label>
                 <Select onValueChange={(v) => setFormData(p => ({...p, tenantId: v}))} value={formData.tenantId} required>
