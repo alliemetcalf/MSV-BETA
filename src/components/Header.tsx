@@ -70,6 +70,7 @@ export function Header() {
     { href: '/', label: 'Home' },
     { href: '/door-codes', label: 'Door Codes' },
     { href: '/uploads', label: 'Uploads', icon: Upload},
+    { href: '/uploadtest', label: 'Upload Test'},
   ];
 
   const adminNavItems = [{ href: '/admin', label: 'Admin', icon: ShieldCheck }];
