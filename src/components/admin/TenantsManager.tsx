@@ -1,7 +1,7 @@
 'use client';
 
 import * as React from 'react';
-import { useState, useEffect, useMemo } from 'react';
+import { useState, useMemo } from 'react';
 import {
   useUser,
   useFirestore,
@@ -64,12 +64,6 @@ import { Tenant } from '@/types/tenant';
 import { Property } from '@/types/property';
 import { useToast } from '@/hooks/use-toast';
 import { Progress } from '../ui/progress';
-import {
-  Accordion,
-  AccordionContent,
-  AccordionItem,
-  AccordionTrigger,
-} from '@/components/ui/accordion';
 import { Switch } from '@/components/ui/switch';
 import { Badge } from '../ui/badge';
 
@@ -222,26 +216,14 @@ export function TenantsManager() {
   const { data: propertiesData, isLoading: propertiesLoading } =
     useCollection<Property>(propertiesCollectionRef);
   const properties = propertiesData?.map(p => p.name).sort() || [];
-
-  const groupedTenants = useMemo(() => {
-    if (!tenants) return {};
-    const grouped = tenants.reduce(
-      (acc, tenant) => {
-        const { property } = tenant;
-        if (!acc[property]) {
-          acc[property] = [];
-        }
-        acc[property].push(tenant);
-        return acc;
-      },
-      {} as Record<string, Tenant[]>
-    );
-    // Sort tenants within each property group by name
-    for (const property in grouped) {
-      grouped[property].sort((a, b) => a.name.localeCompare(b.name));
-    }
-    // Sort properties by name
-    return Object.fromEntries(Object.entries(grouped).sort(([a], [b]) => a.localeCompare(b)));
+  
+  const sortedTenants = useMemo(() => {
+    if (!tenants) return [];
+    return [...tenants].sort((a,b) => {
+        if (a.property < b.property) return -1;
+        if (a.property > b.property) return 1;
+        return a.name.localeCompare(b.name);
+    });
   }, [tenants]);
 
   const handleAddClick = () => {
@@ -395,86 +377,66 @@ export function TenantsManager() {
             </div>
           ) : tenantsError ? (
             <p className="text-destructive text-center py-8">Error: {tenantsError.message}</p>
-          ) : tenants && tenants.length > 0 ? (
-            <Accordion type="multiple" className="w-full">
-              {Object.entries(groupedTenants).map(([property, tenantList]) => (
-                <AccordionItem value={property} key={property}>
-                  <AccordionTrigger className="text-xl font-semibold hover:no-underline">
-                    {property} ({tenantList.length})
-                  </AccordionTrigger>
-                  <AccordionContent>
-                    <Table>
-                      <TableHeader>
-                        <TableRow>
-                          <TableHead>Name</TableHead>
-                          <TableHead>Room</TableHead>
-                          <TableHead>Email</TableHead>
-                          <TableHead>Phone</TableHead>
-                          <TableHead>Status</TableHead>
-                          <TableHead className="text-right">Actions</TableHead>
-                        </TableRow>
-                      </TableHeader>
-                      <TableBody>
-                        {tenantList.map((tenant) => (
-                          <TableRow key={tenant.id}>
-                            <TableCell className="flex items-center gap-2">
-                              <div className="w-8 h-8 rounded-full bg-muted overflow-hidden flex-shrink-0">
-                                {tenant.photoUrl ? (
-                                  <Image
-                                    src={tenant.photoUrl}
-                                    alt={tenant.name}
-                                    width={32}
-                                    height={32}
-                                    className="object-cover w-full h-full"
-                                  />
-                                ) : (
-                                  <div className="w-full h-full flex items-center justify-center">
-                                    <UserIcon className="w-5 h-5 text-muted-foreground" />
-                                  </div>
-                                )}
-                              </div>
-                              {tenant.name}
-                            </TableCell>
-                            <TableCell>{tenant.room}</TableCell>
-                            <TableCell>{tenant.email}</TableCell>
-                            <TableCell>{tenant.phone}</TableCell>
-                            <TableCell>
-                                <div className='flex items-center gap-2'>
-                                    <Switch
-                                        checked={tenant.active}
-                                        onCheckedChange={() => handleToggleActive(tenant)}
-                                        aria-label="Toggle tenant active status"
-                                    />
-                                    <Badge variant={tenant.active ? "secondary" : "outline"}>
-                                        {tenant.active ? 'Active' : 'Inactive'}
-                                    </Badge>
-                                </div>
-                            </TableCell>
-                            <TableCell className="text-right">
-                              <Button
-                                variant="ghost"
-                                size="icon"
-                                onClick={() => handleEditClick(tenant)}
-                              >
-                                <Edit className="w-4 h-4" />
-                              </Button>
-                              <Button
-                                variant="ghost"
-                                size="icon"
-                                onClick={() => handleDeleteClick(tenant.id)}
-                                className="text-destructive hover:text-destructive/80"
-                              >
-                                <Trash2 className="w-4 h-4" />
-                              </Button>
-                            </TableCell>
-                          </TableRow>
-                        ))}
-                      </TableBody>
-                    </Table>
-                  </AccordionContent>
-                </AccordionItem>
-              ))}
-            </Accordion>
+          ) : sortedTenants && sortedTenants.length > 0 ? (
+            <Table>
+                <TableHeader>
+                    <TableRow>
+                    <TableHead>Name</TableHead>
+                    <TableHead>Property</TableHead>
+                    <TableHead>Room</TableHead>
+                    <TableHead>Status</TableHead>
+                    <TableHead className="text-right">Actions</TableHead>
+                    </TableRow>
+                </TableHeader>
+                <TableBody>
+                    {sortedTenants.map((tenant) => (
+                    <TableRow key={tenant.id}>
+                        <TableCell className="flex items-center gap-2">
+                        <div className="w-8 h-8 rounded-full bg-muted overflow-hidden flex-shrink-0">
+                            {tenant.photoUrl ? (
+                            <Image
+                                src={tenant.photoUrl}
+                                alt={tenant.name}
+                                width={32}
+                                height={32}
+                                className="object-cover w-full h-full"
+                            />
+                            ) : (
+                            <div className="w-full h-full flex items-center justify-center">
+                                <UserIcon className="w-5 h-5 text-muted-foreground" />
+                            </div>
+                            )}
+                        </div>
+                        {tenant.name}
+                        </TableCell>
+                        <TableCell>{tenant.property}</TableCell>
+                        <TableCell>{tenant.room}</TableCell>
+                        <TableCell>
+                            <Badge variant={tenant.active ? "secondary" : "outline"}>
+                                {tenant.active ? 'Active' : 'Inactive'}
+                            </Badge>
+                        </TableCell>
+                        <TableCell className="text-right">
+                        <Button
+                            variant="ghost"
+                            size="icon"
+                            onClick={() => handleEditClick(tenant)}
+                        >
+                            <Edit className="w-4 h-4" />
+                        </Button>
+                        <Button
+                            variant="ghost"
+                            size="icon"
+                            onClick={() => handleDeleteClick(tenant.id)}
+                            className="text-destructive hover:text-destructive/80"
+                        >
+                            <Trash2 className="w-4 h-4" />
+                        </Button>
+                        </TableCell>
+                    </TableRow>
+                    ))}
+                </TableBody>
+            </Table>
           ) : (
              <div className="text-center text-muted-foreground py-8">
                 No tenants found. Click "Add Tenant" to get started.
