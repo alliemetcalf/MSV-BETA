@@ -26,6 +26,12 @@ import { Textarea } from '../ui/textarea';
 import { Label } from '../ui/label';
 import { Progress } from '@/components/ui/progress';
 import Image from 'next/image';
+import {
+  Accordion,
+  AccordionContent,
+  AccordionItem,
+  AccordionTrigger,
+} from '@/components/ui/accordion';
 
 function ImageUploader({
   type,
@@ -269,60 +275,69 @@ export function LockTypesManager() {
         </CardDescription>
       </CardHeader>
       <CardContent className="space-y-6">
-        <div className="space-y-4">
-          {localLockTypes.map((type) => (
-            <div
-              key={type.id}
-              className="p-4 border rounded-lg space-y-4 relative"
-            >
-              <Button
-                variant="ghost"
-                size="icon"
-                onClick={() => handleDeleteLockType(type.id)}
-                disabled={isSubmitting}
-                className="absolute top-2 right-2 text-destructive hover:text-destructive/80"
-              >
-                <Trash2 className="h-4 w-4" />
-              </Button>
-              <div className="space-y-2">
-                <Label htmlFor={`name-${type.id}`}>Lock Type Name</Label>
-                <Input
-                  id={`name-${type.id}`}
-                  value={type.name}
-                  onChange={(e) =>
-                    handleUpdateField(type.id, 'name', e.target.value)
-                  }
-                  onBlur={() => handleSaveChangesForType(type.id)}
-                  disabled={isSubmitting}
-                  className="flex-grow font-semibold"
-                />
-              </div>
-              <div className="space-y-2">
-                <Label htmlFor={`instructions-${type.id}`}>
-                  Text Instructions
-                </Label>
-                <Textarea
-                  id={`instructions-${type.id}`}
-                  value={type.textInstructions || ''}
-                  onChange={(e) =>
-                    handleUpdateField(
-                      type.id,
-                      'textInstructions',
-                      e.target.value
-                    )
-                  }
-                  onBlur={() => handleSaveChangesForType(type.id)}
-                  placeholder="Enter step-by-step instructions..."
-                  disabled={isSubmitting}
-                />
-              </div>
-              <ImageUploader
-                type={type}
-                onUploadComplete={handleUploadComplete}
-              />
-            </div>
-          ))}
-          {localLockTypes.length === 0 && !isLoading && (
+        <div className="space-y-2">
+          {localLockTypes.length > 0 ? (
+            <Accordion type="multiple" className="w-full space-y-2">
+              {localLockTypes.map((type) => (
+                <AccordionItem
+                  value={type.id}
+                  key={type.id}
+                  className="p-4 border rounded-lg"
+                >
+                  <AccordionTrigger className="flex justify-between w-full p-0 hover:no-underline">
+                    <span className="font-semibold text-left">{type.name}</span>
+                  </AccordionTrigger>
+                  <AccordionContent className="pt-4 space-y-4">
+                    <Button
+                      variant="ghost"
+                      size="icon"
+                      onClick={() => handleDeleteLockType(type.id)}
+                      disabled={isSubmitting}
+                      className="absolute top-2 right-2 text-destructive hover:text-destructive/80"
+                    >
+                      <Trash2 className="h-4 w-4" />
+                    </Button>
+                    <div className="space-y-2">
+                      <Label htmlFor={`name-${type.id}`}>Lock Type Name</Label>
+                      <Input
+                        id={`name-${type.id}`}
+                        value={type.name}
+                        onChange={(e) =>
+                          handleUpdateField(type.id, 'name', e.target.value)
+                        }
+                        onBlur={() => handleSaveChangesForType(type.id)}
+                        disabled={isSubmitting}
+                        className="flex-grow font-semibold"
+                      />
+                    </div>
+                    <div className="space-y-2">
+                      <Label htmlFor={`instructions-${type.id}`}>
+                        Text Instructions
+                      </Label>
+                      <Textarea
+                        id={`instructions-${type.id}`}
+                        value={type.textInstructions || ''}
+                        onChange={(e) =>
+                          handleUpdateField(
+                            type.id,
+                            'textInstructions',
+                            e.target.value
+                          )
+                        }
+                        onBlur={() => handleSaveChangesForType(type.id)}
+                        placeholder="Enter step-by-step instructions..."
+                        disabled={isSubmitting}
+                      />
+                    </div>
+                    <ImageUploader
+                      type={type}
+                      onUploadComplete={handleUploadComplete}
+                    />
+                  </AccordionContent>
+                </AccordionItem>
+              ))}
+            </Accordion>
+          ) : (
             <p className="text-sm text-muted-foreground text-center py-4">
               No lock types defined.
             </p>
