@@ -17,6 +17,9 @@ import {
   updateDoc,
   deleteDoc,
   writeBatch,
+  getDocs,
+  query,
+  where,
 } from 'firebase/firestore';
 import { ref, uploadBytesResumable, getDownloadURL } from 'firebase/storage';
 import Image from 'next/image';
@@ -57,12 +60,9 @@ import {
 import { Property } from '@/types/property';
 import { useToast } from '@/hooks/use-toast';
 import { Progress } from '../ui/progress';
-import {
-  Accordion,
-  AccordionContent,
-  AccordionItem,
-  AccordionTrigger,
-} from '@/components/ui/accordion';
+import { DoorCode } from '@/types/door-code';
+import { Tenant } from '@/types/tenant';
+
 
 function PropertyImageUploader({
   propertyId,
@@ -203,6 +203,70 @@ export function PropertiesManager() {
     error: propertiesError,
   } = useCollection<Property>(propertiesCollectionRef);
 
+  // --- Start of Migration Logic ---
+  const [isMigrating, setIsMigrating] = React.useState(false);
+  const hasRunMigration = React.useRef(false);
+
+  useEffect(() => {
+    const runMigration = async () => {
+      if (!firestore || !user || hasRunMigration.current || properties === null) return;
+      
+      hasRunMigration.current = true;
+      setIsMigrating(true);
+
+      try {
+        // 1. Get all unique property names from door codes and tenants
+        const allUsersSnapshot = await getDocs(collection(firestore, 'users'));
+        const tenantsSnapshot = await getDocs(collection(firestore, 'tenants'));
+
+        const propertyNames = new Set<string>();
+
+        // From Tenants
+        tenantsSnapshot.forEach(doc => {
+            const tenant = doc.data() as Tenant;
+            if (tenant.property) propertyNames.add(tenant.property);
+        });
+
+        // From Door Codes (nested in users)
+        for (const userDoc of allUsersSnapshot.docs) {
+          const doorCodesSnapshot = await getDocs(collection(userDoc.ref, 'doorCodes'));
+          doorCodesSnapshot.forEach(codeDoc => {
+            const code = codeDoc.data() as DoorCode;
+            if (code.property) propertyNames.add(code.property);
+          });
+        }
+        
+        const existingPropertyNames = new Set(properties?.map(p => p.name) || []);
+        const namesToMigrate = [...propertyNames].filter(name => !existingPropertyNames.has(name));
+
+        if (namesToMigrate.length > 0) {
+          const batch = writeBatch(firestore);
+          namesToMigrate.forEach(name => {
+            const newPropertyRef = doc(collection(firestore, 'properties'));
+            batch.set(newPropertyRef, { name: name, address: '', description: '', photoUrl: '' });
+          });
+          await batch.commit();
+          toast({
+            title: "Properties Migrated",
+            description: `Successfully created ${namesToMigrate.length} new property profiles.`,
+          });
+        }
+      } catch (e) {
+        console.error("Migration failed:", e);
+        toast({ variant: 'destructive', title: "Migration Failed", description: "Could not migrate old property data." });
+      } finally {
+        setIsMigrating(false);
+      }
+    };
+    
+    // Only run migration after initial load is complete
+    if(!propertiesLoading && properties !== undefined){
+       runMigration();
+    }
+
+  }, [firestore, user, properties, propertiesLoading, toast]);
+  // --- End of Migration Logic ---
+
   const handleAddClick = () => {
     setEditingProperty(null);
     setFormData({
@@ -309,6 +373,8 @@ export function PropertiesManager() {
     return properties ? [...properties].sort((a, b) => a.name.localeCompare(b.name)) : [];
   }, [properties]);
 
+  const isLoading = propertiesLoading || isMigrating;
+
   return (
     <>
       <Card>
@@ -320,12 +386,12 @@ export function PropertiesManager() {
             </CardDescription>
           </div>
           <Button onClick={handleAddClick}>
-            <PlusCircle className="mr-2" />
+            <PlusCircle className="mr-2 h-4 w-4" />
             Add Property
           </Button>
         </CardHeader>
         <CardContent>
-          {propertiesLoading ? (
+          {isLoading ? (
             <div className="flex justify-center py-8">
               <Loader2 className="mx-auto h-8 w-8 animate-spin" />
             </div>
