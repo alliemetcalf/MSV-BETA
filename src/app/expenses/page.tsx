@@ -295,7 +295,7 @@ export default function ExpensesPage() {
               <CardTitle>Expenses</CardTitle>
               <CardDescription>Track and manage all business expenses.</CardDescription>
             </div>
-            <Button onClick={handleAddClick}><PlusCircle /> Add Expense</Button>
+            <Button onClick={handleAddClick}><PlusCircle className="mr-2 h-4 w-4" />Add Expense</Button>
           </CardHeader>
           <CardContent>
             {expensesError && <p className="text-destructive text-center py-8">Error: {expensesError.message}</p>}
@@ -322,8 +322,8 @@ export default function ExpensesPage() {
                       <TableCell>{expense.property}{expense.room ? ` / ${expense.room}` : ''}</TableCell>
                       <TableCell className="text-right font-mono">{moneyFormatter.format(expense.amount)}</TableCell>
                       <TableCell className="text-right">
-                        <Button variant="ghost" size="icon" onClick={() => handleEditClick(expense)}><Edit /></Button>
-                        <Button variant="ghost" size="icon" onClick={() => handleDeleteClick(expense)} className="text-destructive hover:text-destructive/80"><Trash2 /></Button>
+                        <Button variant="ghost" size="icon" onClick={() => handleEditClick(expense)}><Edit className="w-4 h-4" /></Button>
+                        <Button variant="ghost" size="icon" onClick={() => handleDeleteClick(expense)} className="text-destructive hover:text-destructive/80"><Trash2 className="w-4 h-4"/></Button>
                       </TableCell>
                     </TableRow>
                   ))}

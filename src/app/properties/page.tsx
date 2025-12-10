@@ -39,9 +39,12 @@ import {
   Phone,
   DollarSign,
   Landmark,
+  TrendingUp,
+  TrendingDown,
 } from 'lucide-react';
 import { Property } from '@/types/property';
 import { Tenant } from '@/types/tenant';
+import { Expense } from '@/types/expense';
 import { useRouter } from 'next/navigation';
 import {
   getAllDoorCodes,
@@ -55,6 +58,8 @@ import {
 } from '@/components/ui/accordion';
 import { Badge } from '@/components/ui/badge';
 import { Separator } from '@/components/ui/separator';
+import { subMonths, startOfMonth, endOfMonth } from 'date-fns';
+import { cn } from '@/lib/utils';
 
 const moneyFormatter = new Intl.NumberFormat('en-US', {
   style: 'currency',
@@ -106,6 +111,16 @@ export default function PropertiesPage() {
     isLoading: tenantsLoading,
     error: tenantsError,
   } = useCollection<Tenant>(tenantsCollectionRef);
+  
+  const expensesCollectionRef = useMemoFirebase(
+    () => (user && firestore ? collection(firestore, 'expenses') : null),
+    [firestore, user]
+  );
+  const {
+    data: expenses,
+    isLoading: expensesLoading,
+    error: expensesError,
+  } = useCollection<Expense>(expensesCollectionRef);
 
   const [allDoorCodes, setAllDoorCodes] =
     React.useState<GetAllDoorCodesOutput | null>(null);
@@ -161,7 +176,7 @@ export default function PropertiesPage() {
   };
 
   const pageIsLoading =
-    isUserLoading || propertiesLoading || tenantsLoading || doorCodesLoading;
+    isUserLoading || propertiesLoading || tenantsLoading || doorCodesLoading || expensesLoading;
 
   if (pageIsLoading || !user) {
     return (
@@ -171,7 +186,7 @@ export default function PropertiesPage() {
     );
   }
 
-  const pageError = propertiesError || tenantsError;
+  const pageError = propertiesError || tenantsError || expensesError;
 
   return (
     <MainLayout>
@@ -199,6 +214,20 @@ export default function PropertiesPage() {
                   const totalMonthlyRent = propertyTenants
                     .filter((tenant) => tenant.active)
                     .reduce((sum, tenant) => sum + (tenant.rent || 0), 0);
+                  
+                  const now = new Date();
+                  const lastMonth = subMonths(now, 1);
+                  const lastMonthStart = startOfMonth(lastMonth);
+                  const lastMonthEnd = endOfMonth(lastMonth);
+
+                  const lastMonthExpenses = expenses?.filter(expense => 
+                    expense.property === property.name &&
+                    expense.date.toDate() >= lastMonthStart &&
+                    expense.date.toDate() <= lastMonthEnd
+                  ).reduce((sum, expense) => sum + expense.amount, 0) || 0;
+                  
+                  const mortgage = property.mortgage || 0;
+                  const net = totalMonthlyRent - lastMonthExpenses - mortgage;
 
                   return (
                     <Card
@@ -239,7 +268,7 @@ export default function PropertiesPage() {
                                 <DollarSign className="w-4 h-4 text-muted-foreground"/>
                                 Total Monthly Rent
                               </h4>
-                              <p className="text-base font-bold text-primary">
+                              <p className="text-sm font-bold text-primary">
                                 {moneyFormatter.format(totalMonthlyRent)}
                               </p>
                            </div>
@@ -249,12 +278,37 @@ export default function PropertiesPage() {
                                   <Landmark className="w-4 h-4 text-muted-foreground"/>
                                   Mortgage Payment
                                 </h4>
-                                <p className="text-base font-bold text-destructive">
+                                <p className="text-sm font-bold text-destructive">
                                   - {moneyFormatter.format(property.mortgage)}
                                 </p>
                             </div>
                            )}
                         </div>
+
+                        <div className="space-y-3 pt-3 border-t">
+                            <h4 className="text-sm font-semibold text-foreground">Last Month's Net ({format(lastMonth, 'MMMM')})</h4>
+                            <div className="flex justify-between items-center text-xs">
+                                <span className="text-muted-foreground">Income (Rent)</span>
+                                <span className="font-mono text-green-600">{moneyFormatter.format(totalMonthlyRent)}</span>
+                            </div>
+                             <div className="flex justify-between items-center text-xs">
+                                <span className="text-muted-foreground">Expenses</span>
+                                <span className="font-mono text-red-600">- {moneyFormatter.format(lastMonthExpenses)}</span>
+                            </div>
+                             <div className="flex justify-between items-center text-xs">
+                                <span className="text-muted-foreground">Mortgage</span>
+                                <span className="font-mono text-red-600">- {moneyFormatter.format(mortgage)}</span>
+                            </div>
+                            <Separator />
+                            <div className="flex justify-between items-center font-bold">
+                                <span>Net Profit/Loss</span>
+                                <span className={cn('flex items-center gap-1', net >= 0 ? 'text-green-600' : 'text-red-600')}>
+                                  {net >= 0 ? <TrendingUp className="h-4 w-4"/> : <TrendingDown className="h-4 w-4" />}
+                                  {moneyFormatter.format(net)}
+                                </span>
+                            </div>
+                        </div>
+
                       </CardContent>
                       <CardFooter className="flex-col items-start gap-2 pt-4 border-t px-0">
                         <Accordion type="multiple" className="w-full">
