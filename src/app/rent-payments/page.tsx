@@ -17,7 +17,7 @@ import {
   Timestamp,
 } from 'firebase/firestore';
 import { useRouter } from 'next/navigation';
-import { format } from 'date-fns';
+import { format, getYear, getMonth, getDate } from 'date-fns';
 import { MainLayout } from '@/components/MainLayout';
 import { Card, CardHeader, CardTitle, CardDescription, CardContent } from '@/components/ui/card';
 import { Table, TableHeader, TableRow, TableHead, TableBody, TableCell } from '@/components/ui/table';
@@ -26,11 +26,9 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription, Di
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
-import { Calendar } from '@/components/ui/calendar';
 import { Textarea } from '@/components/ui/textarea';
-import { cn } from '@/lib/utils';
 import { useToast } from '@/hooks/use-toast';
-import { Loader2, PlusCircle, Edit, Trash2, CalendarIcon } from 'lucide-react';
+import { Loader2, PlusCircle, Edit, Trash2 } from 'lucide-react';
 import { Tenant } from '@/types/tenant';
 import { RentPayment } from '@/types/rent-payment';
 
@@ -40,6 +38,10 @@ const moneyFormatter = new Intl.NumberFormat('en-US', {
 });
 
 const paymentMethods = ['Zelle', 'Cash', 'Check', 'Venmo', 'Other'];
+
+const currentYear = new Date().getFullYear();
+const years = Array.from({ length: 10 }, (_, i) => currentYear - i);
+const months = Array.from({ length: 12 }, (_, i) => ({ value: i + 1, label: format(new Date(currentYear, i), 'MMMM') }));
 
 export default function RentPaymentsPage() {
   const auth = useAuth();
@@ -51,21 +53,29 @@ export default function RentPaymentsPage() {
   const [isFormOpen, setIsFormOpen] = useState(false);
   const [editingPayment, setEditingPayment] = useState<RentPayment | null>(null);
   const [isSubmitting, setIsSubmitting] = useState(false);
-  const [isCalendarOpen, setIsCalendarOpen] = useState(false);
 
   const [formData, setFormData] = useState<{
     tenantId: string;
-    date: Date | undefined;
+    year: number;
+    month: number;
+    day: number;
     amount: string;
     paymentMethod: string;
     notes: string;
   }>({
     tenantId: '',
-    date: new Date(),
+    year: currentYear,
+    month: getMonth(new Date()) + 1,
+    day: getDate(new Date()),
     amount: '',
     paymentMethod: '',
     notes: '',
   });
+
+   const daysInMonth = useMemo(() => {
+    return new Date(formData.year, formData.month, 0).getDate();
+  }, [formData.year, formData.month]);
+
 
   useEffect(() => {
     if (!isUserLoading && !user) {
@@ -97,7 +107,9 @@ export default function RentPaymentsPage() {
     setEditingPayment(null);
     setFormData({
       tenantId: '',
-      date: new Date(),
+      year: currentYear,
+      month: getMonth(new Date()) + 1,
+      day: getDate(new Date()),
       amount: '',
       paymentMethod: '',
       notes: '',
@@ -106,10 +118,13 @@ export default function RentPaymentsPage() {
   };
 
   const handleEditClick = (payment: RentPayment) => {
+    const paymentDate = payment.date.toDate();
     setEditingPayment(payment);
     setFormData({
       tenantId: payment.tenantId,
-      date: payment.date.toDate(),
+      year: getYear(paymentDate),
+      month: getMonth(paymentDate) + 1,
+      day: getDate(paymentDate),
       amount: String(payment.amount),
       paymentMethod: payment.paymentMethod,
       notes: payment.notes || '',
@@ -131,7 +146,8 @@ export default function RentPaymentsPage() {
 
   const handleFormSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    if (!firestore || !user || !formData.date || !formData.tenantId || !formData.paymentMethod) {
+    const { tenantId, year, month, day, paymentMethod } = formData;
+    if (!firestore || !user || !tenantId || !year || !month || !day || !paymentMethod) {
       toast({ variant: 'destructive', title: 'Missing Fields', description: 'Please fill out all required fields.' });
       return;
     }
@@ -151,11 +167,13 @@ export default function RentPaymentsPage() {
         return;
     }
 
+    const paymentDate = new Date(year, month - 1, day);
+
     const dataToSave = {
       tenantId: selectedTenant.id,
       tenantName: selectedTenant.name,
       property: selectedTenant.property,
-      date: Timestamp.fromDate(formData.date),
+      date: Timestamp.fromDate(paymentDate),
       amount,
       paymentMethod: formData.paymentMethod,
       notes: formData.notes,
@@ -176,6 +194,20 @@ export default function RentPaymentsPage() {
       setIsSubmitting(false);
     }
   };
+  
+  const handleDateChange = (part: 'year' | 'month' | 'day', value: string) => {
+    const numValue = parseInt(value, 10);
+    const newDate = { ...formData, [part]: numValue };
+
+    if (part === 'year' || part === 'month') {
+        const newDaysInMonth = new Date(newDate.year, newDate.month, 0).getDate();
+        if (newDate.day > newDaysInMonth) {
+            newDate.day = newDaysInMonth;
+        }
+    }
+    setFormData(newDate);
+  };
+
 
   const isLoading = isUserLoading || paymentsLoading || tenantsLoading;
 
@@ -252,18 +284,26 @@ export default function RentPaymentsPage() {
               </div>
               <div className="grid grid-cols-4 items-center gap-4">
                 <Label htmlFor="date" className="text-right">Date</Label>
-                 <Button
-                    type="button"
-                    variant="outline"
-                    className={cn(
-                      'col-span-3 justify-start text-left font-normal',
-                      !formData.date && 'text-muted-foreground'
-                    )}
-                    onClick={() => setIsCalendarOpen(true)}
-                  >
-                    <CalendarIcon className="mr-2 h-4 w-4" />
-                    {formData.date ? format(formData.date, 'PPP') : <span>Pick a date</span>}
-                  </Button>
+                 <div className="col-span-3 grid grid-cols-3 gap-2">
+                    <Select value={String(formData.month)} onValueChange={v => handleDateChange('month', v)}>
+                        <SelectTrigger><SelectValue/></SelectTrigger>
+                        <SelectContent>
+                            {months.map(m => <SelectItem key={m.value} value={String(m.value)}>{m.label}</SelectItem>)}
+                        </SelectContent>
+                    </Select>
+                     <Select value={String(formData.day)} onValueChange={v => handleDateChange('day', v)}>
+                        <SelectTrigger><SelectValue/></SelectTrigger>
+                        <SelectContent>
+                            {Array.from({ length: daysInMonth }, (_, i) => i + 1).map(d => <SelectItem key={d} value={String(d)}>{d}</SelectItem>)}
+                        </SelectContent>
+                    </Select>
+                    <Select value={String(formData.year)} onValueChange={v => handleDateChange('year', v)}>
+                        <SelectTrigger><SelectValue/></SelectTrigger>
+                        <SelectContent>
+                            {years.map(y => <SelectItem key={y} value={String(y)}>{y}</SelectItem>)}
+                        </SelectContent>
+                    </Select>
+                 </div>
               </div>
               <div className="grid grid-cols-4 items-center gap-4">
                 <Label htmlFor="amount" className="text-right">Amount</Label>
@@ -294,22 +334,6 @@ export default function RentPaymentsPage() {
         </DialogContent>
       </Dialog>
       
-      <Dialog open={isCalendarOpen} onOpenChange={setIsCalendarOpen}>
-        <DialogContent className="w-auto">
-           <DialogHeader>
-            <DialogTitle>Select a date</DialogTitle>
-          </DialogHeader>
-           <Calendar
-              mode="single"
-              selected={formData.date}
-              onSelect={(date) => {
-                setFormData((p) => ({ ...p, date: date as Date }));
-                setIsCalendarOpen(false);
-              }}
-              initialFocus
-            />
-        </DialogContent>
-      </Dialog>
     </MainLayout>
   );
 }
