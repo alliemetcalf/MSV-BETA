@@ -270,7 +270,7 @@ export default function PropertiesPage() {
                       </CardContent>
                       <CardFooter className="flex-col items-start gap-2 pt-4 border-t px-0">
                         <Accordion type="multiple" className="w-full">
-                          {propertyTenants.length > 0 && (
+                          {activeTenants.length > 0 && (
                             <AccordionItem
                               value="tenants"
                               className="px-6 border-b-0"
@@ -278,12 +278,12 @@ export default function PropertiesPage() {
                               <AccordionTrigger className="py-2">
                                 <h4 className="text-sm font-semibold text-foreground flex items-center gap-2">
                                   <UserIcon className="w-4 h-4" />
-                                  Tenants ({propertyTenants.length})
+                                  Tenants ({activeTenants.length})
                                 </h4>
                               </AccordionTrigger>
                               <AccordionContent className="pb-0">
                                 <div className="w-full space-y-2 pt-2">
-                                  {propertyTenants.map((tenant) => (
+                                  {activeTenants.map((tenant) => (
                                     <div
                                       key={tenant.id}
                                       className="flex items-center gap-2 text-sm"
