@@ -58,8 +58,7 @@ export default function UploadsPage() {
     }
   }, [user, isUserLoading, router]);
 
-  useEffect(() => {
-    const listFiles = async () => {
+  const listFiles = async () => {
       if (!storage || !user) return;
       setIsListingFiles(true);
       try {
@@ -86,6 +85,7 @@ export default function UploadsPage() {
       }
     };
 
+  useEffect(() => {
     if (storage && user) {
       listFiles();
     }
@@ -138,35 +138,8 @@ export default function UploadsPage() {
             description: `${file.name} has been successfully uploaded.`,
           });
           setIsUploading(false);
-          if (storage && user) {
-             const listFiles = async () => {
-              if (!storage || !user) return;
-              setIsListingFiles(true);
-              try {
-                const listRef = ref(storage, '');
-                const res = await listAll(listRef);
-                
-                const files = await Promise.all(
-                  res.items.map(async (itemRef) => {
-                    const url = await getDownloadURL(itemRef);
-                    return { name: itemRef.name, url };
-                  })
-                );
-                setUploadedFiles(files);
-              } catch (error) {
-                console.error('Error listing files:', error);
-                toast({
-                  variant: 'destructive',
-                  title: 'Error listing files',
-                  description:
-                    error instanceof Error ? error.message : 'An unknown error occurred.',
-                });
-              } finally {
-                setIsListingFiles(false);
-              }
-            };
-            listFiles();
-          }
+          // Refresh file list after upload
+          listFiles();
         });
       }
     );
