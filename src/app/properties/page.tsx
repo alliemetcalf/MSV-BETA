@@ -44,7 +44,6 @@ import {
 } from 'lucide-react';
 import { Property } from '@/types/property';
 import { Tenant } from '@/types/tenant';
-import { Expense } from '@/types/expense';
 import { useRouter } from 'next/navigation';
 import {
   getAllDoorCodes,
@@ -58,7 +57,6 @@ import {
 } from '@/components/ui/accordion';
 import { Badge } from '@/components/ui/badge';
 import { Separator } from '@/components/ui/separator';
-import { subMonths, startOfMonth, endOfMonth, format } from 'date-fns';
 import { cn } from '@/lib/utils';
 
 const moneyFormatter = new Intl.NumberFormat('en-US', {
@@ -111,16 +109,6 @@ export default function PropertiesPage() {
     isLoading: tenantsLoading,
     error: tenantsError,
   } = useCollection<Tenant>(tenantsCollectionRef);
-  
-  const expensesCollectionRef = useMemoFirebase(
-    () => (user && firestore ? collection(firestore, 'expenses') : null),
-    [firestore, user]
-  );
-  const {
-    data: expenses,
-    isLoading: expensesLoading,
-    error: expensesError,
-  } = useCollection<Expense>(expensesCollectionRef);
 
   const [allDoorCodes, setAllDoorCodes] =
     React.useState<GetAllDoorCodesOutput | null>(null);
@@ -176,7 +164,7 @@ export default function PropertiesPage() {
   };
 
   const pageIsLoading =
-    isUserLoading || propertiesLoading || tenantsLoading || doorCodesLoading || expensesLoading;
+    isUserLoading || propertiesLoading || tenantsLoading || doorCodesLoading;
 
   if (pageIsLoading || !user) {
     return (
@@ -186,7 +174,7 @@ export default function PropertiesPage() {
     );
   }
 
-  const pageError = propertiesError || tenantsError || expensesError;
+  const pageError = propertiesError || tenantsError;
 
   return (
     <MainLayout>
@@ -210,24 +198,16 @@ export default function PropertiesPage() {
                   const propertyTenants = tenantsByProperty[property.name] || [];
                   const propertyDoorCodes =
                     doorCodesByProperty[property.name] || [];
-
-                  const totalMonthlyRent = propertyTenants
-                    .filter((tenant) => tenant.active)
-                    .reduce((sum, tenant) => sum + (tenant.rent || 0), 0);
                   
-                  const now = new Date();
-                  const lastMonth = subMonths(now, 1);
-                  const lastMonthStart = startOfMonth(lastMonth);
-                  const lastMonthEnd = endOfMonth(lastMonth);
+                  const activeTenants = propertyTenants.filter((tenant) => tenant.active);
 
-                  const lastMonthExpenses = expenses?.filter(expense => 
-                    expense.property === property.name &&
-                    expense.date.toDate() >= lastMonthStart &&
-                    expense.date.toDate() <= lastMonthEnd
-                  ).reduce((sum, expense) => sum + expense.amount, 0) || 0;
+                  const totalMonthlyRent = activeTenants.reduce((sum, tenant) => sum + (tenant.rent || 0), 0);
                   
                   const mortgage = property.mortgage || 0;
-                  const net = totalMonthlyRent - lastMonthExpenses - mortgage;
+                  const avgExpensePerTenant = property.averageExpensePerTenant || 0;
+                  const avgTotalExpenses = avgExpensePerTenant * activeTenants.length;
+
+                  const net = totalMonthlyRent - avgTotalExpenses - mortgage;
 
                   return (
                     <Card
@@ -262,38 +242,15 @@ export default function PropertiesPage() {
                           {property.description || 'No description available.'}
                         </p>
                         
-                        <div className="space-y-3 pt-4 border-t">
-                           <div className="flex justify-between items-center">
-                              <h4 className="text-sm font-semibold text-foreground flex items-center gap-2">
-                                <DollarSign className="w-4 h-4 text-muted-foreground"/>
-                                Total Monthly Rent
-                              </h4>
-                              <p className="text-sm font-bold text-primary">
-                                {moneyFormatter.format(totalMonthlyRent)}
-                              </p>
-                           </div>
-                           {property.mortgage && property.mortgage > 0 && (
-                            <div className="flex justify-between items-center">
-                                <h4 className="text-sm font-semibold text-foreground flex items-center gap-2">
-                                  <Landmark className="w-4 h-4 text-muted-foreground"/>
-                                  Mortgage Payment
-                                </h4>
-                                <p className="text-sm font-bold text-destructive">
-                                  - {moneyFormatter.format(property.mortgage)}
-                                </p>
-                            </div>
-                           )}
-                        </div>
-
                         <div className="space-y-3 pt-3 border-t">
-                            <h4 className="text-sm font-semibold text-foreground">Last Month's Net ({format(lastMonth, 'MMMM')})</h4>
+                            <h4 className="text-sm font-semibold text-foreground">Revenue Model</h4>
                             <div className="flex justify-between items-center text-xs">
                                 <span className="text-muted-foreground">Income (Rent)</span>
                                 <span className="font-mono text-green-600">{moneyFormatter.format(totalMonthlyRent)}</span>
                             </div>
                              <div className="flex justify-between items-center text-xs">
-                                <span className="text-muted-foreground">Expenses</span>
-                                <span className="font-mono text-red-600">- {moneyFormatter.format(lastMonthExpenses)}</span>
+                                <span className="text-muted-foreground">Avg. Expenses</span>
+                                <span className="font-mono text-red-600">- {moneyFormatter.format(avgTotalExpenses)}</span>
                             </div>
                              <div className="flex justify-between items-center text-xs">
                                 <span className="text-muted-foreground">Mortgage</span>
@@ -301,7 +258,7 @@ export default function PropertiesPage() {
                             </div>
                             <Separator />
                             <div className="flex justify-between items-center font-bold">
-                                <span>Net Profit/Loss</span>
+                                <span>Projected Net</span>
                                 <span className={cn('flex items-center gap-1', net >= 0 ? 'text-green-600' : 'text-red-600')}>
                                   {net >= 0 ? <TrendingUp className="h-4 w-4"/> : <TrendingDown className="h-4 w-4" />}
                                   {moneyFormatter.format(net)}
