@@ -155,60 +155,15 @@ export function LockTypesManager() {
     error,
   } = useDoc<{ types: DoorLockType[] }>(lockTypesDocRef);
 
-  const [lockTypes, setLockTypes] = useState<DoorLockType[]>([]);
+  const [localLockTypes, setLocalLockTypes] = useState<DoorLockType[]>([]);
 
   useEffect(() => {
-    if (isLoading || !firestore) return;
-    if (error) {
-      console.error('Error loading lock types:', error);
-      return;
-    }
-
     if (lockTypesData) {
-      // Data exists, check if it's the old string[] format
-      if (
-        lockTypesData.types &&
-        lockTypesData.types.length > 0 &&
-        typeof lockTypesData.types[0] === 'string'
-      ) {
-        const migratedTypes = (lockTypesData.types as unknown as string[]).map(
-          (name, index) => ({
-            id: `${Date.now()}-${index}`,
-            name,
-            textInstructions: '',
-            instructionImageUrl: '',
-          })
-        );
-        setLockTypes(migratedTypes);
-        if (lockTypesDocRef) {
-          setDoc(lockTypesDocRef, { types: migratedTypes }, { merge: true })
-            .then(() =>
-              toast({
-                title: 'Data Migrated',
-                description: 'Lock types updated to new format.',
-              })
-            )
-            .catch((e) =>
-              toast({
-                variant: 'destructive',
-                title: 'Migration Failed',
-                description: e.message,
-              })
-            );
-        }
-      } else {
-        // Data is in the new DoorLockType[] format (or is an empty array)
-        setLockTypes(lockTypesData.types || []);
-      }
-    } else if (!lockTypesData && !isLoading) {
-      // Document does not exist yet. Initialize with empty array locally.
-      setLockTypes([]);
-      // Create the document with empty 'types' array if it doesn't exist
-      if (lockTypesDocRef) {
-        setDoc(lockTypesDocRef, { types: [] }, { merge: true });
-      }
+      setLocalLockTypes(lockTypesData.types || []);
+    } else if (!isLoading && !lockTypesData) {
+      setLocalLockTypes([]);
     }
-  }, [lockTypesData, isLoading, error, lockTypesDocRef, toast, firestore]);
+  }, [lockTypesData, isLoading]);
 
   const showSuccessToast = (description: string) => {
     toast({
@@ -228,49 +183,41 @@ export function LockTypesManager() {
 
   const updateFirestore = async (
     updatedTypes: DoorLockType[],
-    showToast = true
+    successMessage?: string
   ) => {
-    if (!lockTypesDocRef) return false;
+    if (!lockTypesDocRef) return;
     setIsSubmitting(true);
     try {
       await setDoc(lockTypesDocRef, { types: updatedTypes }, { merge: true });
-      if (showToast) showSuccessToast('Changes saved successfully.');
-      return true;
+      if (successMessage) {
+        showSuccessToast(successMessage);
+      }
     } catch (e) {
       showErrorToast('Failed to save changes.');
-      return false;
     } finally {
       setIsSubmitting(false);
     }
   };
 
   const handleAddLockType = async () => {
-    if (newLockTypeName && !lockTypes.some((t) => t.name === newLockTypeName)) {
+    if (newLockTypeName && !localLockTypes.some((t) => t.name === newLockTypeName)) {
       const newType: DoorLockType = {
-        id: new Date().toISOString(), // simple unique id
+        id: new Date().toISOString(),
         name: newLockTypeName,
         textInstructions: '',
         instructionImageUrl: '',
       };
-      const updatedTypes = [...lockTypes, newType];
-      const success = await updateFirestore(updatedTypes, false);
-      if (success) {
-        setLockTypes(updatedTypes);
-        setNewLockTypeName('');
-        showSuccessToast(`Added "${newLockTypeName}".`);
-      }
+      const updatedTypes = [...localLockTypes, newType];
+      await updateFirestore(updatedTypes, `Added "${newLockTypeName}".`);
+      setNewLockTypeName('');
     }
   };
 
   const handleDeleteLockType = async (idToDelete: string) => {
     const typeNameToDelete =
-      lockTypes.find((t) => t.id === idToDelete)?.name || 'item';
-    const updatedTypes = lockTypes.filter((type) => type.id !== idToDelete);
-    const success = await updateFirestore(updatedTypes, false);
-    if (success) {
-      setLockTypes(updatedTypes);
-      showSuccessToast(`Removed "${typeNameToDelete}".`);
-    }
+      localLockTypes.find((t) => t.id === idToDelete)?.name || 'item';
+    const updatedTypes = localLockTypes.filter((type) => type.id !== idToDelete);
+    await updateFirestore(updatedTypes, `Removed "${typeNameToDelete}".`);
   };
 
   const handleUpdateField = (
@@ -278,41 +225,32 @@ export function LockTypesManager() {
     field: 'name' | 'textInstructions',
     value: string
   ) => {
-    const updatedTypes = lockTypes.map((type) =>
+    const updatedTypes = localLockTypes.map((type) =>
       type.id === id ? { ...type, [field]: value } : type
     );
-    setLockTypes(updatedTypes);
-  };
-
-  const handleUploadComplete = async (id: string, url: string) => {
-    const updatedTypes = lockTypes.map((type) =>
-      type.id === id ? { ...type, instructionImageUrl: url } : type
-    );
-    const success = await updateFirestore(updatedTypes, false);
-    if (success) {
-      setLockTypes(updatedTypes);
-    }
+    setLocalLockTypes(updatedTypes);
   };
 
   const handleSaveChangesForType = async (id: string) => {
-    const typeToSave = lockTypes.find((t) => t.id === id);
+    const typeToSave = localLockTypes.find((t) => t.id === id);
     if (!typeToSave) return;
-
-    const currentDataInFirestore = lockTypesData?.types?.find(
-      (t) => t.id === id
-    );
-
-    // Only save if there is a change
+    
+    const currentDataInFirestore = lockTypesData?.types?.find((t) => t.id === id);
     if (JSON.stringify(typeToSave) === JSON.stringify(currentDataInFirestore)) {
       return;
     }
 
-    const updatedTypes = lockTypesData?.types
-      ? lockTypesData.types.map((t) => (t.id === id ? typeToSave : t))
-      : [typeToSave];
-
-    await updateFirestore(updatedTypes);
+    await updateFirestore(localLockTypes, 'Changes saved successfully.');
   };
+
+  const handleUploadComplete = async (id: string, url: string) => {
+    const updatedTypes = localLockTypes.map((type) =>
+      type.id === id ? { ...type, instructionImageUrl: url } : type
+    );
+    setLocalLockTypes(updatedTypes); // Update local state immediately for UI feedback
+    await updateFirestore(updatedTypes, 'Image URL saved.');
+  };
+
 
   if (isLoading) {
     return <Loader2 className="mx-auto h-8 w-8 animate-spin" />;
@@ -332,7 +270,7 @@ export function LockTypesManager() {
       </CardHeader>
       <CardContent className="space-y-6">
         <div className="space-y-4">
-          {lockTypes.map((type) => (
+          {localLockTypes.map((type) => (
             <div
               key={type.id}
               className="p-4 border rounded-lg space-y-4 relative"
@@ -384,7 +322,7 @@ export function LockTypesManager() {
               />
             </div>
           ))}
-          {lockTypes.length === 0 && !isLoading && (
+          {localLockTypes.length === 0 && !isLoading && (
             <p className="text-sm text-muted-foreground text-center py-4">
               No lock types defined.
             </p>
