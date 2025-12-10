@@ -39,8 +39,8 @@ const profileFormSchema = z.object({
 type ProfileFormValues = z.infer<typeof profileFormSchema>;
 
 export default function ProfilePage() {
-  const { user, isUserLoading } = useUser();
   const auth = useAuth();
+  const { user, isUserLoading } = useUser(auth);
   const firestore = useFirestore();
   const router = useRouter();
   const { toast } = useToast();
@@ -82,7 +82,7 @@ export default function ProfilePage() {
   }, [userProfile, user, form]);
 
   async function onSubmit(data: ProfileFormValues) {
-    if (!user || !userProfileRef) return;
+    if (!user || !userProfileRef || !auth) return;
 
     try {
       // Update Firestore document

@@ -1,6 +1,6 @@
 'use client';
 
-import { useFirestore, useUser, useDoc, useMemoFirebase } from '@/firebase';
+import { useFirestore, useUser, useDoc, useMemoFirebase, useAuth } from '@/firebase';
 import { doc, setDoc } from 'firebase/firestore';
 import { useState, useEffect } from 'react';
 import {
@@ -16,14 +16,15 @@ import { Loader2, PlusCircle, Trash2 } from 'lucide-react';
 import { useToast } from '@/hooks/use-toast';
 
 export function PropertiesManager() {
-  const { user } = useUser();
+  const auth = useAuth();
+  const { user } = useUser(auth);
   const firestore = useFirestore();
   const { toast } = useToast();
   const [newProperty, setNewProperty] = useState('');
   const [isSubmitting, setIsSubmitting] = useState(false);
 
   const propertiesDocRef = useMemoFirebase(
-    () => (user ? doc(firestore, 'siteConfiguration', 'properties') : null),
+    () => (user && firestore ? doc(firestore, 'siteConfiguration', 'properties') : null),
     [firestore, user]
   );
 

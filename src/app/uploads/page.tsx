@@ -2,7 +2,7 @@
 'use client';
 
 import { useState, useEffect, useRef } from 'react';
-import { useStorage, useUser } from '@/firebase';
+import { useStorage, useUser, useAuth } from '@/firebase';
 import {
   ref,
   uploadBytesResumable,
@@ -40,7 +40,8 @@ interface UploadedFile {
 }
 
 export default function UploadsPage() {
-  const { user, isUserLoading } = useUser();
+  const auth = useAuth();
+  const { user, isUserLoading } = useUser(auth);
   const storage = useStorage();
   const router = useRouter();
   const { toast } = useToast();
@@ -57,38 +58,38 @@ export default function UploadsPage() {
     }
   }, [user, isUserLoading, router]);
 
-  const listFiles = async () => {
-    if (!storage || !user) return;
-    setIsListingFiles(true);
-    try {
-      const listRef = ref(storage, '');
-      const res = await listAll(listRef);
-      
-      const files = await Promise.all(
-        res.items.map(async (itemRef) => {
-          const url = await getDownloadURL(itemRef);
-          return { name: itemRef.name, url };
-        })
-      );
-      setUploadedFiles(files);
-    } catch (error) {
-      console.error('Error listing files:', error);
-      toast({
-        variant: 'destructive',
-        title: 'Error listing files',
-        description:
-          error instanceof Error ? error.message : 'An unknown error occurred.',
-      });
-    } finally {
-      setIsListingFiles(false);
-    }
-  };
-
   useEffect(() => {
+    const listFiles = async () => {
+      if (!storage || !user) return;
+      setIsListingFiles(true);
+      try {
+        const listRef = ref(storage, '');
+        const res = await listAll(listRef);
+        
+        const files = await Promise.all(
+          res.items.map(async (itemRef) => {
+            const url = await getDownloadURL(itemRef);
+            return { name: itemRef.name, url };
+          })
+        );
+        setUploadedFiles(files);
+      } catch (error) {
+        console.error('Error listing files:', error);
+        toast({
+          variant: 'destructive',
+          title: 'Error listing files',
+          description:
+            error instanceof Error ? error.message : 'An unknown error occurred.',
+        });
+      } finally {
+        setIsListingFiles(false);
+      }
+    };
+
     if (storage && user) {
       listFiles();
     }
-  }, [storage, user]);
+  }, [storage, user, toast]);
 
   const handleFileSelect = (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
@@ -137,7 +138,35 @@ export default function UploadsPage() {
             description: `${file.name} has been successfully uploaded.`,
           });
           setIsUploading(false);
-          listFiles(); // Refresh the file list
+          if (storage && user) {
+             const listFiles = async () => {
+              if (!storage || !user) return;
+              setIsListingFiles(true);
+              try {
+                const listRef = ref(storage, '');
+                const res = await listAll(listRef);
+                
+                const files = await Promise.all(
+                  res.items.map(async (itemRef) => {
+                    const url = await getDownloadURL(itemRef);
+                    return { name: itemRef.name, url };
+                  })
+                );
+                setUploadedFiles(files);
+              } catch (error) {
+                console.error('Error listing files:', error);
+                toast({
+                  variant: 'destructive',
+                  title: 'Error listing files',
+                  description:
+                    error instanceof Error ? error.message : 'An unknown error occurred.',
+                });
+              } finally {
+                setIsListingFiles(false);
+              }
+            };
+            listFiles();
+          }
         });
       }
     );

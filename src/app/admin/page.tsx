@@ -1,6 +1,6 @@
 'use client';
 import { MainLayout } from '@/components/MainLayout';
-import { useUser } from '@/firebase';
+import { useUser, useAuth } from '@/firebase';
 import { Loader2 } from 'lucide-react';
 import { useRouter } from 'next/navigation';
 import { useEffect, useState } from 'react';
@@ -17,7 +17,8 @@ import { AddUserForm } from '@/components/admin/AddUserForm';
 import { PropertiesManager } from '@/components/admin/PropertiesManager';
 
 export default function AdminPage() {
-  const { user, isUserLoading } = useUser();
+  const auth = useAuth();
+  const { user, isUserLoading } = useUser(auth);
   const router = useRouter();
   const [isAdmin, setIsAdmin] = useState(false);
   const [claimsLoading, setClaimsLoading] = useState(true);

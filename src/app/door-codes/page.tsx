@@ -1,7 +1,7 @@
 'use client';
 
 import { useState, useEffect, useMemo } from 'react';
-import { useUser, useFirestore, useMemoFirebase, useCollection, useDoc } from '@/firebase';
+import { useUser, useFirestore, useMemoFirebase, useCollection, useDoc, useAuth } from '@/firebase';
 import Image from 'next/image';
 import {
   collection,
@@ -58,7 +58,8 @@ import { format } from 'date-fns';
 import { useRouter } from 'next/navigation';
 
 export default function DoorCodesPage() {
-  const { user, isUserLoading } = useUser();
+  const auth = useAuth();
+  const { user, isUserLoading } = useUser(auth);
   const firestore = useFirestore();
   const router = useRouter();
   const [isFormDialogOpen, setIsFormDialogOpen] = useState(false);
@@ -88,7 +89,7 @@ export default function DoorCodesPage() {
   }, [user, isUserLoading, router]);
 
   const doorCodesCollectionRef = useMemoFirebase(
-    () => (user ? collection(firestore, 'users', user.uid, 'doorCodes') : null),
+    () => (user && firestore ? collection(firestore, 'users', user.uid, 'doorCodes') : null),
     [firestore, user]
   );
 
@@ -99,7 +100,7 @@ export default function DoorCodesPage() {
   } = useCollection<DoorCode>(doorCodesCollectionRef);
 
   const lockTypesDocRef = useMemoFirebase(
-    () => (user ? doc(firestore, 'siteConfiguration', 'lockTypes') : null),
+    () => (user && firestore ? doc(firestore, 'siteConfiguration', 'lockTypes') : null),
     [firestore, user]
   );
   const { data: lockTypesData, isLoading: lockTypesLoading } =
@@ -107,7 +108,7 @@ export default function DoorCodesPage() {
   const lockTypes = lockTypesData?.types || [];
 
   const propertiesDocRef = useMemoFirebase(
-    () => (user ? doc(firestore, 'siteConfiguration', 'properties') : null),
+    () => (user && firestore ? doc(firestore, 'siteConfiguration', 'properties') : null),
     [firestore, user]
   );
   const { data: propertiesData, isLoading: propertiesLoading } =
@@ -164,7 +165,7 @@ export default function DoorCodesPage() {
   };
 
   const handleDeleteClick = async (codeId: string) => {
-    if (!user) return;
+    if (!user || !firestore) return;
     if (confirm('Are you sure you want to delete this door code?')) {
       const docRef = doc(firestore, 'users', user.uid, 'doorCodes', codeId);
       await deleteDoc(docRef);
@@ -206,6 +207,7 @@ export default function DoorCodesPage() {
     e.preventDefault();
     if (
       !user ||
+      !firestore ||
       !formData.location ||
       !formData.doorLockType ||
       !formData.property

@@ -1,7 +1,7 @@
 'use client';
 
 import { useState, useEffect } from 'react';
-import { useStorage, useUser } from '@/firebase';
+import { useStorage, useUser, useAuth } from '@/firebase';
 import {
   ref,
   listAll,
@@ -38,7 +38,8 @@ interface UploadedFile {
 const LIST_TIMEOUT_MS = 15000; // 15 seconds
 
 export default function UploadTestPage() {
-  const { user, isUserLoading } = useUser();
+  const auth = useAuth();
+  const { user, isUserLoading } = useUser(auth);
   const storage = useStorage();
   const router = useRouter();
   const { toast } = useToast();

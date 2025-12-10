@@ -31,7 +31,7 @@ export function Header() {
   const { toast } = useToast();
   const router = useRouter();
   const auth = useAuth();
-  const { user } = useUser();
+  const { user } = useUser(auth);
   const [isAdmin, setIsAdmin] = useState(false);
 
   useEffect(() => {
@@ -46,6 +46,7 @@ export function Header() {
   }, [user]);
 
   const handleLogout = async () => {
+    if (!auth) return;
     try {
       await signOut(auth);
       toast({

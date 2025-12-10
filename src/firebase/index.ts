@@ -51,6 +51,7 @@ export * from './provider';
 export * from './client-provider';
 export { useCollection } from './firestore/use-collection';
 export { useDoc } from './firestore/use-doc';
+export { useUser } from './auth/use-user';
 export * from './non-blocking-updates';
 export * from './non-blocking-login';
 export * from './errors';

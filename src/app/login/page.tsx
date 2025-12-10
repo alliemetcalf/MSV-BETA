@@ -36,8 +36,8 @@ const formSchema = z.object({
 });
 
 export default function LoginPage() {
-  const { user, isUserLoading } = useUser();
   const auth = useAuth();
+  const { user, isUserLoading } = useUser(auth);
   const router = useRouter();
   const { toast } = useToast();
   const [isSubmitting, setIsSubmitting] = useState(false);
@@ -57,6 +57,7 @@ export default function LoginPage() {
   }, [user, isUserLoading, router]);
 
   async function onSubmit(values: z.infer<typeof formSchema>) {
+    if (!auth) return;
     setIsSubmitting(true);
     try {
       await signInWithEmailAndPassword(auth, values.email, values.password);

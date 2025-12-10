@@ -1,6 +1,6 @@
 'use client';
 
-import { useUser } from '@/firebase';
+import { useUser, useAuth } from '@/firebase';
 import { useRouter } from 'next/navigation';
 import { useEffect, useState } from 'react';
 import {
@@ -15,7 +15,8 @@ import { MainLayout } from '@/components/MainLayout';
 import { IdTokenResult } from 'firebase/auth';
 
 export default function Home() {
-  const { user, isUserLoading } = useUser();
+  const auth = useAuth();
+  const { user, isUserLoading } = useUser(auth);
   const router = useRouter();
   const [role, setRole] = useState<'admin' | 'user' | null>(null);
   const [claimsLoading, setClaimsLoading] = useState(true);

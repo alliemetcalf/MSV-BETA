@@ -1,7 +1,7 @@
 'use client';
 
 import * as React from 'react';
-import { useFirestore, useMemoFirebase, useUser, useStorage, useDoc } from '@/firebase';
+import { useFirestore, useMemoFirebase, useUser, useStorage, useDoc, useAuth } from '@/firebase';
 import { doc, setDoc } from 'firebase/firestore';
 import { ref, uploadBytesResumable, getDownloadURL } from 'firebase/storage';
 import { useState, useEffect } from 'react';
@@ -48,6 +48,7 @@ function ImageUploader({
   };
 
   const handleFileUpload = (file: File) => {
+    if(!storage) return;
     setIsUploading(true);
     setUploadProgress(0);
 
@@ -136,14 +137,15 @@ function ImageUploader({
 }
 
 export function LockTypesManager() {
-  const { user } = useUser();
+  const auth = useAuth();
+  const { user } = useUser(auth);
   const firestore = useFirestore();
   const { toast } = useToast();
   const [newLockTypeName, setNewLockTypeName] = useState('');
   const [isSubmitting, setIsSubmitting] = useState(false);
 
   const lockTypesDocRef = useMemoFirebase(
-    () => (user ? doc(firestore, 'siteConfiguration', 'lockTypes') : null),
+    () => (user && firestore ? doc(firestore, 'siteConfiguration', 'lockTypes') : null),
     [firestore, user]
   );
 
@@ -156,7 +158,7 @@ export function LockTypesManager() {
   const [lockTypes, setLockTypes] = useState<DoorLockType[]>([]);
 
   useEffect(() => {
-    if (isLoading) return;
+    if (isLoading || !firestore) return;
     if (error) {
       console.error('Error loading lock types:', error);
       return;
@@ -206,7 +208,7 @@ export function LockTypesManager() {
         setDoc(lockTypesDocRef, { types: [] }, { merge: true });
       }
     }
-  }, [lockTypesData, isLoading, error, lockTypesDocRef, toast]);
+  }, [lockTypesData, isLoading, error, lockTypesDocRef, toast, firestore]);
 
   const showSuccessToast = (description: string) => {
     toast({
