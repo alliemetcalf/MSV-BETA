@@ -1,3 +1,4 @@
+
 'use client';
 
 import * as React from 'react';
@@ -377,6 +378,8 @@ export function TenantsManager() {
       photoUrl: '',
       active: true,
       leaseEffective: Timestamp.now(),
+      leaseEnded: undefined,
+      noticeReceivedDate: undefined,
     });
     setIsFormDialogOpen(true);
   };

@@ -1,3 +1,4 @@
+
 'use client';
 
 import { useState, useEffect, useMemo } from 'react';
@@ -32,11 +33,13 @@ import {
   Home,
   DollarSign,
   Shield,
+  CalendarOff,
 } from 'lucide-react';
 import { Tenant } from '@/types/tenant';
 import { useRouter } from 'next/navigation';
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
 import { Badge } from '@/components/ui/badge';
+import { format } from 'date-fns';
 
 const moneyFormatter = new Intl.NumberFormat('en-US', {
   style: 'currency',
@@ -186,6 +189,19 @@ export default function TenantsPage() {
                                         <span>Deposit: {moneyFormatter.format(tenant.deposit)}</span>
                                     </div>
                                   )}
+                                  {(tenant.leaseEnded || tenant.noticeReceivedDate) && (
+                                    <div className="flex items-start gap-2 pt-2 text-destructive">
+                                      <CalendarOff className="w-4 h-4 mt-0.5 flex-shrink-0" />
+                                      <div className="text-xs font-semibold">
+                                        {tenant.noticeReceivedDate && (
+                                          <div>30-Day Notice: {format(tenant.noticeReceivedDate.toDate(), 'PPP')}</div>
+                                        )}
+                                        {tenant.leaseEnded && (
+                                          <div>Lease Ends: {format(tenant.leaseEnded.toDate(), 'PPP')}</div>
+                                        )}
+                                      </div>
+                                    </div>
+                                  )}
                                   {tenant.notes && (
                                     <div className="pt-2">
                                       <p className="text-xs text-muted-foreground italic">
@@ -213,5 +229,3 @@ export default function TenantsPage() {
     </MainLayout>
   );
 }
-
-    
