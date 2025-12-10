@@ -46,7 +46,6 @@ import { Loader2, PlusCircle, Edit, Trash2, CalendarIcon, Paperclip, X } from 'l
 import { Expense, ExpenseCategory, Vendor } from '@/types/expense';
 import { Property } from '@/types/property';
 import { Tenant } from '@/types/tenant';
-import { Combobox, ComboboxOption } from '@/components/ui/combobox';
 
 
 const moneyFormatter = new Intl.NumberFormat('en-US', {
@@ -116,12 +115,7 @@ export default function ExpensesPage() {
     [firestore, user]
   );
   const { data: vendorsData, isLoading: vendorsLoading } = useDoc<{ vendors: Vendor[] }>(vendorsDocRef);
-  const [vendors, setVendors] = useState<Vendor[]>([]);
-  useEffect(() => {
-    if(vendorsData?.vendors) {
-      setVendors(vendorsData.vendors);
-    }
-  }, [vendorsData]);
+  const vendors = useMemo(() => vendorsData?.vendors.sort((a,b) => a.name.localeCompare(b.name)) || [], [vendorsData]);
 
 
   const propertiesCollectionRef = useMemoFirebase(
@@ -224,7 +218,7 @@ export default function ExpensesPage() {
       amount,
       description: formData.description,
       category: formData.category,
-      vendor: formData.vendor || null,
+      vendor: formData.vendor === NONE_VALUE ? null : formData.vendor,
       property: formData.property === NONE_VALUE ? null : formData.property,
       room: formData.room === NONE_VALUE ? null : formData.room,
       receiptUrl: formData.receiptUrl || null,
@@ -285,30 +279,6 @@ export default function ExpensesPage() {
       toast({ variant: 'destructive', title: 'Error', description: 'Could not remove receipt.' });
     }
   }
-
-  const handleVendorChange = async (value: string) => {
-    // This function now handles both selection and creation.
-    // The `value` is the label of the selected option, or the new text entered.
-    setFormData(p => ({...p, vendor: value }));
-    
-    const isExisting = vendors.some(v => v.name.toLowerCase() === value.toLowerCase());
-    if (value && !isExisting && vendorsDocRef) {
-        const newVendor: Vendor = { id: new Date().toISOString(), name: value };
-        const updatedVendors = [...vendors, newVendor].sort((a, b) => a.name.localeCompare(b.name));
-        try {
-            await setDoc(vendorsDocRef, { vendors: updatedVendors }, { merge: true });
-            // The useDoc hook will automatically update the local `vendors` state.
-            toast({ title: "Vendor Added", description: `"${value}" has been added to the list.` });
-        } catch (error) {
-            toast({ variant: 'destructive', title: 'Error', description: 'Could not add the new vendor.' });
-        }
-    }
-  };
-
-  const vendorOptions: ComboboxOption[] = useMemo(() => {
-    return vendors.map(v => ({ value: v.name, label: v.name }))
-      .sort((a,b) => a.label.localeCompare(b.label));
-  }, [vendors]);
 
   const isLoading = isUserLoading || expensesLoading || categoriesLoading || propertiesLoading || tenantsLoading || vendorsLoading;
 
@@ -398,16 +368,13 @@ export default function ExpensesPage() {
               </div>
               <div className="grid grid-cols-4 items-center gap-4">
                 <Label htmlFor="vendor" className="text-right">Vendor</Label>
-                <div className="col-span-3">
-                  <Combobox 
-                    options={vendorOptions}
-                    value={formData.vendor}
-                    onChange={handleVendorChange}
-                    placeholder="Select or add a vendor"
-                    searchPlaceholder="Search vendors..."
-                    emptyPlaceholder="No vendor found."
-                  />
-                </div>
+                 <Select onValueChange={(v) => setFormData(p => ({...p, vendor: v}))} value={formData.vendor}>
+                  <SelectTrigger className="col-span-3"><SelectValue placeholder="Select a vendor (optional)" /></SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value={NONE_VALUE}>None</SelectItem>
+                    {vendors.map(v => <SelectItem key={v.id} value={v.name}>{v.name}</SelectItem>)}
+                  </SelectContent>
+                </Select>
               </div>
               <div className="grid grid-cols-4 items-center gap-4">
                 <Label htmlFor="category" className="text-right">Category</Label>
