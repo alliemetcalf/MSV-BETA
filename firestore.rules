@@ -19,8 +19,9 @@ service cloud.firestore {
 
     // Allow owners to write to their own user-specific data. Admins can read any user's data.
     match /users/{userId}/{document=**} {
-      allow read: if isOwner(userId) || isAdmin();
-      allow write: if isOwner(userId) || isAdmin(); // Also allow admins to write
+      // Any signed in user can read any profile, but only owners or admins can write.
+      allow read: if isSignedIn();
+      allow write: if isOwner(userId) || isAdmin();
     }
     
     // Site configuration can be read by any signed-in user, but only written by admins.
@@ -35,9 +36,10 @@ service cloud.firestore {
       allow write: if isAdmin();
     }
     
-    // Fallback rule to allow admins to read any other collection.
+    // Fallback rule to allow any signed-in user to read/list any other collection.
+    // This is more permissive for development.
     match /{path=**} {
-      allow read: if isAdmin();
+      allow read, list: if isSignedIn();
     }
   }
 }
