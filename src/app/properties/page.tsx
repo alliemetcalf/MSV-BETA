@@ -153,9 +153,10 @@ export default function PropertiesPage() {
   }, [allDoorCodes]);
 
   const sortedProperties = React.useMemo(() => {
+    if (!properties) return [];
     return properties
-      ? [...properties].sort((a, b) => a.name.localeCompare(b.name))
-      : [];
+      .filter((p) => p.active)
+      .sort((a, b) => a.name.localeCompare(b.name));
   }, [properties]);
 
   const handleTenantClick = (tenant: Tenant) => {
@@ -183,7 +184,7 @@ export default function PropertiesPage() {
           <CardHeader>
             <CardTitle>Properties</CardTitle>
             <CardDescription>
-              A directory of all managed properties.
+              A directory of all active managed properties.
             </CardDescription>
           </CardHeader>
           <CardContent>
@@ -338,7 +339,7 @@ export default function PropertiesPage() {
             ) : (
               !pageIsLoading && (
                 <div className="text-center text-muted-foreground py-8">
-                  No properties found. Admins can add properties from the Admin
+                  No active properties found. Admins can add properties from the Admin
                   page.
                 </div>
               )

@@ -143,10 +143,15 @@
         "averageExpensePerTenant": {
           "type": "number",
           "description": "An estimated average monthly expense per tenant for this property."
+        },
+        "active": {
+          "type": "boolean",
+          "description": "Whether the property is currently active."
         }
       },
       "required": [
-        "name"
+        "name",
+        "active"
       ]
     },
     "Tenant": {

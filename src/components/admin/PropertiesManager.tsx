@@ -1,7 +1,7 @@
 'use client';
 
 import * as React from 'react';
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useMemo } from 'react';
 import {
   useUser,
   useFirestore,
@@ -62,6 +62,9 @@ import { useToast } from '@/hooks/use-toast';
 import { Progress } from '../ui/progress';
 import { DoorCode } from '@/types/door-code';
 import { Tenant } from '@/types/tenant';
+import { Switch } from '../ui/switch';
+import { Badge } from '../ui/badge';
+import { RadioGroup, RadioGroupItem } from '../ui/radio-group';
 
 
 const moneyFormatter = new Intl.NumberFormat('en-US', {
@@ -198,7 +201,9 @@ export function PropertiesManager() {
     photoUrl: '',
     mortgage: 0,
     averageExpensePerTenant: 0,
+    active: true,
   });
+  const [filter, setFilter] = useState<'all' | 'active' | 'inactive'>('active');
 
   const propertiesCollectionRef = useMemoFirebase(
     () => (user && firestore ? collection(firestore, 'properties') : null),
@@ -209,6 +214,19 @@ export function PropertiesManager() {
     isLoading: propertiesLoading,
     error: propertiesError,
   } = useCollection<Property>(propertiesCollectionRef);
+
+  const filteredProperties = useMemo(() => {
+    if (!properties) return [];
+    const sorted = [...properties].sort((a, b) => a.name.localeCompare(b.name));
+
+    if (filter === 'active') {
+      return sorted.filter((prop) => prop.active);
+    }
+    if (filter === 'inactive') {
+      return sorted.filter((prop) => !prop.active);
+    }
+    return sorted;
+  }, [properties, filter]);
 
   // --- Start of Migration Logic ---
   const [isMigrating, setIsMigrating] = React.useState(false);
@@ -250,7 +268,7 @@ export function PropertiesManager() {
           const batch = writeBatch(firestore);
           namesToMigrate.forEach(name => {
             const newPropertyRef = doc(collection(firestore, 'properties'));
-            batch.set(newPropertyRef, { name: name, address: '', description: '', photoUrl: '', mortgage: 0 });
+            batch.set(newPropertyRef, { name: name, address: '', description: '', photoUrl: '', mortgage: 0, active: true });
           });
           await batch.commit();
           toast({
@@ -283,6 +301,7 @@ export function PropertiesManager() {
       photoUrl: '',
       mortgage: 0,
       averageExpensePerTenant: 0,
+      active: true,
     });
     setIsFormDialogOpen(true);
   };
@@ -296,6 +315,7 @@ export function PropertiesManager() {
       photoUrl: property.photoUrl || '',
       mortgage: property.mortgage || 0,
       averageExpensePerTenant: property.averageExpensePerTenant || 0,
+      active: property.active === false ? false : true, // default to true if undefined
     });
     setIsFormDialogOpen(true);
   };
@@ -332,6 +352,10 @@ export function PropertiesManager() {
     }));
   };
 
+  const handleSwitchChange = (checked: boolean) => {
+    setFormData((prev) => ({ ...prev, active: checked }));
+  };
+
   const handleUploadComplete = async (url: string) => {
     setFormData((prev) => ({ ...prev, photoUrl: url }));
     if(editingProperty && firestore){
@@ -360,6 +384,7 @@ export function PropertiesManager() {
           photoUrl: formData.photoUrl || '',
           mortgage: Number(formData.mortgage) || 0,
           averageExpensePerTenant: Number(formData.averageExpensePerTenant) || 0,
+          active: formData.active,
       };
 
       if (editingProperty) {
@@ -385,46 +410,64 @@ export function PropertiesManager() {
     }
   };
 
-  const sortedProperties = React.useMemo(() => {
-    return properties ? [...properties].sort((a, b) => a.name.localeCompare(b.name)) : [];
-  }, [properties]);
-
   const isLoading = propertiesLoading || isMigrating;
 
   return (
     <>
       <Card>
-        <CardHeader className="flex flex-row items-center justify-between">
-          <div>
-            <CardTitle>Manage Properties</CardTitle>
-            <CardDescription>
-              Add, edit, or remove property profiles.
-            </CardDescription>
-          </div>
-          <Button onClick={handleAddClick}>
-            <PlusCircle className="mr-2 h-4 w-4" />
-            Add Property
-          </Button>
+        <CardHeader>
+             <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
+                 <div>
+                    <CardTitle>Manage Properties</CardTitle>
+                    <CardDescription>
+                    Add, edit, or remove property profiles.
+                    </CardDescription>
+                </div>
+                <Button onClick={handleAddClick}>
+                    <PlusCircle className="mr-2 h-4 w-4" />
+                    Add Property
+                </Button>
+            </div>
         </CardHeader>
         <CardContent>
+             <div className="flex items-center justify-end mb-4">
+                <RadioGroup
+                defaultValue="active"
+                onValueChange={(value: 'all' | 'active' | 'inactive') => setFilter(value)}
+                className="flex items-center space-x-4"
+                >
+                <div className="flex items-center space-x-2">
+                    <RadioGroupItem value="all" id="p-all" />
+                    <Label htmlFor="p-all">All</Label>
+                </div>
+                <div className="flex items-center space-x-2">
+                    <RadioGroupItem value="active" id="p-active" />
+                    <Label htmlFor="p-active">Active</Label>
+                </div>
+                <div className="flex items-center space-x-2">
+                    <RadioGroupItem value="inactive" id="p-inactive" />
+                    <Label htmlFor="p-inactive">Inactive</Label>
+                </div>
+                </RadioGroup>
+            </div>
           {isLoading ? (
             <div className="flex justify-center py-8">
               <Loader2 className="mx-auto h-8 w-8 animate-spin" />
             </div>
           ) : propertiesError ? (
             <p className="text-destructive text-center py-8">Error: {propertiesError.message}</p>
-          ) : sortedProperties && sortedProperties.length > 0 ? (
+          ) : filteredProperties && filteredProperties.length > 0 ? (
             <Table>
               <TableHeader>
                 <TableRow>
                   <TableHead>Name</TableHead>
                   <TableHead>Address</TableHead>
-                  <TableHead>Mortgage</TableHead>
+                  <TableHead>Status</TableHead>
                   <TableHead className="text-right">Actions</TableHead>
                 </TableRow>
               </TableHeader>
               <TableBody>
-                {sortedProperties.map((prop) => (
+                {filteredProperties.map((prop) => (
                   <TableRow key={prop.id}>
                      <TableCell className="flex items-center gap-2">
                         <div className="w-10 h-10 rounded-md bg-muted overflow-hidden flex-shrink-0">
@@ -445,7 +488,11 @@ export function PropertiesManager() {
                         {prop.name}
                       </TableCell>
                     <TableCell>{prop.address}</TableCell>
-                    <TableCell>{prop.mortgage ? moneyFormatter.format(prop.mortgage) : ''}</TableCell>
+                     <TableCell>
+                      <Badge variant={prop.active ? 'secondary' : 'outline'}>
+                        {prop.active ? 'Active' : 'Inactive'}
+                      </Badge>
+                    </TableCell>
                     <TableCell className="text-right">
                       <Button
                         variant="ghost"
@@ -469,7 +516,7 @@ export function PropertiesManager() {
             </Table>
           ) : (
              <div className="text-center text-muted-foreground py-8">
-                No properties found. Click "Add Property" to get started.
+                No properties found for this filter.
              </div>
           )}
         </CardContent>
@@ -492,6 +539,18 @@ export function PropertiesManager() {
                 currentPhotoUrl={formData.photoUrl}
                 onUploadComplete={handleUploadComplete}
               />
+               <div className="grid grid-cols-4 items-center gap-4">
+                <Label htmlFor="active" className="text-right">
+                  Active
+                </Label>
+                <div className="col-span-3 flex items-center">
+                  <Switch
+                    id="active"
+                    checked={formData.active}
+                    onCheckedChange={handleSwitchChange}
+                  />
+                </div>
+              </div>
               <div className="grid grid-cols-4 items-center gap-4">
                 <Label htmlFor="name" className="text-right">
                   Name

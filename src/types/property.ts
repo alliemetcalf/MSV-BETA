@@ -6,4 +6,5 @@ export interface Property {
   photoUrl?: string;
   mortgage?: number;
   averageExpensePerTenant?: number;
+  active: boolean;
 }
