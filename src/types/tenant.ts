@@ -1,3 +1,13 @@
+import { Timestamp } from 'firebase/firestore';
+
+export interface PendingMove {
+  newProperty: string;
+  newRoom: string;
+  moveDate: Timestamp;
+  newRent: number;
+  newDeposit: number;
+}
+
 export interface Tenant {
   id: string;
   name: string;
@@ -10,6 +20,9 @@ export interface Tenant {
   notes: string;
   photoUrl?: string;
   active: boolean;
+  leaseEffective?: Timestamp;
+  leaseEnded?: Timestamp;
+  pendingMove?: PendingMove;
 }
 
     

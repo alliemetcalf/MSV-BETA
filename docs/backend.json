@@ -199,6 +199,38 @@
         "active": {
           "type": "boolean",
           "description": "Whether the tenant is currently active."
+        },
+        "leaseEffective": {
+          "type": "string",
+          "format": "date-time",
+          "description": "The date the lease becomes effective."
+        },
+        "leaseEnded": {
+          "type": "string",
+          "format": "date-time",
+          "description": "The date the lease ends."
+        },
+        "pendingMove": {
+          "type": "object",
+          "description": "Details for a tenant's scheduled future move.",
+          "properties": {
+            "newProperty": {
+              "type": "string"
+            },
+            "newRoom": {
+              "type": "string"
+            },
+            "moveDate": {
+              "type": "string",
+              "format": "date-time"
+            },
+            "newRent": {
+              "type": "number"
+            },
+            "newDeposit": {
+              "type": "number"
+            }
+          }
         }
       },
       "required": [
@@ -529,3 +561,5 @@
     ]
   }
 }
+
+    

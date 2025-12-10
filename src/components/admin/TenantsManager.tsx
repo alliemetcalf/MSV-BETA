@@ -16,6 +16,8 @@ import {
   addDoc,
   updateDoc,
   deleteDoc,
+  Timestamp,
+  writeBatch,
 } from 'firebase/firestore';
 import Image from 'next/image';
 import {
@@ -58,8 +60,11 @@ import {
   Edit,
   Trash2,
   User as UserIcon,
+  Move,
+  Info,
+  XCircle,
 } from 'lucide-react';
-import { Tenant } from '@/types/tenant';
+import { Tenant, PendingMove } from '@/types/tenant';
 import { Property } from '@/types/property';
 import { useToast } from '@/hooks/use-toast';
 import { Progress } from '../ui/progress';
@@ -67,6 +72,12 @@ import { Switch } from '@/components/ui/switch';
 import { Badge } from '../ui/badge';
 import { ref, uploadBytesResumable, getDownloadURL } from 'firebase/storage';
 import { RadioGroup, RadioGroupItem } from '@/components/ui/radio-group';
+import { Calendar } from '../ui/calendar';
+import { Popover, PopoverContent, PopoverTrigger } from '../ui/popover';
+import { format, isBefore, startOfDay, add, sub } from 'date-fns';
+import { Calendar as CalendarIcon } from 'lucide-react';
+import { cn } from '@/lib/utils';
+import { Alert, AlertDescription } from '../ui/alert';
 
 const moneyFormatter = new Intl.NumberFormat('en-US', {
   style: 'currency',
@@ -194,7 +205,7 @@ export function TenantsManager() {
 
   const [isFormDialogOpen, setIsFormDialogOpen] = useState(false);
   const [editingTenant, setEditingTenant] = useState<Tenant | null>(null);
-  const [formData, setFormData] = useState<Omit<Tenant, 'id'>>({
+  const [formData, setFormData] = useState<Omit<Tenant, 'id' | 'pendingMove'>>({
     name: '',
     email: '',
     phone: '',
@@ -205,6 +216,15 @@ export function TenantsManager() {
     notes: '',
     photoUrl: '',
     active: true,
+  });
+
+  const [isMoveDialogOpen, setIsMoveDialogOpen] = useState(false);
+  const [moveTenant, setMoveTenant] = useState<Tenant | null>(null);
+  const [moveData, setMoveData] = useState<Omit<PendingMove, 'moveDate'> & { moveDate?: Date }>({
+    newProperty: '',
+    newRoom: '',
+    newRent: 0,
+    newDeposit: 0,
   });
 
   const [filter, setFilter] = useState<'all' | 'active' | 'inactive'>('active');
@@ -225,7 +245,8 @@ export function TenantsManager() {
   );
   const { data: propertiesData, isLoading: propertiesLoading } =
     useCollection<Property>(propertiesCollectionRef);
-  const properties = propertiesData?.map((p) => p.name).sort() || [];
+  const properties = propertiesData?.filter(p => p.active).map((p) => p.name).sort() || [];
+  const allProperties = propertiesData?.map((p) => p.name).sort() || [];
 
   const filteredTenants = useMemo(() => {
     if (!tenants) return [];
@@ -244,6 +265,106 @@ export function TenantsManager() {
     return sorted;
   }, [tenants, filter]);
 
+  const isRoomOccupied = (property: string, room: string, date: Date): boolean => {
+    if (!tenants) return false;
+    return tenants.some(t => 
+      t.property === property && 
+      t.room === room && 
+      t.active &&
+      (!t.leaseEnded || !isBefore(t.leaseEnded.toDate(), date))
+    );
+  };
+  
+  const handleMoveClick = (tenant: Tenant) => {
+    setMoveTenant(tenant);
+    setMoveData({
+        newProperty: tenant.property,
+        newRoom: '',
+        moveDate: new Date(),
+        newRent: tenant.rent,
+        newDeposit: tenant.deposit || 0,
+    });
+    setIsMoveDialogOpen(true);
+  }
+
+  const handleScheduleMove = async () => {
+    if (!firestore || !moveTenant || !moveData.moveDate) return;
+
+    if (isRoomOccupied(moveData.newProperty, moveData.newRoom, moveData.moveDate)) {
+        toast({
+            variant: "destructive",
+            title: "Room Occupied",
+            description: `Room ${moveData.newRoom} is already occupied on the selected date.`,
+        });
+        return;
+    }
+    
+    const pendingMove: PendingMove = {
+        ...moveData,
+        moveDate: Timestamp.fromDate(moveData.moveDate)
+    };
+
+    try {
+        await updateDoc(doc(firestore, 'tenants', moveTenant.id), { pendingMove });
+        toast({ title: "Move Scheduled", description: `Tenant will be moved on ${format(moveData.moveDate, 'PPP')}`});
+        setIsMoveDialogOpen(false);
+    } catch(e: any) {
+        toast({ variant: 'destructive', title: 'Error', description: e.message });
+    }
+  };
+
+  const handleFinalizeMove = async (tenant: Tenant) => {
+     if (!firestore || !tenant.pendingMove) return;
+
+     const { newProperty, newRoom, moveDate, newRent, newDeposit } = tenant.pendingMove;
+
+     if(confirm(`Are you sure you want to finalize the move for ${tenant.name} to ${newProperty}/${newRoom}?`)) {
+        const batch = writeBatch(firestore);
+
+        // 1. Deactivate old tenant record by creating a new one
+        const oldTenantRef = doc(collection(firestore, 'tenants'));
+        const oldTenantData: Omit<Tenant, 'id'> = {
+            ...tenant,
+            pendingMove: undefined,
+            active: false,
+            leaseEnded: Timestamp.fromDate(sub(moveDate.toDate(), { days: 1 }))
+        };
+        delete oldTenantData.pendingMove; // Ensure it's fully removed
+        batch.set(oldTenantRef, oldTenantData);
+
+        // 2. Update current tenant record
+        const currentTenantRef = doc(firestore, 'tenants', tenant.id);
+        batch.update(currentTenantRef, {
+            property: newProperty,
+            room: newRoom,
+            rent: newRent,
+            deposit: newDeposit,
+            leaseEffective: moveDate,
+            pendingMove: null, // Clear pending move
+        });
+
+        try {
+            await batch.commit();
+            toast({ title: "Move Finalized", description: `${tenant.name} has been moved successfully.`});
+        } catch(e: any) {
+            toast({ variant: 'destructive', title: 'Finalize Failed', description: e.message });
+        }
+     }
+  }
+  
+  const handleCancelMove = async (tenant: Tenant) => {
+    if (!firestore || !tenant.pendingMove) return;
+    if (confirm("Are you sure you want to cancel this pending move?")) {
+        try {
+            await updateDoc(doc(firestore, 'tenants', tenant.id), { pendingMove: null });
+            toast({ title: "Move Canceled", description: "The pending move has been canceled." });
+        } catch (e: any) {
+            toast({ variant: 'destructive', title: 'Error', description: e.message });
+        }
+    }
+  };
+
+
   const handleAddClick = () => {
     setEditingTenant(null);
     setFormData({
@@ -257,6 +378,7 @@ export function TenantsManager() {
       notes: '',
       photoUrl: '',
       active: true,
+      leaseEffective: Timestamp.now(),
     });
     setIsFormDialogOpen(true);
   };
@@ -274,13 +396,15 @@ export function TenantsManager() {
       notes: tenant.notes || '',
       photoUrl: tenant.photoUrl || '',
       active: tenant.active,
+      leaseEffective: tenant.leaseEffective,
+      leaseEnded: tenant.leaseEnded,
     });
     setIsFormDialogOpen(true);
   };
 
   const handleDeleteClick = async (tenantId: string) => {
     if (!firestore) return;
-    if (confirm('Are you sure you want to delete this tenant?')) {
+    if (confirm('Are you sure you want to delete this tenant? This action is permanent.')) {
       try {
         const docRef = doc(firestore, 'tenants', tenantId);
         await deleteDoc(docRef);
@@ -339,12 +463,15 @@ export function TenantsManager() {
     }
 
     try {
-      const dataToSave = {
+      const dataToSave: Omit<Tenant, 'id' | 'pendingMove'> = {
         ...formData,
         photoUrl: formData.photoUrl || '',
         rent: Number(formData.rent) || 0,
         deposit: Number(formData.deposit) || 0,
+        leaseEffective: formData.leaseEffective || Timestamp.now(),
+        leaseEnded: formData.leaseEnded || undefined,
       };
+
       if (editingTenant) {
         const docRef = doc(firestore, 'tenants', editingTenant.id);
         await updateDoc(docRef, dataToSave);
@@ -354,7 +481,7 @@ export function TenantsManager() {
           collection(firestore, 'tenants'),
           dataToSave
         );
-        setEditingTenant({ ...dataToSave, id: newDocRef.id });
+        setEditingTenant({ ...dataToSave, id: newDocRef.id, pendingMove: undefined });
         toast({
           title: 'Success',
           description: 'Tenant added. You can now upload a photo.',
@@ -424,15 +551,14 @@ export function TenantsManager() {
               <TableHeader>
                 <TableRow>
                   <TableHead>Name</TableHead>
-                  <TableHead>Property</TableHead>
-                  <TableHead>Room</TableHead>
+                  <TableHead>Property / Room</TableHead>
                   <TableHead>Status</TableHead>
                   <TableHead className="text-right">Actions</TableHead>
                 </TableRow>
               </TableHeader>
               <TableBody>
                 {filteredTenants.map((tenant) => (
-                  <TableRow key={tenant.id}>
+                  <TableRow key={tenant.id} className={cn(tenant.pendingMove && 'bg-amber-50')}>
                     <TableCell className="flex items-center gap-2">
                       <div className="w-8 h-8 rounded-full bg-muted overflow-hidden flex-shrink-0">
                         {tenant.photoUrl ? (
@@ -451,14 +577,28 @@ export function TenantsManager() {
                       </div>
                       {tenant.name}
                     </TableCell>
-                    <TableCell>{tenant.property}</TableCell>
-                    <TableCell>{tenant.room}</TableCell>
+                    <TableCell>{tenant.property} / {tenant.room}</TableCell>
                     <TableCell>
-                      <Badge variant={tenant.active ? 'secondary' : 'outline'}>
-                        {tenant.active ? 'Active' : 'Inactive'}
-                      </Badge>
+                      <div className='flex flex-col gap-1'>
+                        <Badge variant={tenant.active ? 'secondary' : 'outline'}>
+                          {tenant.active ? 'Active' : 'Inactive'}
+                        </Badge>
+                        {tenant.pendingMove && (
+                            <Badge variant="outline" className="border-amber-500 text-amber-700">
+                                Pending Move
+                            </Badge>
+                        )}
+                      </div>
                     </TableCell>
                     <TableCell className="text-right">
+                       {tenant.pendingMove && isBefore(tenant.pendingMove.moveDate.toDate(), new Date()) && tenant.active && (
+                          <Button variant="outline" size="sm" onClick={() => handleFinalizeMove(tenant)} className='mr-2 border-green-600 text-green-700 hover:bg-green-100 hover:text-green-800'>Finalize Move</Button>
+                       )}
+                       {tenant.active && (
+                        <Button variant="outline" size="icon" onClick={() => handleMoveClick(tenant)}>
+                            <Move className="w-4 h-4" />
+                        </Button>
+                       )}
                       <Button
                         variant="ghost"
                         size="icon"
@@ -541,7 +681,7 @@ export function TenantsManager() {
                     <SelectValue placeholder="Select a property" />
                   </SelectTrigger>
                   <SelectContent>
-                    {properties.map((prop) => (
+                    {allProperties.map((prop) => (
                       <SelectItem key={prop} value={prop}>
                         {prop}
                       </SelectItem>
@@ -611,6 +751,60 @@ export function TenantsManager() {
                   className="col-span-3"
                 />
               </div>
+               <div className="grid grid-cols-4 items-center gap-4">
+                  <Label htmlFor="leaseEffective" className="text-right">Lease Effective</Label>
+                  <div className="col-span-3">
+                    <Popover>
+                      <PopoverTrigger asChild>
+                        <Button
+                          variant={"outline"}
+                          className={cn(
+                            "w-full justify-start text-left font-normal",
+                            !formData.leaseEffective && "text-muted-foreground"
+                          )}
+                        >
+                          <CalendarIcon className="mr-2 h-4 w-4" />
+                          {formData.leaseEffective ? format(formData.leaseEffective.toDate(), "PPP") : <span>Pick a date</span>}
+                        </Button>
+                      </PopoverTrigger>
+                      <PopoverContent className="w-auto p-0">
+                        <Calendar
+                          mode="single"
+                          selected={formData.leaseEffective?.toDate()}
+                          onSelect={(d) => setFormData(p => ({...p, leaseEffective: d ? Timestamp.fromDate(d) : undefined}))}
+                          initialFocus
+                        />
+                      </PopoverContent>
+                    </Popover>
+                  </div>
+              </div>
+               <div className="grid grid-cols-4 items-center gap-4">
+                  <Label htmlFor="leaseEnded" className="text-right">Lease Ended</Label>
+                  <div className="col-span-3">
+                     <Popover>
+                      <PopoverTrigger asChild>
+                        <Button
+                          variant={"outline"}
+                          className={cn(
+                            "w-full justify-start text-left font-normal",
+                            !formData.leaseEnded && "text-muted-foreground"
+                          )}
+                        >
+                          <CalendarIcon className="mr-2 h-4 w-4" />
+                          {formData.leaseEnded ? format(formData.leaseEnded.toDate(), "PPP") : <span>Pick a date</span>}
+                        </Button>
+                      </PopoverTrigger>
+                      <PopoverContent className="w-auto p-0">
+                        <Calendar
+                          mode="single"
+                          selected={formData.leaseEnded?.toDate()}
+                          onSelect={(d) => setFormData(p => ({...p, leaseEnded: d ? Timestamp.fromDate(d) : undefined}))}
+                          initialFocus
+                        />
+                      </PopoverContent>
+                    </Popover>
+                  </div>
+              </div>
               <div className="grid grid-cols-4 items-center gap-4">
                 <Label htmlFor="notes" className="text-right">
                   Notes
@@ -634,6 +828,84 @@ export function TenantsManager() {
               <Button type="submit">Save</Button>
             </DialogFooter>
           </form>
+        </DialogContent>
+      </Dialog>
+
+      <Dialog open={isMoveDialogOpen} onOpenChange={setIsMoveDialogOpen}>
+        <DialogContent>
+            <DialogHeader>
+                <DialogTitle>Move Tenant: {moveTenant?.name}</DialogTitle>
+                <DialogDescription>Schedule a move to a new room or property.</DialogDescription>
+                 {moveTenant?.pendingMove && (
+                    <Alert variant="default" className="bg-amber-50 border-amber-200 text-amber-800">
+                        <Info className="h-4 w-4 !text-amber-700" />
+                        <AlertDescription>
+                            This tenant has a pending move to{' '}
+                            <strong>{moveTenant.pendingMove.newProperty} / {moveTenant.pendingMove.newRoom}</strong> on{' '}
+                            <strong>{format(moveTenant.pendingMove.moveDate.toDate(), 'PPP')}</strong>.
+                            Saving will overwrite this schedule.
+                        </AlertDescription>
+                        <Button variant="ghost" size="icon" className="absolute top-2 right-2 text-amber-700 hover:bg-amber-100" onClick={() => handleCancelMove(moveTenant)}>
+                            <XCircle className="h-4 w-4"/>
+                        </Button>
+                    </Alert>
+                )}
+            </DialogHeader>
+            <div className="grid gap-4 py-4">
+                <div className="grid grid-cols-4 items-center gap-4">
+                    <Label htmlFor="moveDate" className="text-right">Move-in Date</Label>
+                    <div className='col-span-3'>
+                        <Popover>
+                        <PopoverTrigger asChild>
+                            <Button
+                            variant={"outline"}
+                            className={cn(
+                                "w-full justify-start text-left font-normal",
+                                !moveData.moveDate && "text-muted-foreground"
+                            )}
+                            >
+                            <CalendarIcon className="mr-2 h-4 w-4" />
+                            {moveData.moveDate ? format(moveData.moveDate, "PPP") : <span>Pick a date</span>}
+                            </Button>
+                        </PopoverTrigger>
+                        <PopoverContent className="w-auto p-0">
+                            <Calendar
+                            mode="single"
+                            selected={moveData.moveDate}
+                            onSelect={(d) => setMoveData(p => ({...p, moveDate: d}))}
+                            disabled={(date) => isBefore(date, startOfDay(new Date()))}
+                            initialFocus
+                            />
+                        </PopoverContent>
+                        </Popover>
+                    </div>
+                </div>
+                <div className="grid grid-cols-4 items-center gap-4">
+                    <Label htmlFor="newProperty" className="text-right">New Property</Label>
+                    <Select onValueChange={v => setMoveData(p => ({...p, newProperty: v, newRoom: ''}))} value={moveData.newProperty}>
+                        <SelectTrigger className="col-span-3"><SelectValue /></SelectTrigger>
+                        <SelectContent>
+                            {properties.map(p => <SelectItem key={p} value={p}>{p}</SelectItem>)}
+                        </SelectContent>
+                    </Select>
+                </div>
+                 <div className="grid grid-cols-4 items-center gap-4">
+                    <Label htmlFor="newRoom" className="text-right">New Room</Label>
+                    <Input id="newRoom" value={moveData.newRoom} onChange={e => setMoveData(p => ({...p, newRoom: e.target.value}))} className="col-span-3" />
+                </div>
+                <div className="grid grid-cols-4 items-center gap-4">
+                    <Label htmlFor="newRent" className="text-right">New Rent</Label>
+                    <Input id="newRent" type="number" step="0.01" value={moveData.newRent} onChange={e => setMoveData(p => ({...p, newRent: parseFloat(e.target.value)}))} className="col-span-3" />
+                </div>
+                <div className="grid grid-cols-4 items-center gap-4">
+                    <Label htmlFor="newDeposit" className="text-right">New Deposit</Label>
+                    <Input id="newDeposit" type="number" step="0.01" value={moveData.newDeposit} onChange={e => setMoveData(p => ({...p, newDeposit: parseFloat(e.target.value)}))} className="col-span-3" />
+                </div>
+            </div>
+            <DialogFooter>
+                <Button variant="outline" onClick={() => setIsMoveDialogOpen(false)}>Cancel</Button>
+                <Button onClick={handleScheduleMove}>Schedule Move</Button>
+            </DialogFooter>
         </DialogContent>
       </Dialog>
     </>
