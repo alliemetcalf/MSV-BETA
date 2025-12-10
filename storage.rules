@@ -3,8 +3,8 @@ rules_version = '2';
 service firebase.storage {
   match /b/{bucket}/o {
     match /{allPaths=**} {
-      // WARNING: This is a temporary, insecure rule for debugging.
-      // It allows anyone to read, write, and delete any file.
+      // WARNING: These rules are insecure and for testing only.
+      // They allow anyone to read, write, and delete any file.
       allow read, write;
     }
   }
