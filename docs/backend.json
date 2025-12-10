@@ -167,6 +167,10 @@
           "type": "string",
           "description": "The room number or identifier for the tenant."
         },
+        "rent": {
+          "type": "number",
+          "description": "The monthly rent amount for the tenant."
+        },
         "notes": {
           "type": "string",
           "description": "General notes about the tenant."
@@ -183,7 +187,8 @@
       "required": [
         "name",
         "property",
-        "active"
+        "active",
+        "rent"
       ]
     },
     "Expense": {

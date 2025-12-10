@@ -67,6 +67,11 @@ import { Progress } from '../ui/progress';
 import { Switch } from '@/components/ui/switch';
 import { Badge } from '../ui/badge';
 
+const moneyFormatter = new Intl.NumberFormat('en-US', {
+  style: 'currency',
+  currency: 'USD',
+});
+
 function TenantImageUploader({
   tenantId,
   currentPhotoUrl,
@@ -194,6 +199,7 @@ export function TenantsManager() {
     phone: '',
     property: '',
     room: '',
+    rent: 0,
     notes: '',
     photoUrl: '',
     active: true,
@@ -234,6 +240,7 @@ export function TenantsManager() {
       phone: '',
       property: properties[0] || '',
       room: '',
+      rent: 0,
       notes: '',
       photoUrl: '',
       active: true,
@@ -249,6 +256,7 @@ export function TenantsManager() {
       phone: tenant.phone || '',
       property: tenant.property,
       room: tenant.room || '',
+      rent: tenant.rent || 0,
       notes: tenant.notes || '',
       photoUrl: tenant.photoUrl || '',
       active: tenant.active,
@@ -256,18 +264,6 @@ export function TenantsManager() {
     setIsFormDialogOpen(true);
   };
   
-  const handleToggleActive = async (tenant: Tenant) => {
-    if(!firestore) return;
-    const docRef = doc(firestore, 'tenants', tenant.id);
-    try {
-      await updateDoc(docRef, { active: !tenant.active });
-      toast({ title: 'Status Updated', description: `${tenant.name} is now ${!tenant.active ? 'active' : 'inactive'}.` });
-    } catch(e: any) {
-        toast({ variant: 'destructive', title: 'Error', description: 'Could not update tenant status.' });
-    }
-  }
-
-
   const handleDeleteClick = async (tenantId: string) => {
     if (!firestore) return;
     if (confirm('Are you sure you want to delete this tenant?')) {
@@ -293,8 +289,11 @@ export function TenantsManager() {
   const handleFormChange = (
     e: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement>
   ) => {
-    const { id, value } = e.target;
-    setFormData((prev) => ({ ...prev, [id]: value }));
+    const { id, value, type } = e.target;
+    setFormData((prev) => ({ 
+        ...prev, 
+        [id]: type === 'number' ? parseFloat(value) : value 
+    }));
   };
 
   const handleSelectChange = (value: string) => {
@@ -328,7 +327,8 @@ export function TenantsManager() {
     try {
       const dataToSave = {
           ...formData,
-          photoUrl: formData.photoUrl || ''
+          photoUrl: formData.photoUrl || '',
+          rent: Number(formData.rent) || 0,
       };
       if (editingTenant) {
         const docRef = doc(firestore, 'tenants', editingTenant.id);
@@ -384,6 +384,7 @@ export function TenantsManager() {
                     <TableHead>Name</TableHead>
                     <TableHead>Property</TableHead>
                     <TableHead>Room</TableHead>
+                    <TableHead>Rent</TableHead>
                     <TableHead>Status</TableHead>
                     <TableHead className="text-right">Actions</TableHead>
                     </TableRow>
@@ -411,6 +412,7 @@ export function TenantsManager() {
                         </TableCell>
                         <TableCell>{tenant.property}</TableCell>
                         <TableCell>{tenant.room}</TableCell>
+                        <TableCell>{moneyFormatter.format(tenant.rent || 0)}</TableCell>
                         <TableCell>
                             <Badge variant={tenant.active ? "secondary" : "outline"}>
                                 {tenant.active ? 'Active' : 'Inactive'}
@@ -516,6 +518,20 @@ export function TenantsManager() {
                   value={formData.room || ''}
                   onChange={handleFormChange}
                   className="col-span-3"
+                />
+              </div>
+              <div className="grid grid-cols-4 items-center gap-4">
+                <Label htmlFor="rent" className="text-right">
+                  Rent
+                </Label>
+                <Input
+                  id="rent"
+                  type="number"
+                  step="0.01"
+                  value={formData.rent || ''}
+                  onChange={handleFormChange}
+                  className="col-span-3"
+                  required
                 />
               </div>
               <div className="grid grid-cols-4 items-center gap-4">
