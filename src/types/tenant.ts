@@ -6,4 +6,5 @@ export interface Tenant {
   property: string;
   room: string;
   notes: string;
+  photoUrl?: string;
 }

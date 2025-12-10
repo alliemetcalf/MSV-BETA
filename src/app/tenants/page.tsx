@@ -10,6 +10,7 @@ import {
 } from '@/firebase';
 import { collection } from 'firebase/firestore';
 import { MainLayout } from '@/components/MainLayout';
+import Image from 'next/image';
 import {
   Card,
   CardHeader,
@@ -23,9 +24,24 @@ import {
   AccordionItem,
   AccordionTrigger,
 } from '@/components/ui/accordion';
-import { Loader2, Mail, Phone, User as UserIcon, Home } from 'lucide-react';
+import {
+  Loader2,
+  Mail,
+  Phone,
+  User as UserIcon,
+  Home,
+} from 'lucide-react';
 import { Tenant } from '@/types/tenant';
 import { useRouter } from 'next/navigation';
+import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
+
+function getInitials(name: string) {
+  const parts = name.split(' ');
+  if (parts.length > 1) {
+    return `${parts[0][0]}${parts[parts.length - 1][0]}`.toUpperCase();
+  }
+  return name.substring(0, 2).toUpperCase();
+}
 
 export default function TenantsPage() {
   const auth = useAuth();
@@ -110,13 +126,23 @@ export default function TenantsPage() {
                             .map((tenant) => (
                               <Card key={tenant.id}>
                                 <CardHeader>
-                                  <CardTitle className="flex items-center gap-2">
-                                    <UserIcon className="text-primary" />{' '}
-                                    {tenant.name}
-                                  </CardTitle>
-                                  <CardDescription>
-                                    Room: {tenant.room || 'N/A'}
-                                  </CardDescription>
+                                  <div className="flex items-center gap-4">
+                                    <Avatar className="h-16 w-16">
+                                      <AvatarImage
+                                        src={tenant.photoUrl}
+                                        alt={tenant.name}
+                                      />
+                                      <AvatarFallback>
+                                        {getInitials(tenant.name)}
+                                      </AvatarFallback>
+                                    </Avatar>
+                                    <div className="flex-1">
+                                      <CardTitle>{tenant.name}</CardTitle>
+                                      <CardDescription>
+                                        Room: {tenant.room || 'N/A'}
+                                      </CardDescription>
+                                    </div>
+                                  </div>
                                 </CardHeader>
                                 <CardContent className="space-y-2 text-sm">
                                   <div className="flex items-center gap-2">

@@ -1,5 +1,6 @@
 'use client';
 
+import * as React from 'react';
 import { useState, useEffect, useMemo } from 'react';
 import {
   useUser,
@@ -8,6 +9,7 @@ import {
   useCollection,
   useDoc,
   useAuth,
+  useStorage,
 } from '@/firebase';
 import {
   collection,
@@ -16,6 +18,8 @@ import {
   updateDoc,
   deleteDoc,
 } from 'firebase/firestore';
+import { ref, uploadBytesResumable, getDownloadURL } from 'firebase/storage';
+import Image from 'next/image';
 import {
   Card,
   CardHeader,
@@ -50,9 +54,123 @@ import {
   SelectValue,
 } from '@/components/ui/select';
 import { Textarea } from '@/components/ui/textarea';
-import { Loader2, PlusCircle, Edit, Trash2 } from 'lucide-react';
+import { Loader2, PlusCircle, Edit, Trash2, User as UserIcon } from 'lucide-react';
 import { Tenant } from '@/types/tenant';
 import { useToast } from '@/hooks/use-toast';
+import { Progress } from '../ui/progress';
+
+function TenantImageUploader({
+  tenantId,
+  currentPhotoUrl,
+  onUploadComplete,
+}: {
+  tenantId: string | undefined;
+  currentPhotoUrl?: string;
+  onUploadComplete: (url: string) => void;
+}) {
+  const storage = useStorage();
+  const { toast } = useToast();
+  const [uploadProgress, setUploadProgress] = useState<number | null>(null);
+  const [isUploading, setIsUploading] = useState(false);
+  const fileInputRef = React.useRef<HTMLInputElement>(null);
+
+  const handleFileSelect = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (file && tenantId) {
+      handleFileUpload(file);
+    } else {
+        toast({
+            variant: 'destructive',
+            title: 'Cannot Upload',
+            description: 'Please save the tenant before uploading a photo.',
+        })
+    }
+  };
+
+  const handleFileUpload = (file: File) => {
+    if (!storage || !tenantId) return;
+    setIsUploading(true);
+    setUploadProgress(0);
+
+    const storageRef = ref(storage, `tenant-photos/${tenantId}/${file.name}`);
+    const metadata = { contentType: file.type };
+    const uploadTask = uploadBytesResumable(storageRef, file, metadata);
+
+    uploadTask.on(
+      'state_changed',
+      (snapshot) => {
+        const progress =
+          (snapshot.bytesTransferred / snapshot.totalBytes) * 100;
+        setUploadProgress(progress);
+      },
+      (error) => {
+        setIsUploading(false);
+        setUploadProgress(null);
+        toast({
+          variant: 'destructive',
+          title: 'Upload Failed',
+          description: error.message,
+        });
+      },
+      () => {
+        getDownloadURL(uploadTask.snapshot.ref).then((downloadURL) => {
+          onUploadComplete(downloadURL);
+          setIsUploading(false);
+          setUploadProgress(null);
+          toast({
+            title: 'Upload Complete',
+            description: 'Image has been successfully uploaded.',
+          });
+        });
+      }
+    );
+  };
+
+  return (
+    <div className="grid grid-cols-4 items-center gap-4">
+      <Label htmlFor="photo" className="text-right">
+        Photo
+      </Label>
+      <div className="col-span-3 space-y-2">
+        <div
+          className="relative w-24 h-24 border rounded-full flex items-center justify-center bg-muted/50 cursor-pointer hover:bg-muted overflow-hidden"
+          onClick={() => fileInputRef.current?.click()}
+        >
+          {currentPhotoUrl ? (
+            <Image
+              src={currentPhotoUrl}
+              alt="Tenant photo"
+              fill
+              className="object-cover"
+            />
+          ) : (
+            <div className="flex flex-col items-center gap-1 text-muted-foreground text-xs text-center">
+              <UserIcon className="h-6 w-6" />
+              <span>Upload</span>
+            </div>
+          )}
+          <input
+            ref={fileInputRef}
+            id="photo"
+            type="file"
+            accept="image/jpeg,image/png"
+            className="hidden"
+            onChange={handleFileSelect}
+            disabled={isUploading}
+          />
+        </div>
+        {isUploading && uploadProgress !== null && (
+          <div className="flex items-center gap-2">
+            <Progress value={uploadProgress} className="w-full" />
+            <span className="text-sm text-muted-foreground">
+              {Math.round(uploadProgress)}%
+            </span>
+          </div>
+        )}
+      </div>
+    </div>
+  );
+}
 
 export function TenantsManager() {
   const auth = useAuth();
@@ -69,6 +187,7 @@ export function TenantsManager() {
     property: '',
     room: '',
     notes: '',
+    photoUrl: '',
   });
 
   const tenantsCollectionRef = useMemoFirebase(
@@ -82,7 +201,10 @@ export function TenantsManager() {
   } = useCollection<Tenant>(tenantsCollectionRef);
 
   const propertiesDocRef = useMemoFirebase(
-    () => (user && firestore ? doc(firestore, 'siteConfiguration', 'properties') : null),
+    () =>
+      user && firestore
+        ? doc(firestore, 'siteConfiguration', 'properties')
+        : null,
     [firestore, user]
   );
   const { data: propertiesData, isLoading: propertiesLoading } =
@@ -98,6 +220,7 @@ export function TenantsManager() {
       property: properties[0] || '',
       room: '',
       notes: '',
+      photoUrl: '',
     });
     setIsFormDialogOpen(true);
   };
@@ -111,6 +234,7 @@ export function TenantsManager() {
       property: tenant.property,
       room: tenant.room,
       notes: tenant.notes,
+      photoUrl: tenant.photoUrl,
     });
     setIsFormDialogOpen(true);
   };
@@ -148,6 +272,15 @@ export function TenantsManager() {
     setFormData((prev) => ({ ...prev, property: value }));
   };
 
+  const handleUploadComplete = async (url: string) => {
+    setFormData((prev) => ({ ...prev, photoUrl: url }));
+    if(editingTenant && firestore){
+        const docRef = doc(firestore, 'tenants', editingTenant.id);
+        await updateDoc(docRef, { photoUrl: url });
+        toast({ title: 'Success', description: 'Tenant photo updated.' });
+    }
+  };
+
   const handleFormSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!firestore || !formData.name || !formData.property) {
@@ -165,11 +298,18 @@ export function TenantsManager() {
         await updateDoc(docRef, formData);
         toast({ title: 'Success', description: 'Tenant updated.' });
       } else {
-        await addDoc(collection(firestore, 'tenants'), formData);
-        toast({ title: 'Success', description: 'Tenant added.' });
+        const newDocRef = await addDoc(
+          collection(firestore, 'tenants'),
+          formData
+        );
+        // After creating the doc, we can set it for editing to get an ID for photo uploads
+        setEditingTenant({ ...formData, id: newDocRef.id });
+        toast({ title: 'Success', description: 'Tenant added. You can now upload a photo.' });
+        // Don't close the dialog, so the user can upload a photo
+        return;
       }
       handleDialogClose();
-    } catch (e: any) {
+    } catch (e: any) => {
       toast({
         variant: 'destructive',
         title: 'Error',
@@ -216,7 +356,24 @@ export function TenantsManager() {
                 {tenants && tenants.length > 0 ? (
                   tenants.map((tenant) => (
                     <TableRow key={tenant.id}>
-                      <TableCell>{tenant.name}</TableCell>
+                      <TableCell className="flex items-center gap-2">
+                        <div className="w-8 h-8 rounded-full bg-muted overflow-hidden flex-shrink-0">
+                          {tenant.photoUrl ? (
+                            <Image
+                              src={tenant.photoUrl}
+                              alt={tenant.name}
+                              width={32}
+                              height={32}
+                              className="object-cover w-full h-full"
+                            />
+                          ) : (
+                            <div className="w-full h-full flex items-center justify-center">
+                              <UserIcon className="w-5 h-5 text-muted-foreground" />
+                            </div>
+                          )}
+                        </div>
+                        {tenant.name}
+                      </TableCell>
                       <TableCell>{tenant.property}</TableCell>
                       <TableCell>{tenant.room}</TableCell>
                       <TableCell>{tenant.email}</TableCell>
@@ -268,6 +425,11 @@ export function TenantsManager() {
           </DialogHeader>
           <form onSubmit={handleFormSubmit}>
             <div className="grid gap-4 py-4">
+              <TenantImageUploader
+                tenantId={editingTenant?.id}
+                currentPhotoUrl={formData.photoUrl}
+                onUploadComplete={handleUploadComplete}
+              />
               <div className="grid grid-cols-4 items-center gap-4">
                 <Label htmlFor="name" className="text-right">
                   Name

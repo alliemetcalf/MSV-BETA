@@ -21,10 +21,16 @@
             "user",
             "assistant"
           ]
+        },
+        "email": {
+          "type": "string",
+          "description": "The user's email address.",
+          "format": "email"
         }
       },
       "required": [
-        "role"
+        "role",
+        "email"
       ]
     },
     "DoorCode": {
@@ -158,6 +164,10 @@
         "notes": {
           "type": "string",
           "description": "General notes about the tenant."
+        },
+        "photoUrl": {
+          "type": "string",
+          "description": "URL of the tenant's photo."
         }
       },
       "required": [
