@@ -5,7 +5,7 @@ import { FirebaseApp } from 'firebase/app';
 import { Firestore } from 'firebase/firestore';
 import { Auth, User, onAuthStateChanged } from 'firebase/auth';
 import { FirebaseStorage } from 'firebase/storage';
-import { FirebaseErrorListener } from '@/components/FirebaseErrorListener'
+import { FirebaseErrorListener } from '@/components/FirebaseErrorListener';
 
 interface FirebaseProviderProps {
   children: ReactNode;
@@ -167,19 +167,28 @@ export const useStorage = (): FirebaseStorage => {
     return storage;
 };
 
-type MemoFirebase<T> = T & {__memo?: boolean};
-
+/**
+ * A hook for memoizing Firebase references and queries.
+ * This is crucial for preventing infinite loops in `useCollection` and `useDoc`
+ * when references depend on component props or state.
+ * @param factory A function that creates the Firebase reference or query.
+ * @param deps The dependency array for the useMemo hook.
+ * @returns The memoized Firebase reference or query.
+ */
 export function useMemoFirebase<T>(factory: () => T, deps: DependencyList): T {
-  const memoized = useMemo(factory, deps);
+    // This custom hook simply wraps useMemo for creating stable Firebase refs/queries.
+    // It helps enforce the pattern of memoization for these objects.
+    const memoized = useMemo(factory, deps);
 
-  if (memoized && typeof memoized === 'object') {
-    // This is a bit of a hack to "tag" the memoized object.
-    // It helps the useCollection/useDoc hooks to verify that the
-    // reference they received was indeed memoized.
-    (memoized as MemoFirebase<T>).__memo = true;
-  }
-
-  return memoized;
+    if (memoized && typeof memoized === 'object') {
+        // This is a bit of a hack to "tag" the memoized object.
+        // It helps the useCollection/useDoc hooks to verify that the
+        // reference they received was indeed memoized.
+        // @ts-ignore
+        memoized.__memo = true;
+    }
+  
+    return memoized;
 }
 
 /**
@@ -187,7 +196,7 @@ export function useMemoFirebase<T>(factory: () => T, deps: DependencyList): T {
  * This provides the User object, loading status, and any auth errors.
  * @returns {UserHookResult} Object with user, isUserLoading, userError.
  */
-export const useUser = (): UserHookResult => { // Renamed from useAuthUser
+export const useUser = (): UserHookResult => {
   const { user, isUserLoading, userError } = useFirebase(); // Leverages the main hook
   return { user, isUserLoading, userError };
 };

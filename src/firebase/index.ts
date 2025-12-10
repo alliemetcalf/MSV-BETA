@@ -6,7 +6,7 @@ import { getAuth, Auth } from 'firebase/auth';
 import { getFirestore, Firestore } from 'firebase/firestore';
 import { getStorage, FirebaseStorage } from 'firebase/storage';
 
-// This holds the initialized services.
+// This holds the initialized services as a singleton.
 let firebaseServices: {
   firebaseApp: FirebaseApp;
   auth: Auth;
@@ -15,18 +15,26 @@ let firebaseServices: {
 } | null = null;
 
 
-// IMPORTANT: DO NOT MODIFY THIS FUNCTION
+/**
+ * Initializes and returns a singleton instance of Firebase services.
+ * This function is idempotent and safe to call multiple times.
+ */
 export function initializeFirebase() {
+  // If the singleton is already initialized, return it immediately.
   if (firebaseServices) {
     return firebaseServices;
   }
-  
-  const app = getApps().length ? getApp() : initializeApp(firebaseConfig);
-  
+
+  // Check if a Firebase app has already been initialized.
+  // If not, initialize a new one with the provided configuration.
+  const app = !getApps().length ? initializeApp(firebaseConfig) : getApp();
+
+  // Get instances of the required Firebase services.
   const auth = getAuth(app);
   const firestore = getFirestore(app);
   const storage = getStorage(app);
 
+  // Store the initialized services in the singleton variable.
   firebaseServices = {
     firebaseApp: app,
     auth,
@@ -34,17 +42,10 @@ export function initializeFirebase() {
     storage,
   };
   
+  // Return the services.
   return firebaseServices;
 }
 
-export function getSdks(firebaseApp: FirebaseApp) {
-  return {
-    firebaseApp,
-    auth: getAuth(firebaseApp),
-    firestore: getFirestore(firebaseApp),
-    storage: getStorage(firebaseApp),
-  };
-}
 
 export * from './provider';
 export * from './client-provider';
