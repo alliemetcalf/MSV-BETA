@@ -354,7 +354,7 @@ export default function ExpensesPage() {
                     </Button>
                   </PopoverTrigger>
                   <PopoverContent className="w-auto p-0">
-                    <Calendar mode="single" selected={formData.date} onSelect={(d) => setFormData(p => ({...p, date: d}))} initialFocus />
+                    <Calendar mode="single" selected={formData.date} onSelect={(date) => setFormData(p => ({...p, date: date}))} initialFocus />
                   </PopoverContent>
                 </Popover>
               </div>
