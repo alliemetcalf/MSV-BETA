@@ -156,7 +156,7 @@ export default function UploadsPage() {
       <div className="w-full max-w-4xl px-4 flex flex-col gap-8">
         <Card>
           <CardHeader>
-            <CardTitle>File Upload Test</CardTitle>
+            <CardTitle>File Upload</CardTitle>
             <CardDescription>
               Upload a file to Firebase Storage and view all uploaded files.
             </CardDescription>
