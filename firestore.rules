@@ -56,7 +56,7 @@ service cloud.firestore {
     
     // Tenants can be read/listed by any signed-in user, but only written by admins.
     match /tenants/{document=**} {
-      allow read: if isSignedIn();
+      allow list, get: if isSignedIn();
       allow write: if isAdmin();
     }
   }

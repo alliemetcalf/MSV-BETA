@@ -195,7 +195,7 @@
         "schema": {
           "$ref": "#/entities/Tenant"
         },
-        "description": "Stores information about individual tenants."
+        "description": "Stores information about individual tenants. Forcing redeploy."
       }
     ]
   }
