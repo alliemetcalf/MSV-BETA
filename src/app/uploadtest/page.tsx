@@ -24,7 +24,8 @@ import {
   TableRow,
 } from '@/components/ui/table';
 import { Button } from '@/components/ui/button';
-import { Loader2 } from 'lucide-react';
+import { Alert, AlertDescription, AlertTitle } from '@/components/ui/alert';
+import { Loader2, AlertTriangle } from 'lucide-react';
 import Link from 'next/link';
 import { useRouter } from 'next/navigation';
 import { useToast } from '@/hooks/use-toast';
@@ -42,6 +43,7 @@ export default function UploadTestPage() {
 
   const [uploadedFiles, setUploadedFiles] = useState<UploadedFile[]>([]);
   const [isListingFiles, setIsListingFiles] = useState(true);
+  const [errorState, setErrorState] = useState<Error | null>(null);
 
   useEffect(() => {
     if (!isUserLoading && !user) {
@@ -52,10 +54,12 @@ export default function UploadTestPage() {
   useEffect(() => {
     const listFiles = async () => {
       if (!storage || !user) {
+        // This condition should not be hit if provider is working, but is a good safeguard.
         return;
       }
       
       setIsListingFiles(true);
+      setErrorState(null);
       try {
         const listRef = ref(storage, ''); // List root directory
         const res = await listAll(listRef);
@@ -67,23 +71,23 @@ export default function UploadTestPage() {
           })
         );
         setUploadedFiles(files);
-      } catch (error) {
-        console.error('Error listing files:', error);
+      } catch (error: any) {
+        console.error('CRITICAL: Error listing files:', error);
+        setErrorState(error); // Set the error state to display it in the UI
         toast({
           variant: 'destructive',
           title: 'Error listing files',
-          description:
-            error instanceof Error ? error.message : 'An unknown error occurred.',
+          description: error.message || 'An unknown error occurred.',
         });
       } finally {
-        setIsListingFiles(false);
+        setIsListingFiles(false); // This is critical - ensure spinner is always turned off
       }
     };
     
-    if(!isUserLoading) {
+    if(storage && user) {
       listFiles();
     }
-  }, [storage, user, isUserLoading, toast]);
+  }, [storage, user, toast]);
   
   if (isUserLoading || !user) {
     return (
@@ -104,10 +108,29 @@ export default function UploadTestPage() {
             </CardDescription>
           </CardHeader>
           <CardContent>
+            <div className="mb-4 p-4 border rounded-lg bg-muted/50 text-sm">
+                <h3 className="font-semibold mb-2">Diagnostics</h3>
+                <p>User Loading: {isUserLoading.toString()}</p>
+                <p>User Object Present: {(!!user).toString()}</p>
+                <p>Storage Object Present: {(!!storage).toString()}</p>
+            </div>
+
             {isListingFiles ? (
               <div className="flex justify-center py-8">
                 <Loader2 className="h-8 w-8 animate-spin" />
+                <p className="ml-4">Loading files from bucket...</p>
               </div>
+            ) : errorState ? (
+                <Alert variant="destructive">
+                    <AlertTriangle className="h-4 w-4" />
+                    <AlertTitle>An Error Occurred</AlertTitle>
+                    <AlertDescription>
+                        <p>Could not list files from the storage bucket.</p>
+                        <pre className="mt-2 w-full whitespace-pre-wrap rounded-md bg-destructive/10 p-2 font-mono text-xs">
+                           {errorState.message}
+                        </pre>
+                    </AlertDescription>
+                </Alert>
             ) : (
               <Table>
                 <TableHeader>
@@ -133,7 +156,7 @@ export default function UploadTestPage() {
                   ) : (
                     <TableRow>
                       <TableCell colSpan={2} className="text-center">
-                        No files found.
+                        No files found. The request was successful, but the bucket is empty or the rules are preventing listing.
                       </TableCell>
                     </TableRow>
                   )}
