@@ -16,6 +16,7 @@ import { AddUserForm } from '@/components/admin/AddUserForm';
 import { PropertiesManager } from '@/components/admin/PropertiesManager';
 import { UserRoleManager } from '@/components/admin/UserRoleManager';
 import { TenantsManager } from '@/components/admin/TenantsManager';
+import { ExpenseCategoryManager } from '@/components/admin/ExpenseCategoryManager';
 
 export default function AdminPage() {
   const auth = useAuth();
@@ -59,7 +60,10 @@ export default function AdminPage() {
           <LockTypesManager />
           <PropertiesManager />
         </div>
-         <TenantsManager />
+        <div className="grid md:grid-cols-2 gap-8">
+          <TenantsManager />
+          <ExpenseCategoryManager />
+        </div>
       </div>
     </MainLayout>
   );

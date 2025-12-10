@@ -180,6 +180,81 @@
         "name",
         "property"
       ]
+    },
+    "Expense": {
+      "title": "Expense",
+      "type": "object",
+      "description": "Represents a single business expense.",
+      "properties": {
+        "date": {
+          "type": "string",
+          "format": "date-time",
+          "description": "The date the expense was incurred."
+        },
+        "amount": {
+          "type": "number",
+          "description": "The monetary value of the expense."
+        },
+        "description": {
+          "type": "string",
+          "description": "A detailed description of the expense."
+        },
+        "category": {
+          "type": "string",
+          "description": "The category of the expense (e.g., 'Repairs', 'Utilities')."
+        },
+        "property": {
+          "type": "string",
+          "description": "The property associated with the expense, if any."
+        },
+        "room": {
+          "type": "string",
+          "description": "The specific room associated with the expense, if any."
+        },
+        "receiptUrl": {
+          "type": "string",
+          "description": "URL of the uploaded receipt image."
+        }
+      },
+      "required": [
+        "date",
+        "amount",
+        "description",
+        "category"
+      ]
+    },
+    "ExpenseCategory": {
+      "title": "ExpenseCategory",
+      "type": "object",
+      "description": "Represents a single category for expenses.",
+      "properties": {
+        "id": {
+          "type": "string",
+          "description": "A unique identifier for the category."
+        },
+        "name": {
+          "type": "string",
+          "description": "The name of the expense category."
+        }
+      },
+      "required": [
+        "id",
+        "name"
+      ]
+    },
+    "ExpenseCategoriesConfiguration": {
+      "title": "ExpenseCategoriesConfiguration",
+      "type": "object",
+      "description": "A list of available expense categories.",
+      "properties": {
+        "categories": {
+          "type": "array",
+          "description": "An array of expense category objects.",
+          "items": {
+            "$ref": "#/entities/ExpenseCategory"
+          }
+        }
+      }
     }
   },
   "auth": {
@@ -212,6 +287,13 @@
         "description": "Stores the list of available door lock types with their instructions."
       },
       {
+        "path": "/siteConfiguration/expenseCategories",
+        "schema": {
+          "$ref": "#/entities/ExpenseCategoriesConfiguration"
+        },
+        "description": "Stores the list of available expense categories."
+      },
+      {
         "path": "/properties/{propertyId}",
         "schema": {
           "$ref": "#/entities/Property"
@@ -224,6 +306,13 @@
           "$ref": "#/entities/Tenant"
         },
         "description": "Stores information about individual tenants."
+      },
+      {
+        "path": "/expenses/{expenseId}",
+        "schema": {
+          "$ref": "#/entities/Expense"
+        },
+        "description": "Stores all business expenses."
       }
     ]
   }

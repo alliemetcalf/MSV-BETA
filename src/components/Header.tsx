@@ -9,6 +9,7 @@ import {
   ShieldCheck,
   User as UserIcon,
   Home,
+  Receipt,
 } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { Button } from './ui/button';
@@ -58,6 +59,7 @@ export function Header() {
     { href: '/tenants', label: 'Tenants' },
     { href: '/properties', label: 'Properties' },
     { href: '/rooms', label: 'Rooms' },
+    { href: '/expenses', label: 'Expenses' },
   ];
 
   const adminNavItems = [{ href: '/admin', label: 'Admin', icon: ShieldCheck }];

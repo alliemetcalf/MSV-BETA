@@ -64,5 +64,10 @@ service cloud.firestore {
       allow get, list: if isSignedIn();
       allow write: if isAdmin();
     }
+
+    // Expenses can be managed by admins.
+    match /expenses/{expenseId} {
+      allow read, list, write: if isAdmin();
+    }
   }
 }
