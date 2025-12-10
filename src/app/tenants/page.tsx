@@ -23,7 +23,7 @@ import {
   AccordionItem,
   AccordionTrigger,
 } from '@/components/ui/accordion';
-import { Loader2, Mail, Phone, User as UserIcon, Home } from 'lucide-rect';
+import { Loader2, Mail, Phone, User as UserIcon, Home } from 'lucide-react';
 import { Tenant } from '@/types/tenant';
 import { useRouter } from 'next/navigation';
 
