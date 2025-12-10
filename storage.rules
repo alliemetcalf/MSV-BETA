@@ -2,6 +2,13 @@ rules_version = '2';
 
 service firebase.storage {
   match /b/{bucket}/o {
+
+    // Allow authenticated users to list all files.
+    // This is required to display the list of uploaded files on the uploads page.
+    match /{allPaths=**} {
+      allow list: if request.auth != null;
+    }
+
     // Allow reads by anyone (e.g., for public instruction images)
     match /lock-type-instructions/{lockTypeId}/{fileName} {
       allow read;
@@ -9,6 +16,12 @@ service firebase.storage {
       allow write: if request.auth != null && 
                     request.resource.size < 5 * 1024 * 1024 &&
                     request.resource.contentType.matches('image/.*');
+    }
+
+    // Generic rule to allow authenticated users to read and write their own files.
+    // This allows the uploads page to work for any file type.
+    match /{fileName} {
+      allow read, write: if request.auth != null;
     }
   }
 }
