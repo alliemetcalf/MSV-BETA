@@ -221,7 +221,7 @@ export function TenantsManager() {
   );
   const { data: propertiesData, isLoading: propertiesLoading } =
     useCollection<Property>(propertiesCollectionRef);
-  const properties = propertiesData?.map(p => p.name) || [];
+  const properties = propertiesData?.map(p => p.name).sort() || [];
 
   const groupedTenants = useMemo(() => {
     if (!tenants) return {};
