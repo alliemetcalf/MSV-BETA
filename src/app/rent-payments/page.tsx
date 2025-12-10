@@ -7,6 +7,7 @@ import {
   useMemoFirebase,
   useCollection,
   useAuth,
+  useDoc,
 } from '@/firebase';
 import {
   collection,
@@ -41,6 +42,8 @@ import { useToast } from '@/hooks/use-toast';
 import { Loader2, PlusCircle, Edit, Trash2 } from 'lucide-react';
 import { Tenant } from '@/types/tenant';
 import { RentPayment } from '@/types/rent-payment';
+import { IncomeType } from '@/types/income';
+
 
 const moneyFormatter = new Intl.NumberFormat('en-US', {
   style: 'currency',
@@ -73,6 +76,7 @@ export default function RentPaymentsPage() {
     month: number;
     day: number;
     amount: string;
+    category: string;
     paymentMethod: string;
     notes: string;
   }>({
@@ -81,6 +85,7 @@ export default function RentPaymentsPage() {
     month: getMonth(new Date()) + 1,
     day: getDate(new Date()),
     amount: '',
+    category: '',
     paymentMethod: '',
     notes: '',
   });
@@ -110,6 +115,13 @@ export default function RentPaymentsPage() {
   const { data: tenants, isLoading: tenantsLoading } = useCollection<Tenant>(tenantsCollectionRef);
   const sortedTenants = useMemo(() => tenants?.filter(t => t.active).sort((a,b) => a.name.localeCompare(b.name)) || [], [tenants]);
 
+  const incomeTypesDocRef = useMemoFirebase(
+    () => (user && firestore ? doc(firestore, 'siteConfiguration', 'incomeTypes') : null),
+    [firestore, user]
+  );
+  const { data: incomeTypesData, isLoading: incomeTypesLoading } = useDoc<{ types: IncomeType[] }>(incomeTypesDocRef);
+  const incomeTypes = useMemo(() => incomeTypesData?.types.sort((a,b) => a.name.localeCompare(b.name)) || [], [incomeTypesData]);
+
   const sortedPayments = useMemo(() => {
     if (!payments) return [];
     return [...payments].sort((a, b) => b.date.toMillis() - a.date.toMillis());
@@ -124,6 +136,7 @@ export default function RentPaymentsPage() {
       month: getMonth(new Date()) + 1,
       day: getDate(new Date()),
       amount: '',
+      category: '',
       paymentMethod: '',
       notes: '',
     });
@@ -139,6 +152,7 @@ export default function RentPaymentsPage() {
       month: getMonth(paymentDate) + 1,
       day: getDate(paymentDate),
       amount: String(payment.amount),
+      category: payment.category,
       paymentMethod: payment.paymentMethod,
       notes: payment.notes || '',
     });
@@ -165,8 +179,8 @@ export default function RentPaymentsPage() {
 
   const handleFormSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    const { tenantId, year, month, day, paymentMethod } = formData;
-    if (!firestore || !user || !tenantId || !year || !month || !day || !paymentMethod) {
+    const { tenantId, year, month, day, paymentMethod, category } = formData;
+    if (!firestore || !user || !tenantId || !year || !month || !day || !paymentMethod || !category) {
       toast({ variant: 'destructive', title: 'Missing Fields', description: 'Please fill out all required fields.' });
       return;
     }
@@ -194,6 +208,7 @@ export default function RentPaymentsPage() {
       property: selectedTenant.property,
       date: Timestamp.fromDate(paymentDate),
       amount,
+      category: formData.category,
       paymentMethod: formData.paymentMethod,
       notes: formData.notes,
     };
@@ -228,7 +243,7 @@ export default function RentPaymentsPage() {
   };
 
 
-  const isLoading = isUserLoading || paymentsLoading || tenantsLoading;
+  const isLoading = isUserLoading || paymentsLoading || tenantsLoading || incomeTypesLoading;
 
   if (isLoading) {
     return <div className="flex h-screen w-full items-center justify-center bg-background"><Loader2 className="h-10 w-10 animate-spin text-primary" /></div>;
@@ -254,6 +269,7 @@ export default function RentPaymentsPage() {
                     <TableHead>Date</TableHead>
                     <TableHead>Tenant</TableHead>
                     <TableHead>Property</TableHead>
+                    <TableHead>Category</TableHead>
                     <TableHead>Method</TableHead>
                     <TableHead>Notes</TableHead>
                     <TableHead className="text-right">Amount</TableHead>
@@ -266,6 +282,7 @@ export default function RentPaymentsPage() {
                       <TableCell>{format(payment.date.toDate(), 'PPP')}</TableCell>
                       <TableCell>{payment.tenantName}</TableCell>
                       <TableCell>{payment.property}</TableCell>
+                      <TableCell>{payment.category}</TableCell>
                       <TableCell>{payment.paymentMethod}</TableCell>
                       <TableCell>{payment.notes}</TableCell>
                       <TableCell className="text-right font-mono">{moneyFormatter.format(payment.amount)}</TableCell>
@@ -327,6 +344,15 @@ export default function RentPaymentsPage() {
               <div className="grid grid-cols-4 items-center gap-4">
                 <Label htmlFor="amount" className="text-right">Amount</Label>
                 <Input id="amount" type="number" step="0.01" value={formData.amount} onChange={(e) => setFormData(p => ({...p, amount: e.target.value}))} className="col-span-3" required />
+              </div>
+              <div className="grid grid-cols-4 items-center gap-4">
+                <Label htmlFor="category" className="text-right">Category</Label>
+                <Select onValueChange={(v) => setFormData(p => ({...p, category: v}))} value={formData.category} required>
+                  <SelectTrigger className="col-span-3"><SelectValue placeholder="Select an income category" /></SelectTrigger>
+                  <SelectContent>
+                    {incomeTypes.map(type => <SelectItem key={type.id} value={type.name}>{type.name}</SelectItem>)}
+                  </SelectContent>
+                </Select>
               </div>
                <div className="grid grid-cols-4 items-center gap-4">
                 <Label htmlFor="paymentMethod" className="text-right">Method</Label>

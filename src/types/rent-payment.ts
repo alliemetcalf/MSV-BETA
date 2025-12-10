@@ -7,6 +7,7 @@ export interface RentPayment {
   property: string;
   date: Timestamp;
   amount: number;
+  category: string;
   paymentMethod: string;
   notes?: string;
 }

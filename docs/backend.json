@@ -346,6 +346,10 @@
           "type": "number",
           "description": "The monetary value of the payment."
         },
+        "category": {
+          "type": "string",
+          "description": "The category of income (e.g., 'Rent', 'Late Fee')."
+        },
         "paymentMethod": {
           "type": "string",
           "description": "The method of payment (e.g., 'Zelle', 'Cash')."
@@ -361,8 +365,39 @@
         "property",
         "date",
         "amount",
-        "paymentMethod"
+        "paymentMethod",
+        "category"
       ]
+    },
+    "IncomeType": {
+      "title": "IncomeType",
+      "type": "object",
+      "description": "Represents a single category for income.",
+      "properties": {
+        "id": {
+          "type": "string",
+          "description": "A unique identifier for the income type."
+        },
+        "name": {
+          "type": "string",
+          "description": "The name of the income type (e.g., Rent, Late Fee)."
+        }
+      },
+      "required": ["id", "name"]
+    },
+    "IncomeTypesConfiguration": {
+      "title": "IncomeTypesConfiguration",
+      "type": "object",
+      "description": "A list of available income types.",
+      "properties": {
+        "types": {
+          "type": "array",
+          "description": "An array of income type objects.",
+          "items": {
+            "$ref": "#/entities/IncomeType"
+          }
+        }
+      }
     }
   },
   "auth": {
@@ -409,6 +444,13 @@
         "description": "Stores the list of available vendors."
       },
       {
+        "path": "/siteConfiguration/incomeTypes",
+        "schema": {
+          "$ref": "#/entities/IncomeTypesConfiguration"
+        },
+        "description": "Stores the list of available income types."
+      },
+      {
         "path": "/properties/{propertyId}",
         "schema": {
           "$ref": "#/entities/Property"
@@ -439,5 +481,3 @@
     ]
   }
 }
-
-    

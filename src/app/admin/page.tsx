@@ -1,7 +1,7 @@
 'use client';
 import { MainLayout } from '@/components/MainLayout';
 import { useUser, useAuth } from '@/firebase';
-import { Loader2, Users, Shield, Lock, Building, Wallet, ShoppingCart } from 'lucide-react';
+import { Loader2, Users, Shield, Lock, Building, Wallet, ShoppingCart, Coins } from 'lucide-react';
 import { useRouter } from 'next/navigation';
 import { useEffect } from 'react';
 import {
@@ -23,6 +23,7 @@ import { TenantsManager } from '@/components/admin/TenantsManager';
 import { ExpenseCategoryManager } from '@/components/admin/ExpenseCategoryManager';
 import { VendorsManager } from '@/components/admin/VendorsManager';
 import { LockTypesManager } from '@/components/admin/LockTypesManager';
+import { IncomeTypeManager } from '@/components/admin/IncomeTypeManager';
 
 export default function AdminPage() {
   const auth = useAuth();
@@ -92,16 +93,17 @@ export default function AdminPage() {
             </AccordionContent>
           </AccordionItem>
 
-          {/* Expense Management Section */}
-          <AccordionItem value="expense-management" className="border rounded-lg">
+          {/* Financials Management Section */}
+          <AccordionItem value="financials-management" className="border rounded-lg">
             <AccordionTrigger className="p-4 text-lg font-semibold hover:no-underline">
               <div className="flex items-center gap-3">
                 <Wallet className="h-6 w-6 text-primary" />
-                Expense Management
+                Financials Management
               </div>
             </AccordionTrigger>
             <AccordionContent className="p-4 pt-0">
               <div className="grid md:grid-cols-2 gap-8">
+                 <IncomeTypeManager />
                  <ExpenseCategoryManager />
                  <VendorsManager />
               </div>
