@@ -3,9 +3,7 @@ rules_version = '2';
 service firebase.storage {
   match /b/{bucket}/o {
     match /{allPaths=**} {
-      // Allow read and write access to all paths for all users,
-      // including unauthenticated ones.
-      allow read, write;
+      allow read, write: if request.time < timestamp.date(2026, 1, 8);
     }
   }
 }
