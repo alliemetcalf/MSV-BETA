@@ -38,6 +38,7 @@ import {
   Mail,
   Phone,
   DollarSign,
+  Landmark,
 } from 'lucide-react';
 import { Property } from '@/types/property';
 import { Tenant } from '@/types/tenant';
@@ -53,6 +54,7 @@ import {
   AccordionTrigger,
 } from '@/components/ui/accordion';
 import { Badge } from '@/components/ui/badge';
+import { Separator } from '@/components/ui/separator';
 
 const moneyFormatter = new Intl.NumberFormat('en-US', {
   style: 'currency',
@@ -226,18 +228,32 @@ export default function PropertiesPage() {
                           </CardDescription>
                         )}
                       </CardHeader>
-                      <CardContent className="flex-grow">
+                      <CardContent className="flex-grow space-y-4">
                         <p className="text-sm text-muted-foreground line-clamp-4">
                           {property.description || 'No description available.'}
                         </p>
-                        <div className="mt-4 pt-4 border-t">
-                          <h4 className="text-sm font-semibold text-foreground flex items-center gap-2">
-                             <DollarSign className="w-4 h-4 text-muted-foreground"/>
-                             Total Monthly Rent
-                          </h4>
-                          <p className="text-lg font-bold text-primary">
-                             {moneyFormatter.format(totalMonthlyRent)}
-                          </p>
+                        
+                        <div className="space-y-3 pt-4 border-t">
+                           <div className="flex justify-between items-center">
+                              <h4 className="text-sm font-semibold text-foreground flex items-center gap-2">
+                                <DollarSign className="w-4 h-4 text-muted-foreground"/>
+                                Total Monthly Rent
+                              </h4>
+                              <p className="text-base font-bold text-primary">
+                                {moneyFormatter.format(totalMonthlyRent)}
+                              </p>
+                           </div>
+                           {property.mortgage && property.mortgage > 0 && (
+                            <div className="flex justify-between items-center">
+                                <h4 className="text-sm font-semibold text-foreground flex items-center gap-2">
+                                  <Landmark className="w-4 h-4 text-muted-foreground"/>
+                                  Mortgage Payment
+                                </h4>
+                                <p className="text-base font-bold text-destructive">
+                                  - {moneyFormatter.format(property.mortgage)}
+                                </p>
+                            </div>
+                           )}
                         </div>
                       </CardContent>
                       <CardFooter className="flex-col items-start gap-2 pt-4 border-t px-0">

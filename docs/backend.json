@@ -135,6 +135,10 @@
         "photoUrl": {
           "type": "string",
           "description": "URL of the property's photo."
+        },
+        "mortgage": {
+          "type": "number",
+          "description": "The monthly mortgage payment for the property."
         }
       },
       "required": [

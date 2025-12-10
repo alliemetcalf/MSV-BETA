@@ -64,6 +64,11 @@ import { DoorCode } from '@/types/door-code';
 import { Tenant } from '@/types/tenant';
 
 
+const moneyFormatter = new Intl.NumberFormat('en-US', {
+  style: 'currency',
+  currency: 'USD',
+});
+
 function PropertyImageUploader({
   propertyId,
   currentPhotoUrl,
@@ -191,6 +196,7 @@ export function PropertiesManager() {
     address: '',
     description: '',
     photoUrl: '',
+    mortgage: 0,
   });
 
   const propertiesCollectionRef = useMemoFirebase(
@@ -243,7 +249,7 @@ export function PropertiesManager() {
           const batch = writeBatch(firestore);
           namesToMigrate.forEach(name => {
             const newPropertyRef = doc(collection(firestore, 'properties'));
-            batch.set(newPropertyRef, { name: name, address: '', description: '', photoUrl: '' });
+            batch.set(newPropertyRef, { name: name, address: '', description: '', photoUrl: '', mortgage: 0 });
           });
           await batch.commit();
           toast({
@@ -274,6 +280,7 @@ export function PropertiesManager() {
       address: '',
       description: '',
       photoUrl: '',
+      mortgage: 0,
     });
     setIsFormDialogOpen(true);
   };
@@ -285,6 +292,7 @@ export function PropertiesManager() {
       address: property.address || '',
       description: property.description || '',
       photoUrl: property.photoUrl || '',
+      mortgage: property.mortgage || 0,
     });
     setIsFormDialogOpen(true);
   };
@@ -314,8 +322,11 @@ export function PropertiesManager() {
   const handleFormChange = (
     e: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement>
   ) => {
-    const { id, value } = e.target;
-    setFormData((prev) => ({ ...prev, [id]: value }));
+    const { id, value, type } = e.target;
+    setFormData((prev) => ({ 
+        ...prev, 
+        [id]: type === 'number' ? parseFloat(value) : value 
+    }));
   };
 
   const handleUploadComplete = async (url: string) => {
@@ -343,7 +354,8 @@ export function PropertiesManager() {
           name: formData.name,
           address: formData.address || '',
           description: formData.description || '',
-          photoUrl: formData.photoUrl || ''
+          photoUrl: formData.photoUrl || '',
+          mortgage: Number(formData.mortgage) || 0,
       };
 
       if (editingProperty) {
@@ -403,6 +415,7 @@ export function PropertiesManager() {
                 <TableRow>
                   <TableHead>Name</TableHead>
                   <TableHead>Address</TableHead>
+                  <TableHead>Mortgage</TableHead>
                   <TableHead className="text-right">Actions</TableHead>
                 </TableRow>
               </TableHeader>
@@ -428,6 +441,7 @@ export function PropertiesManager() {
                         {prop.name}
                       </TableCell>
                     <TableCell>{prop.address}</TableCell>
+                    <TableCell>{prop.mortgage ? moneyFormatter.format(prop.mortgage) : ''}</TableCell>
                     <TableCell className="text-right">
                       <Button
                         variant="ghost"
@@ -493,6 +507,19 @@ export function PropertiesManager() {
                 <Input
                   id="address"
                   value={formData.address || ''}
+                  onChange={handleFormChange}
+                  className="col-span-3"
+                />
+              </div>
+               <div className="grid grid-cols-4 items-center gap-4">
+                <Label htmlFor="mortgage" className="text-right">
+                  Mortgage
+                </Label>
+                <Input
+                  id="mortgage"
+                  type="number"
+                  step="0.01"
+                  value={formData.mortgage || ''}
                   onChange={handleFormChange}
                   className="col-span-3"
                 />

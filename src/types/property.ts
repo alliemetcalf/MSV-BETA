@@ -4,4 +4,5 @@ export interface Property {
   address?: string;
   description?: string;
   photoUrl?: string;
+  mortgage?: number;
 }

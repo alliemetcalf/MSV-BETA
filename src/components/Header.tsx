@@ -11,6 +11,7 @@ import {
   Home,
   Receipt,
   DollarSign,
+  Landmark,
 } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { Button } from './ui/button';
@@ -92,6 +93,7 @@ export function Header() {
                 >
                   {item.label === 'Rent Payments' ? <DollarSign/> : null}
                   {item.label === 'Expenses' ? <Receipt/> : null}
+                  {item.label === 'Properties' ? <Landmark/> : null}
                   {item.label}
                 </Link>
               ))}
