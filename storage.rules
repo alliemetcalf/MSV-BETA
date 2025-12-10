@@ -2,10 +2,9 @@ rules_version = '2';
 
 service firebase.storage {
   match /b/{bucket}/o {
-    // TEMPORARY DEBUGGING RULE:
-    // Allow all reads and writes to all files.
-    // This is insecure and should be locked down after testing.
     match /{allPaths=**} {
+      // WARNING: This is a temporary, insecure rule for debugging.
+      // It allows anyone to read, write, and delete any file.
       allow read, write;
     }
   }
