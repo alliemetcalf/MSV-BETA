@@ -54,7 +54,7 @@ import {
   AccordionItem,
   AccordionTrigger,
 } from '@/components/ui/accordion';
-import { Loader2, PlusCircle, Edit, Trash2, Info, User as UserIcon } from 'lucide-react';
+import { Loader2, PlusCircle, Edit, Trash2, Info } from 'lucide-react';
 import { DoorCode, DoorLockType, PropertyType } from '@/types/door-code';
 import { format } from 'date-fns';
 import { useRouter } from 'next/navigation';
@@ -348,7 +348,6 @@ export default function DoorCodesPage() {
                             <Table>
                               <TableHeader>
                                 <TableRow>
-                                  {isAdmin && <TableHead>User</TableHead>}
                                   <TableHead>Location</TableHead>
                                   <TableHead>Lock Type</TableHead>
                                   <TableHead>Code</TableHead>
@@ -363,7 +362,6 @@ export default function DoorCodesPage() {
                               <TableBody>
                                 {codes.map((code) => (
                                   <TableRow key={code.id + (isAdmin ? (code as EnrichedDoorCode).userId : '')}>
-                                    {isAdmin && <TableCell className="flex items-center gap-2"><UserIcon className="h-4 w-4 text-muted-foreground" />{(code as EnrichedDoorCode).userEmail}</TableCell>}
                                     <TableCell>{code.location}</TableCell>
                                     <TableCell>
                                       <div className="flex items-center gap-2">
