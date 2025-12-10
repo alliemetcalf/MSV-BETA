@@ -13,22 +13,24 @@ service cloud.firestore {
     }
     
     function isAdmin() {
-      return isSignedIn() && request.auth.token.role == 'admin';
+      return isSignedIn() && get(/databases/$(database)/documents/users/$(request.auth.uid)).data.role == 'admin';
     }
 
-    // Prototyping rules:
-    // During development, these rules are more permissive to allow for rapid iteration.
-    // They primarily focus on user ownership.
-    
-    // Allow owners to read and write to their own user-specific data.
+    // Allow owners to write to their own user-specific data. Admins can read any user's data.
     match /users/{userId}/{document=**} {
-      allow read, write: if isOwner(userId);
+      allow read: if isOwner(userId) || isAdmin();
+      allow write: if isOwner(userId);
     }
     
     // Site configuration can be read by any signed-in user, but only written by admins.
     match /siteConfiguration/{document=**} {
       allow read: if isSignedIn();
       allow write: if isAdmin();
+    }
+    
+    // Fallback rule to allow admins to read any other collection.
+    match /{path=**} {
+      allow read: if isAdmin();
     }
   }
 }
