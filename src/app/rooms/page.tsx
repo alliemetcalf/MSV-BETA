@@ -111,12 +111,25 @@ export default function RoomsPage() {
       if (!property) return null;
 
       // Find door codes associated with this tenant's room in this property
-      const roomDoorCodes = flatDoorCodes.filter(
-        (code) =>
-          code.property === tenant.property &&
-          (code.location.toLowerCase().includes(tenant.room.toLowerCase()) ||
-            tenant.room.toLowerCase().includes(code.location.toLowerCase()))
-      );
+      const roomDoorCodes = flatDoorCodes.filter((code) => {
+        if (code.property !== tenant.property) return false;
+
+        // Create a regex to match the room number as a whole word to avoid partial matches (e.g., "1" in "10").
+        // This handles cases like "Room 1", "1", "Master Bedroom 1", etc.
+        const roomIdentifier = tenant.room.toLowerCase();
+        const locationIdentifier = code.location.toLowerCase();
+        
+        // Exact match is always preferred
+        if (roomIdentifier === locationIdentifier) {
+            return true;
+        }
+
+        // Use regex for word boundary matching
+        const roomRegex = new RegExp(`\\b${roomIdentifier}\\b`, 'i');
+        const locationRegex = new RegExp(`\\b${locationIdentifier}\\b`, 'i');
+
+        return roomRegex.test(locationIdentifier) || locationRegex.test(roomIdentifier);
+      });
 
       return {
         id: tenant.id,
