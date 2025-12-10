@@ -197,6 +197,7 @@ export function PropertiesManager() {
     description: '',
     photoUrl: '',
     mortgage: 0,
+    averageExpensePerTenant: 0,
   });
 
   const propertiesCollectionRef = useMemoFirebase(
@@ -281,6 +282,7 @@ export function PropertiesManager() {
       description: '',
       photoUrl: '',
       mortgage: 0,
+      averageExpensePerTenant: 0,
     });
     setIsFormDialogOpen(true);
   };
@@ -293,6 +295,7 @@ export function PropertiesManager() {
       description: property.description || '',
       photoUrl: property.photoUrl || '',
       mortgage: property.mortgage || 0,
+      averageExpensePerTenant: property.averageExpensePerTenant || 0,
     });
     setIsFormDialogOpen(true);
   };
@@ -356,6 +359,7 @@ export function PropertiesManager() {
           description: formData.description || '',
           photoUrl: formData.photoUrl || '',
           mortgage: Number(formData.mortgage) || 0,
+          averageExpensePerTenant: Number(formData.averageExpensePerTenant) || 0,
       };
 
       if (editingProperty) {
@@ -416,6 +420,7 @@ export function PropertiesManager() {
                   <TableHead>Name</TableHead>
                   <TableHead>Address</TableHead>
                   <TableHead>Mortgage</TableHead>
+                  <TableHead>Avg. Expense/Tenant</TableHead>
                   <TableHead className="text-right">Actions</TableHead>
                 </TableRow>
               </TableHeader>
@@ -442,6 +447,7 @@ export function PropertiesManager() {
                       </TableCell>
                     <TableCell>{prop.address}</TableCell>
                     <TableCell>{prop.mortgage ? moneyFormatter.format(prop.mortgage) : ''}</TableCell>
+                    <TableCell>{prop.averageExpensePerTenant ? moneyFormatter.format(prop.averageExpensePerTenant) : ''}</TableCell>
                     <TableCell className="text-right">
                       <Button
                         variant="ghost"
@@ -520,6 +526,19 @@ export function PropertiesManager() {
                   type="number"
                   step="0.01"
                   value={formData.mortgage || ''}
+                  onChange={handleFormChange}
+                  className="col-span-3"
+                />
+              </div>
+              <div className="grid grid-cols-4 items-center gap-4">
+                <Label htmlFor="averageExpensePerTenant" className="text-right">
+                  Avg. Expense / Tenant
+                </Label>
+                <Input
+                  id="averageExpensePerTenant"
+                  type="number"
+                  step="0.01"
+                  value={formData.averageExpensePerTenant || ''}
                   onChange={handleFormChange}
                   className="col-span-3"
                 />

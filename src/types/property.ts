@@ -5,4 +5,5 @@ export interface Property {
   description?: string;
   photoUrl?: string;
   mortgage?: number;
+  averageExpensePerTenant?: number;
 }

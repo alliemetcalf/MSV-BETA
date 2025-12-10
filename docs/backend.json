@@ -139,6 +139,10 @@
         "mortgage": {
           "type": "number",
           "description": "The monthly mortgage payment for the property."
+        },
+        "averageExpensePerTenant": {
+          "type": "number",
+          "description": "An estimated average monthly expense per tenant for this property."
         }
       },
       "required": [
