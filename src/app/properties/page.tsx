@@ -37,6 +37,7 @@ import {
   DoorOpen,
   Mail,
   Phone,
+  DollarSign,
 } from 'lucide-react';
 import { Property } from '@/types/property';
 import { Tenant } from '@/types/tenant';
@@ -52,6 +53,11 @@ import {
   AccordionTrigger,
 } from '@/components/ui/accordion';
 import { Badge } from '@/components/ui/badge';
+
+const moneyFormatter = new Intl.NumberFormat('en-US', {
+  style: 'currency',
+  currency: 'USD',
+});
 
 function getInitials(name: string) {
   if (!name) return '??';
@@ -188,6 +194,10 @@ export default function PropertiesPage() {
                   const propertyDoorCodes =
                     doorCodesByProperty[property.name] || [];
 
+                  const totalMonthlyRent = propertyTenants
+                    .filter((tenant) => tenant.active)
+                    .reduce((sum, tenant) => sum + (tenant.rent || 0), 0);
+
                   return (
                     <Card
                       key={property.id}
@@ -220,6 +230,15 @@ export default function PropertiesPage() {
                         <p className="text-sm text-muted-foreground line-clamp-4">
                           {property.description || 'No description available.'}
                         </p>
+                        <div className="mt-4 pt-4 border-t">
+                          <h4 className="text-sm font-semibold text-foreground flex items-center gap-2">
+                             <DollarSign className="w-4 h-4 text-muted-foreground"/>
+                             Total Monthly Rent
+                          </h4>
+                          <p className="text-lg font-bold text-primary">
+                             {moneyFormatter.format(totalMonthlyRent)}
+                          </p>
+                        </div>
                       </CardContent>
                       <CardFooter className="flex-col items-start gap-2 pt-4 border-t px-0">
                         <Accordion type="multiple" className="w-full">
