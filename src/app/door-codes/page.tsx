@@ -1,7 +1,7 @@
 'use client';
 
 import { useState, useEffect, useMemo } from 'react';
-import { useUser, useFirestore, useMemoFirebase } from '@/firebase';
+import { useUser, useFirestore, useMemoFirebase, useCollection, useDoc } from '@/firebase';
 import Image from 'next/image';
 import {
   collection,
@@ -11,7 +11,6 @@ import {
   deleteDoc,
   serverTimestamp,
 } from 'firebase/firestore';
-import { useCollection, useDoc } from '@/firebase/firestore/use-collection';
 import { MainLayout } from '@/components/MainLayout';
 import {
   Card,

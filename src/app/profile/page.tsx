@@ -1,7 +1,7 @@
 'use client';
 
 import { useEffect } from 'react';
-import { useUser, useAuth, useFirestore, useMemoFirebase } from '@/firebase';
+import { useUser, useAuth, useFirestore, useMemoFirebase, useDoc } from '@/firebase';
 import { doc, setDoc } from 'firebase/firestore';
 import { updateProfile } from 'firebase/auth';
 import { useRouter } from 'next/navigation';
@@ -29,7 +29,6 @@ import { Input } from '@/components/ui/input';
 import { Textarea } from '@/components/ui/textarea';
 import { useToast } from '@/hooks/use-toast';
 import { Loader2 } from 'lucide-react';
-import { useDoc } from '@/firebase/firestore/use-collection';
 import { UserProfile } from '@/types/user-profile';
 
 const profileFormSchema = z.object({
