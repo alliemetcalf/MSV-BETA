@@ -167,14 +167,18 @@ export const useStorage = (): FirebaseStorage => {
     return storage;
 };
 
-type MemoFirebase <T> = T & {__memo?: boolean};
+type MemoFirebase<T> = T & {__memo?: boolean};
 
-export function useMemoFirebase<T>(factory: () => T, deps: DependencyList): T | (MemoFirebase<T>) {
+export function useMemoFirebase<T>(factory: () => T, deps: DependencyList): T {
   const memoized = useMemo(factory, deps);
-  
-  if(typeof memoized !== 'object' || memoized === null) return memoized;
-  (memoized as MemoFirebase<T>).__memo = true;
-  
+
+  if (memoized && typeof memoized === 'object') {
+    // This is a bit of a hack to "tag" the memoized object.
+    // It helps the useCollection/useDoc hooks to verify that the
+    // reference they received was indeed memoized.
+    (memoized as MemoFirebase<T>).__memo = true;
+  }
+
   return memoized;
 }
 
