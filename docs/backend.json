@@ -174,11 +174,16 @@
         "photoUrl": {
           "type": "string",
           "description": "URL of the tenant's photo."
+        },
+        "active": {
+          "type": "boolean",
+          "description": "Whether the tenant is currently active."
         }
       },
       "required": [
         "name",
-        "property"
+        "property",
+        "active"
       ]
     },
     "Expense": {

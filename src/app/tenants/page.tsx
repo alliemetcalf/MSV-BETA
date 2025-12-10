@@ -34,8 +34,10 @@ import {
 import { Tenant } from '@/types/tenant';
 import { useRouter } from 'next/navigation';
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
+import { Badge } from '@/components/ui/badge';
 
 function getInitials(name: string) {
+  if (!name) return '??';
   const parts = name.split(' ');
   if (parts.length > 1) {
     return `${parts[0][0]}${parts[parts.length - 1][0]}`.toUpperCase();
@@ -136,7 +138,10 @@ export default function TenantsPage() {
                                       </AvatarFallback>
                                     </Avatar>
                                     <div className="flex-1">
-                                      <CardTitle>{tenant.name}</CardTitle>
+                                      <div className="flex items-center gap-2">
+                                        <CardTitle>{tenant.name}</CardTitle>
+                                         <Badge variant={tenant.active ? 'secondary' : 'outline'}>{tenant.active ? 'Active' : 'Inactive'}</Badge>
+                                      </div>
                                       <CardDescription>
                                         Room: {tenant.room || 'N/A'}
                                       </CardDescription>

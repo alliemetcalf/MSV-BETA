@@ -7,4 +7,5 @@ export interface Tenant {
   room: string;
   notes: string;
   photoUrl?: string;
+  active: boolean;
 }

@@ -51,6 +51,7 @@ import {
   AccordionItem,
   AccordionTrigger,
 } from '@/components/ui/accordion';
+import { Badge } from '@/components/ui/badge';
 
 function getInitials(name: string) {
   if (!name) return '??';
@@ -246,6 +247,7 @@ export default function PropertiesPage() {
                                         onClick={() => handleTenantClick(tenant)}
                                       >
                                         {tenant.name} ({tenant.room || 'N/A'})
+                                        <Badge variant={tenant.active ? 'secondary' : 'outline'} className="ml-2">{tenant.active ? 'Active' : 'Inactive'}</Badge>
                                       </Button>
                                     </div>
                                   ))}
@@ -316,7 +318,10 @@ export default function PropertiesPage() {
                   </AvatarFallback>
                 </Avatar>
                 <div className="flex-1">
-                  <h2 className="text-2xl font-bold">{selectedTenant.name}</h2>
+                  <div className="flex items-center gap-2">
+                    <h2 className="text-2xl font-bold">{selectedTenant.name}</h2>
+                    <Badge variant={selectedTenant.active ? 'secondary' : 'outline'}>{selectedTenant.active ? 'Active' : 'Inactive'}</Badge>
+                  </div>
                   <p className="text-muted-foreground">
                     Room: {selectedTenant.room || 'N/A'}
                   </p>
@@ -361,5 +366,3 @@ export default function PropertiesPage() {
     </MainLayout>
   );
 }
-
-    

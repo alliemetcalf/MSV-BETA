@@ -134,7 +134,7 @@ export default function ExpensesPage() {
   const roomsByProperty = useMemo(() => {
     if (!tenants) return {};
     return tenants.reduce((acc, tenant) => {
-      if (tenant.property && tenant.room) {
+      if (tenant.property && tenant.room && tenant.active) {
         if (!acc[tenant.property]) acc[tenant.property] = new Set();
         acc[tenant.property].add(tenant.room);
       }

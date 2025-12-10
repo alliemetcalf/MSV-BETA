@@ -70,6 +70,8 @@ import {
   AccordionItem,
   AccordionTrigger,
 } from '@/components/ui/accordion';
+import { Switch } from '@/components/ui/switch';
+import { Badge } from '../ui/badge';
 
 function TenantImageUploader({
   tenantId,
@@ -200,6 +202,7 @@ export function TenantsManager() {
     room: '',
     notes: '',
     photoUrl: '',
+    active: true,
   });
 
   const tenantsCollectionRef = useMemoFirebase(
@@ -251,6 +254,7 @@ export function TenantsManager() {
       room: '',
       notes: '',
       photoUrl: '',
+      active: true,
     });
     setIsFormDialogOpen(true);
   };
@@ -265,9 +269,22 @@ export function TenantsManager() {
       room: tenant.room || '',
       notes: tenant.notes || '',
       photoUrl: tenant.photoUrl || '',
+      active: tenant.active,
     });
     setIsFormDialogOpen(true);
   };
+  
+  const handleToggleActive = async (tenant: Tenant) => {
+    if(!firestore) return;
+    const docRef = doc(firestore, 'tenants', tenant.id);
+    try {
+      await updateDoc(docRef, { active: !tenant.active });
+      toast({ title: 'Status Updated', description: `${tenant.name} is now ${!tenant.active ? 'active' : 'inactive'}.` });
+    } catch(e: any) {
+        toast({ variant: 'destructive', title: 'Error', description: 'Could not update tenant status.' });
+    }
+  }
+
 
   const handleDeleteClick = async (tenantId: string) => {
     if (!firestore) return;
@@ -301,6 +318,10 @@ export function TenantsManager() {
   const handleSelectChange = (value: string) => {
     setFormData((prev) => ({ ...prev, property: value }));
   };
+  
+  const handleSwitchChange = (checked: boolean) => {
+    setFormData((prev) => ({ ...prev, active: checked }));
+  }
 
   const handleUploadComplete = async (url: string) => {
     setFormData((prev) => ({ ...prev, photoUrl: url }));
@@ -389,6 +410,7 @@ export function TenantsManager() {
                           <TableHead>Room</TableHead>
                           <TableHead>Email</TableHead>
                           <TableHead>Phone</TableHead>
+                          <TableHead>Status</TableHead>
                           <TableHead className="text-right">Actions</TableHead>
                         </TableRow>
                       </TableHeader>
@@ -416,6 +438,18 @@ export function TenantsManager() {
                             <TableCell>{tenant.room}</TableCell>
                             <TableCell>{tenant.email}</TableCell>
                             <TableCell>{tenant.phone}</TableCell>
+                            <TableCell>
+                                <div className='flex items-center gap-2'>
+                                    <Switch
+                                        checked={tenant.active}
+                                        onCheckedChange={() => handleToggleActive(tenant)}
+                                        aria-label="Toggle tenant active status"
+                                    />
+                                    <Badge variant={tenant.active ? "secondary" : "outline"}>
+                                        {tenant.active ? 'Active' : 'Inactive'}
+                                    </Badge>
+                                </div>
+                            </TableCell>
                             <TableCell className="text-right">
                               <Button
                                 variant="ghost"
@@ -466,6 +500,18 @@ export function TenantsManager() {
                 currentPhotoUrl={formData.photoUrl}
                 onUploadComplete={handleUploadComplete}
               />
+              <div className="grid grid-cols-4 items-center gap-4">
+                <Label htmlFor="active" className="text-right">
+                    Active
+                </Label>
+                <div className='col-span-3 flex items-center'>
+                    <Switch
+                        id="active"
+                        checked={formData.active}
+                        onCheckedChange={handleSwitchChange}
+                    />
+                </div>
+              </div>
               <div className="grid grid-cols-4 items-center gap-4">
                 <Label htmlFor="name" className="text-right">
                   Name

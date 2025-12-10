@@ -85,7 +85,7 @@ export default function RentPaymentsPage() {
     [firestore, user]
   );
   const { data: tenants, isLoading: tenantsLoading } = useCollection<Tenant>(tenantsCollectionRef);
-  const sortedTenants = useMemo(() => tenants?.sort((a,b) => a.name.localeCompare(b.name)) || [], [tenants]);
+  const sortedTenants = useMemo(() => tenants?.filter(t => t.active).sort((a,b) => a.name.localeCompare(b.name)) || [], [tenants]);
 
   const sortedPayments = useMemo(() => {
     if (!payments) return [];

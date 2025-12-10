@@ -340,7 +340,12 @@ export default function RoomsPage() {
                                   </AvatarFallback>
                                 </Avatar>
                                 <div className="space-y-1 text-sm">
-                                  <p className="font-bold text-foreground">{room.tenant.name}</p>
+                                  <div className="flex items-center gap-2">
+                                    <p className="font-bold text-foreground">{room.tenant.name}</p>
+                                    <Badge variant={room.tenant.active ? 'secondary' : 'outline'}>
+                                      {room.tenant.active ? 'Active' : 'Inactive'}
+                                    </Badge>
+                                  </div>
                                   <div className="flex items-center gap-2 text-muted-foreground">
                                     <Mail className="w-4 h-4"/>
                                     <a href={`mailto:${room.tenant.email}`} className="hover:underline">{room.tenant.email}</a>
@@ -394,7 +399,7 @@ export default function RoomsPage() {
         <DialogContent>
           <DialogHeader>
             <DialogTitle>Edit Door Code</DialogTitle>
-             <div className="text-sm text-muted-foreground">
+            <div className="text-sm text-muted-foreground">
                 <div className='flex justify-between items-center'>
                     <span>Update the details for this door code.</span>
                     {editingCode && (
