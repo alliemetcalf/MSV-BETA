@@ -34,6 +34,7 @@ import {
   DollarSign,
   Shield,
   CalendarOff,
+  Move,
 } from 'lucide-react';
 import { Tenant } from '@/types/tenant';
 import { useRouter } from 'next/navigation';
@@ -169,6 +170,15 @@ export default function TenantsPage() {
                          <div className="flex items-center gap-2">
                             <Shield className="w-4 h-4 text-muted-foreground" />
                             <span>Deposit: {moneyFormatter.format(tenant.deposit)}</span>
+                        </div>
+                      )}
+                      {tenant.pendingMove && (
+                        <div className="flex items-start gap-2 pt-2 text-amber-700">
+                           <Move className="w-4 h-4 mt-0.5 flex-shrink-0" />
+                           <div className="text-xs font-semibold">
+                              <div>Pending Move: {tenant.pendingMove.newProperty} / {tenant.pendingMove.newRoom}</div>
+                              <div>Date: {format(tenant.pendingMove.moveDate.toDate(), 'PPP')}</div>
+                           </div>
                         </div>
                       )}
                       {(tenant.leaseEnded || tenant.noticeReceivedDate) && (
