@@ -44,7 +44,7 @@ import { RentPayment } from '@/types/rent-payment';
 import { IncomeType } from '@/types/income';
 import { PaymentMethod } from '@/types/payment-method';
 import { RadioGroup, RadioGroupItem } from '@/components/ui/radio-group';
-import { DatePicker } from '@/components/ui/date-picker';
+import { DateDropdowns } from '@/components/ui/DateDropdowns';
 
 
 const moneyFormatter = new Intl.NumberFormat('en-US', {
@@ -329,7 +329,7 @@ export default function RentPaymentsPage() {
               <div className="grid grid-cols-4 items-center gap-4">
                 <Label htmlFor="date" className="text-right">Date</Label>
                  <div className="col-span-3">
-                    <DatePicker date={formData.date} setDate={(d) => setFormData(p => ({...p, date: d || new Date()}))} />
+                    <DateDropdowns date={formData.date} setDate={(d) => setFormData(p => ({...p, date: d || new Date()}))} />
                  </div>
               </div>
               <div className="grid grid-cols-4 items-center gap-4">

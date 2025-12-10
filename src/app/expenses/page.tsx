@@ -26,7 +26,6 @@ import {
   deleteObject,
 } from 'firebase/storage';
 import { useRouter } from 'next/navigation';
-import { getYear, getMonth, getDate } from 'date-fns';
 import { MainLayout } from '@/components/MainLayout';
 import { Card, CardHeader, CardTitle, CardDescription, CardContent } from '@/components/ui/card';
 import { Table, TableHeader, TableRow, TableHead, TableBody, TableCell } from '@/components/ui/table';
@@ -53,7 +52,7 @@ import { Loader2, PlusCircle, Edit, Trash2, Paperclip, X } from 'lucide-react';
 import { Expense, ExpenseCategory, Vendor } from '@/types/expense';
 import { Property } from '@/types/property';
 import { Tenant } from '@/types/tenant';
-import { DatePicker } from '@/components/ui/date-picker';
+import { DateDropdowns } from '@/components/ui/DateDropdowns';
 
 
 const moneyFormatter = new Intl.NumberFormat('en-US', {
@@ -404,7 +403,7 @@ export default function ExpensesPage() {
                 <div className="grid grid-cols-4 items-center gap-4">
                   <Label htmlFor="date" className="text-right">Date</Label>
                    <div className="col-span-3">
-                      <DatePicker date={formData.date} setDate={(d) => setFormData(p => ({...p, date: d || new Date()}))} />
+                      <DateDropdowns date={formData.date} setDate={(d) => setFormData(p => ({...p, date: d || new Date()}))} />
                    </div>
                 </div>
                 <div className="grid grid-cols-4 items-center gap-4">
@@ -466,7 +465,7 @@ export default function ExpensesPage() {
                     <div className="col-span-3 space-y-2">
                       {formData.receiptUrl ? (
                         <div className="relative group w-32 h-32 border rounded-md">
-                          <Image src={formData.receiptUrl} alt="Receipt" layout="fill" className="object-cover rounded-md" />
+                          <Image src={formData.receiptUrl} alt="Receipt" fill className="object-cover rounded-md" />
                           <Button variant="destructive" size="icon" className="absolute -top-2 -right-2 h-6 w-6 rounded-full opacity-0 group-hover:opacity-100" onClick={handleReceiptDelete}><X className="h-4 w-4" /></Button>
                         </div>
                       ) : (
