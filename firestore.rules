@@ -57,5 +57,11 @@ service cloud.firestore {
     match /tenants/{document=**} {
       allow read, write: if isSignedIn();
     }
+
+    // Property profiles can be read by any signed-in user, but only written by admins.
+    match /properties/{document=**} {
+      allow read: if isSignedIn();
+      allow write: if isAdmin();
+    }
   }
 }

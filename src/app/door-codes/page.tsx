@@ -55,7 +55,8 @@ import {
   AccordionTrigger,
 } from '@/components/ui/accordion';
 import { Loader2, PlusCircle, Edit, Trash2, Info } from 'lucide-react';
-import { DoorCode, DoorLockType, PropertyType } from '@/types/door-code';
+import { DoorCode, DoorLockType } from '@/types/door-code';
+import { Property } from '@/types/property';
 import { format } from 'date-fns';
 import { useRouter } from 'next/navigation';
 import { getAllDoorCodes, GetAllDoorCodesOutput } from '@/ai/flows/get-all-door-codes-flow';
@@ -77,6 +78,8 @@ export default function DoorCodesPage() {
   const firestore = useFirestore();
   const router = useRouter();
 
+  const [isDataReady, setIsDataReady] = useState(false);
+
   const userProfileRef = useMemoFirebase(
     () => (user ? doc(firestore, 'users', user.uid) : null),
     [firestore, user]
@@ -86,16 +89,19 @@ export default function DoorCodesPage() {
   const [allUsersCodes, setAllUsersCodes] = useState<GetAllDoorCodesOutput | null>(null);
   const [isFetchingAllCodes, setIsFetchingAllCodes] = useState(false);
 
+  const isAdmin = userProfile?.role === 'admin';
+
+  // This query will only run for non-admins. Admins get data from the flow.
   const doorCodesQuery = useMemoFirebase(() => {
-    if (!user || !firestore || !userProfile || userProfile.role === 'admin') {
+    if (!isDataReady || !user || !firestore || isAdmin) {
       return null;
     }
     return collection(firestore, 'users', user.uid, 'doorCodes');
-  }, [firestore, user, userProfile]);
+  }, [firestore, user, isDataReady, isAdmin]);
 
   const { data: userDoorCodes, isLoading: userCodesLoading, error: userCodesError } = useCollection<DoorCode>(doorCodesQuery);
   
-  const doorCodes = userProfile?.role === 'admin' 
+  const doorCodes = isAdmin 
     ? (allUsersCodes || []).flatMap(u => u.codes.map(c => ({...c, userId: u.uid, userEmail: u.email}))) 
     : userDoorCodes;
 
@@ -109,7 +115,6 @@ export default function DoorCodesPage() {
     }
   }, [userProfile?.role, allUsersCodes]);
 
-
   const [isFormDialogOpen, setIsFormDialogOpen] = useState(false);
   const [isInstructionDialogOpen, setIsInstructionDialogOpen] = useState(false);
   const [selectedInstruction, setSelectedInstruction] = useState<DoorLockType | null>(null);
@@ -121,7 +126,7 @@ export default function DoorCodesPage() {
     adminProgrammingCode: string;
     guestCode: string;
     doorLockType: string;
-    property: PropertyType;
+    property: string;
   }>({
     location: '',
     code: '',
@@ -137,6 +142,12 @@ export default function DoorCodesPage() {
     }
   }, [user, isUserLoading, router]);
 
+  useEffect(() => {
+    if (!isUserLoading && !profileLoading && user && userProfile) {
+      setIsDataReady(true);
+    }
+  }, [isUserLoading, profileLoading, user, userProfile]);
+
   const lockTypesDocRef = useMemoFirebase(
     () => (user && firestore ? doc(firestore, 'siteConfiguration', 'lockTypes') : null),
     [firestore, user]
@@ -145,13 +156,13 @@ export default function DoorCodesPage() {
     useDoc<{ types: DoorLockType[] }>(lockTypesDocRef);
   const lockTypes = lockTypesData?.types || [];
 
-  const propertiesDocRef = useMemoFirebase(
-    () => (user && firestore ? doc(firestore, 'siteConfiguration', 'properties') : null),
+  const propertiesCollectionRef = useMemoFirebase(
+    () => (user && firestore ? collection(firestore, 'properties') : null),
     [firestore, user]
   );
   const { data: propertiesData, isLoading: propertiesLoading } =
-    useDoc<{ options: string[] }>(propertiesDocRef);
-  const properties = propertiesData?.options || [];
+    useCollection<Property>(propertiesCollectionRef);
+  const properties = propertiesData?.map(p => p.name) || [];
 
   const groupedDoorCodes = useMemo(() => {
     if (!doorCodes) return {};
@@ -172,7 +183,6 @@ export default function DoorCodesPage() {
         a.location.localeCompare(b.location, undefined, { numeric: true })
       );
     }
-    // sort properties by name
     return Object.fromEntries(Object.entries(grouped).sort(([a], [b]) => a.localeCompare(b)));
   }, [doorCodes]);
 
@@ -206,22 +216,25 @@ export default function DoorCodesPage() {
     if (!firestore || !user) return;
     
     let userIdForDeletion = user.uid;
-    let codeId = code.id;
-
-    if ('userId' in code) { // It's an enriched code from the admin view
+    if ('userId' in code) {
       userIdForDeletion = code.userId;
     }
     
     if (confirm('Are you sure you want to delete this door code?')) {
-      const docRef = doc(firestore, 'users', userIdForDeletion, 'doorCodes', codeId);
+      const docRef = doc(firestore, 'users', userIdForDeletion, 'doorCodes', code.id);
       await deleteDoc(docRef);
-       // If admin made a change, refetch all codes
-      if (userProfile?.role === 'admin') {
-        setIsFetchingAllCodes(true);
-        getAllDoorCodes()
-          .then(setAllUsersCodes)
-          .catch(console.error)
-          .finally(() => setIsFetchingAllCodes(false));
+       if (isAdmin) {
+        setAllUsersCodes(current => {
+            if (!current) return null;
+            return current
+              .map(u => {
+                if (u.uid === userIdForDeletion) {
+                  return { ...u, codes: u.codes.filter(c => c.id !== code.id) };
+                }
+                return u;
+              })
+              .filter(u => u.codes.length > 0);
+        });
       }
     }
   };
@@ -237,14 +250,6 @@ export default function DoorCodesPage() {
   const handleDialogClose = () => {
     setIsFormDialogOpen(false);
     setEditingCode(null);
-    setFormData({
-      location: '',
-      code: '',
-      adminProgrammingCode: '',
-      guestCode: '',
-      doorLockType: '',
-      property: '',
-    });
   };
 
   const handleFormChange = (e: React.ChangeEvent<HTMLInputElement>) => {
@@ -262,28 +267,26 @@ export default function DoorCodesPage() {
     
     if (!user || !firestore || !formData.location || !formData.doorLockType || !formData.property) return;
     
-    const codeData = {
+    const codeData: Omit<DoorCode, 'id'> = {
       ...formData,
-      lastChanged: serverTimestamp(),
+      lastChanged: serverTimestamp() as Timestamp,
     };
 
     let userIdForWrite = user.uid;
-    let codeId = editingCode?.id;
-
-    if (editingCode && 'userId' in editingCode) { // Admin editing another user's code
+    
+    if (editingCode && 'userId' in editingCode) { 
         userIdForWrite = editingCode.userId;
     }
 
     if (editingCode) {
-        if (!codeId) return;
-        const docRef = doc(firestore, 'users', userIdForWrite, 'doorCodes', codeId);
+        const docRef = doc(firestore, 'users', userIdForWrite, 'doorCodes', editingCode.id);
         await updateDoc(docRef, codeData);
     } else {
       const collectionRef = collection(firestore, 'users', userIdForWrite, 'doorCodes');
       await addDoc(collectionRef, codeData);
     }
-    // If admin made a change, refetch all codes
-    if (userProfile?.role === 'admin') {
+
+    if (isAdmin) {
       setIsFetchingAllCodes(true);
       getAllDoorCodes()
         .then(setAllUsersCodes)
@@ -291,11 +294,10 @@ export default function DoorCodesPage() {
         .finally(() => setIsFetchingAllCodes(false));
     }
 
-
     handleDialogClose();
   };
 
-  const isPageLoading = isUserLoading || profileLoading;
+  const isPageLoading = isUserLoading || !isDataReady;
 
   if (isPageLoading) {
     return (
@@ -305,9 +307,8 @@ export default function DoorCodesPage() {
     );
   }
   
-  const isAdmin = userProfile?.role === 'admin';
   const codesError = isAdmin ? null : userCodesError;
-  const isDataLoading = (isAdmin ? isFetchingAllCodes || allUsersCodes === null : userCodesLoading) || lockTypesLoading || propertiesLoading;
+  const isDataLoading = (isAdmin ? isFetchingAllCodes : userCodesLoading) || lockTypesLoading || propertiesLoading;
 
   return (
     <MainLayout>
@@ -332,7 +333,7 @@ export default function DoorCodesPage() {
               </div>
             )}
             {codesError && (
-              <p className="text-destructive">Error: {codesError.message}</p>
+              <p className="text-destructive text-center py-8">Error: {codesError.message}</p>
             )}
             {!isDataLoading && !codesError && (
               <>

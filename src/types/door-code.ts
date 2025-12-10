@@ -7,8 +7,6 @@ export type DoorLockType = {
   instructionImageUrl?: string;
 };
 
-export type PropertyType = string;
-
 export interface DoorCode {
   id: string;
   location: string;
@@ -16,6 +14,6 @@ export interface DoorCode {
   adminProgrammingCode: string;
   guestCode: string;
   doorLockType: string; // This will store the name of the lock type
-  property: PropertyType;
+  property: string;
   lastChanged: Timestamp;
 }

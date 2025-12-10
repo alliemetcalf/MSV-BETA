@@ -113,26 +113,32 @@
             "$ref": "#/entities/LockType"
           }
         }
-      },
-      "required": [
-        "types"
-      ]
+      }
     },
-    "Properties": {
-      "title": "Properties",
+    "Property": {
+      "title": "Property",
       "type": "object",
-      "description": "A list of available properties for the platform.",
+      "description": "Represents a single property with its details.",
       "properties": {
-        "options": {
-          "type": "array",
-          "description": "An array of property names.",
-          "items": {
-            "type": "string"
-          }
+        "name": {
+          "type": "string",
+          "description": "The name of the property."
+        },
+        "address": {
+          "type": "string",
+          "description": "The full address of the property."
+        },
+        "description": {
+          "type": "string",
+          "description": "A description of the property."
+        },
+        "photoUrl": {
+          "type": "string",
+          "description": "URL of the property's photo."
         }
       },
       "required": [
-        "options"
+        "name"
       ]
     },
     "Tenant": {
@@ -206,11 +212,11 @@
         "description": "Stores the list of available door lock types with their instructions."
       },
       {
-        "path": "/siteConfiguration/properties",
+        "path": "/properties/{propertyId}",
         "schema": {
-          "$ref": "#/entities/Properties"
+          "$ref": "#/entities/Property"
         },
-        "description": "Stores the list of available properties."
+        "description": "Stores the detailed profile for each property."
       },
       {
         "path": "/tenants/{tenantId}",

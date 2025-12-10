@@ -7,7 +7,6 @@ import {
   useFirestore,
   useMemoFirebase,
   useCollection,
-  useDoc,
   useAuth,
   useStorage,
 } from '@/firebase';
@@ -62,6 +61,7 @@ import {
   User as UserIcon,
 } from 'lucide-react';
 import { Tenant } from '@/types/tenant';
+import { Property } from '@/types/property';
 import { useToast } from '@/hooks/use-toast';
 import { Progress } from '../ui/progress';
 import {
@@ -212,16 +212,13 @@ export function TenantsManager() {
     error: tenantsError,
   } = useCollection<Tenant>(tenantsCollectionRef);
 
-  const propertiesDocRef = useMemoFirebase(
-    () =>
-      user && firestore
-        ? doc(firestore, 'siteConfiguration', 'properties')
-        : null,
+  const propertiesCollectionRef = useMemoFirebase(
+    () => (user && firestore ? collection(firestore, 'properties') : null),
     [firestore, user]
   );
   const { data: propertiesData, isLoading: propertiesLoading } =
-    useDoc<{ options: string[] }>(propertiesDocRef);
-  const properties = propertiesData?.options || [];
+    useCollection<Property>(propertiesCollectionRef);
+  const properties = propertiesData?.map(p => p.name) || [];
 
   const groupedTenants = useMemo(() => {
     if (!tenants) return {};
@@ -339,10 +336,8 @@ export function TenantsManager() {
           collection(firestore, 'tenants'),
           dataToSave
         );
-        // After creating the doc, we can set it for editing to get an ID for photo uploads
         setEditingTenant({ ...dataToSave, id: newDocRef.id });
         toast({ title: 'Success', description: 'Tenant added. You can now upload a photo.' });
-        // Don't close the dialog, so the user can upload a photo
         return;
       }
       handleDialogClose();
@@ -510,7 +505,7 @@ export function TenantsManager() {
                 </Label>
                 <Input
                   id="room"
-                  value={formData.room}
+                  value={formData.room || ''}
                   onChange={handleFormChange}
                   className="col-span-3"
                 />
@@ -522,7 +517,7 @@ export function TenantsManager() {
                 <Input
                   id="email"
                   type="email"
-                  value={formData.email}
+                  value={formData.email || ''}
                   onChange={handleFormChange}
                   className="col-span-3"
                 />
@@ -534,7 +529,7 @@ export function TenantsManager() {
                 <Input
                   id="phone"
                   type="tel"
-                  value={formData.phone}
+                  value={formData.phone || ''}
                   onChange={handleFormChange}
                   className="col-span-3"
                 />
@@ -545,7 +540,7 @@ export function TenantsManager() {
                 </Label>
                 <Textarea
                   id="notes"
-                  value={formData.notes}
+                  value={formData.notes || ''}
                   onChange={handleFormChange}
                   className="col-span-3"
                 />

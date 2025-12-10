@@ -55,6 +55,7 @@ export function Header() {
     { href: '/', label: 'Home' },
     { href: '/door-codes', label: 'Door Codes' },
     { href: '/tenants', label: 'Tenants' },
+    { href: '/properties', label: 'Properties' },
   ];
 
   const adminNavItems = [{ href: '/admin', label: 'Admin', icon: ShieldCheck }];
