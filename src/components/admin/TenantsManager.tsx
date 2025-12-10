@@ -309,7 +309,7 @@ export function TenantsManager() {
         return;
       }
       handleDialogClose();
-    } catch (e: any) => {
+    } catch (e: any) {
       toast({
         variant: 'destructive',
         title: 'Error',
