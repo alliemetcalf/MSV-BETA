@@ -308,7 +308,6 @@ export default function RoomsPage() {
               <Accordion
                 type="multiple"
                 className="w-full"
-                defaultValue={sortedPropertyNames}
               >
                 {sortedPropertyNames.map((propertyName) => (
                   <AccordionItem value={propertyName} key={propertyName}>

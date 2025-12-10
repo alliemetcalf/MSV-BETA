@@ -110,7 +110,6 @@ export default function TenantsPage() {
               <Accordion
                 type="multiple"
                 className="w-full"
-                defaultValue={Object.keys(groupedTenants)}
               >
                 {Object.entries(groupedTenants)
                   .sort(([a], [b]) => a.localeCompare(b))
