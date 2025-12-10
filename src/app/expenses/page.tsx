@@ -52,6 +52,8 @@ const moneyFormatter = new Intl.NumberFormat('en-US', {
   currency: 'USD',
 });
 
+const NONE_VALUE = '_NONE_';
+
 export default function ExpensesPage() {
   const auth = useAuth();
   const { user, isUserLoading } = useUser(auth);
@@ -203,8 +205,8 @@ export default function ExpensesPage() {
       amount,
       description: formData.description,
       category: formData.category,
-      property: formData.property || null,
-      room: formData.room || null,
+      property: formData.property === NONE_VALUE ? null : formData.property,
+      room: formData.room === NONE_VALUE ? null : formData.room,
       receiptUrl: formData.receiptUrl || null,
     };
 
@@ -362,18 +364,18 @@ export default function ExpensesPage() {
                 <Select onValueChange={(v) => setFormData(p => ({...p, property: v, room: ''}))} value={formData.property}>
                   <SelectTrigger className="col-span-3"><SelectValue placeholder="Select a property (optional)" /></SelectTrigger>
                   <SelectContent>
-                    <SelectItem value="">None (Company Expense)</SelectItem>
+                    <SelectItem value={NONE_VALUE}>None (Company Expense)</SelectItem>
                     {propertyNames.map(prop => <SelectItem key={prop} value={prop}>{prop}</SelectItem>)}
                   </SelectContent>
                 </Select>
               </div>
-              {formData.property && availableRooms.length > 0 && (
+              {formData.property && formData.property !== NONE_VALUE && availableRooms.length > 0 && (
                 <div className="grid grid-cols-4 items-center gap-4">
                   <Label htmlFor="room" className="text-right">Room</Label>
                   <Select onValueChange={(v) => setFormData(p => ({...p, room: v}))} value={formData.room}>
                     <SelectTrigger className="col-span-3"><SelectValue placeholder="Select a room (optional)" /></SelectTrigger>
                     <SelectContent>
-                       <SelectItem value="">None (Property-level Expense)</SelectItem>
+                       <SelectItem value={NONE_VALUE}>None (Property-level Expense)</SelectItem>
                       {availableRooms.map(room => <SelectItem key={room} value={room}>{room}</SelectItem>)}
                     </SelectContent>
                   </Select>
