@@ -17,23 +17,23 @@ let firebaseServices: {
 
 // IMPORTANT: DO NOT MODIFY THIS FUNCTION
 export function initializeFirebase() {
-  // If services are already initialized, return them immediately.
-  // This is the core of the fix to make initialization truly idempotent.
   if (firebaseServices) {
     return firebaseServices;
   }
   
-  // If no apps are initialized, initialize a new one.
-  if (!getApps().length) {
-    const firebaseApp = initializeApp(firebaseConfig);
-    firebaseServices = getSdks(firebaseApp);
-    return firebaseServices;
-  }
+  const app = getApps().length ? getApp() : initializeApp(firebaseConfig);
   
-  // If an app is already initialized (e.g. by another part of the system),
-  // get that app and its services.
-  const firebaseApp = getApp();
-  firebaseServices = getSdks(firebaseApp);
+  const auth = getAuth(app);
+  const firestore = getFirestore(app);
+  const storage = getStorage(app);
+
+  firebaseServices = {
+    firebaseApp: app,
+    auth,
+    firestore,
+    storage,
+  };
+  
   return firebaseServices;
 }
 
