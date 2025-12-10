@@ -46,20 +46,43 @@ export function Combobox({
   className,
 }: ComboboxProps) {
   const [open, setOpen] = React.useState(false)
+  
+  // To manage the text inside the input
   const [inputValue, setInputValue] = React.useState(value || '');
 
   React.useEffect(() => {
+    // Sync input with external value changes
     setInputValue(value || '');
   }, [value]);
 
   const handleSelect = (currentValue: string) => {
-    const finalValue = currentValue === value?.toLowerCase() ? "" : currentValue;
-    const selectedOption = options.find(o => o.value.toLowerCase() === finalValue);
+    // currentValue is the `value` from the `options` prop
+    const selectedOption = options.find(o => o.value.toLowerCase() === currentValue.toLowerCase());
+    const finalValue = selectedOption ? selectedOption.label : currentValue;
     
-    onChange(selectedOption ? selectedOption.label : finalValue);
-    setInputValue(selectedOption ? selectedOption.label : finalValue);
+    onChange(finalValue);
+    setInputValue(finalValue);
     setOpen(false)
   }
+  
+  const handleInputChange = (search: string) => {
+    setInputValue(search);
+    if(onInputChange) {
+        onInputChange(search);
+    }
+  }
+
+  const handleKeyDown = (e: React.KeyboardEvent<HTMLDivElement>) => {
+    if (e.key === 'Enter') {
+      const exactMatch = options.find(o => o.label.toLowerCase() === inputValue.toLowerCase());
+      if (exactMatch) {
+         handleSelect(exactMatch.value);
+      } else {
+         handleSelect(inputValue);
+      }
+    }
+  }
+
 
   return (
     <Popover open={open} onOpenChange={setOpen}>
@@ -72,7 +95,7 @@ export function Combobox({
         >
           <span className="truncate">
             {value
-              ? options.find((option) => option.value.toLowerCase() === value.toLowerCase())?.label ?? value
+              ? options.find((option) => option.label.toLowerCase() === value.toLowerCase())?.label ?? value
               : placeholder}
           </span>
           <ChevronsUpDown className="ml-2 h-4 w-4 shrink-0 opacity-50" />
@@ -80,7 +103,8 @@ export function Combobox({
       </PopoverTrigger>
       <PopoverContent className="w-[--radix-popover-trigger-width] p-0">
         <Command
-          filter={(value, search) => {
+           onKeyDown={handleKeyDown}
+           filter={(value, search) => {
             const option = options.find(o => o.value.toLowerCase() === value.toLowerCase());
             if (option?.label.toLowerCase().includes(search.toLowerCase())) return 1;
             return 0;
@@ -89,12 +113,7 @@ export function Combobox({
           <CommandInput 
             placeholder={searchPlaceholder} 
             value={inputValue}
-            onValueChange={(search) => {
-                setInputValue(search);
-                if(onInputChange) {
-                    onInputChange(search);
-                }
-            }}
+            onValueChange={handleInputChange}
           />
           <CommandList>
             <CommandEmpty>{emptyPlaceholder}</CommandEmpty>
@@ -103,12 +122,12 @@ export function Combobox({
                 <CommandItem
                   key={option.value}
                   value={option.value}
-                  onSelect={() => handleSelect(option.value)}
+                  onSelect={(currentValue) => handleSelect(currentValue)}
                 >
                   <Check
                     className={cn(
                       "mr-2 h-4 w-4",
-                      value && value.toLowerCase() === option.value.toLowerCase() ? "opacity-100" : "opacity-0"
+                      value && value.toLowerCase() === option.label.toLowerCase() ? "opacity-100" : "opacity-0"
                     )}
                   />
                   {option.label}
