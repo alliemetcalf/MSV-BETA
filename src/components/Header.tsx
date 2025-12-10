@@ -11,7 +11,7 @@ import {
 } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { Button } from './ui/button';
-import { useAuth, useUser, useFirestore, useDoc, useMemoFirebase } from '@/firebase';
+import { useAuth, useUser } from '@/firebase';
 import { signOut } from 'firebase/auth';
 import { useToast } from '@/hooks/use-toast';
 import {
@@ -21,28 +21,13 @@ import {
   DropdownMenuSeparator,
   DropdownMenuTrigger,
 } from '@/components/ui/dropdown-menu';
-import { doc } from 'firebase/firestore';
-
-interface UserProfile {
-  role: 'admin' | 'user' | 'assistant';
-}
 
 export function Header() {
   const pathname = usePathname();
   const { toast } = useToast();
   const router = useRouter();
   const auth = useAuth();
-  const firestore = useFirestore();
   const { user } = useUser(auth);
-
-  const userProfileRef = useMemoFirebase(
-    () => (user ? doc(firestore, 'users', user.uid) : null),
-    [firestore, user]
-  );
-  const { data: userProfile, isLoading: isProfileLoading } = useDoc<UserProfile>(userProfileRef);
-  
-  const isAdmin = userProfile?.role === 'admin';
-
 
   const handleLogout = async () => {
     if (!auth) return;
@@ -101,7 +86,7 @@ export function Header() {
                   {item.label}
                 </Link>
               ))}
-              {isAdmin &&
+              {user &&
                 adminNavItems.map((item) => (
                   <Link
                     key={item.href}
