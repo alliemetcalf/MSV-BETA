@@ -287,27 +287,28 @@ export default function ExpensesPage() {
   }
 
   const handleVendorChange = async (value: string) => {
+    // This function now handles both selection and creation.
+    // The `value` is the label of the selected option, or the new text entered.
+    setFormData(p => ({...p, vendor: value }));
+    
     const isExisting = vendors.some(v => v.name.toLowerCase() === value.toLowerCase());
     if (value && !isExisting && vendorsDocRef) {
-      const newVendor: Vendor = { id: new Date().toISOString(), name: value };
-      const updatedVendors = [...vendors, newVendor].sort((a, b) => a.name.localeCompare(b.name));
-      await setDoc(vendorsDocRef, { vendors: updatedVendors }, { merge: true });
-      setVendors(updatedVendors);
-      setFormData(p => ({...p, vendor: value }));
-      toast({ title: "Vendor Added", description: `"${value}" has been added to vendors.` });
-    } else {
-      setFormData(p => ({...p, vendor: value }));
+        const newVendor: Vendor = { id: new Date().toISOString(), name: value };
+        const updatedVendors = [...vendors, newVendor].sort((a, b) => a.name.localeCompare(b.name));
+        try {
+            await setDoc(vendorsDocRef, { vendors: updatedVendors }, { merge: true });
+            // The useDoc hook will automatically update the local `vendors` state.
+            toast({ title: "Vendor Added", description: `"${value}" has been added to the list.` });
+        } catch (error) {
+            toast({ variant: 'destructive', title: 'Error', description: 'Could not add the new vendor.' });
+        }
     }
   };
 
   const vendorOptions: ComboboxOption[] = useMemo(() => {
-    const existing = vendors.map(v => ({ value: v.name, label: v.name }));
-    const current = formData.vendor;
-    if (current && !vendors.some(v => v.name.toLowerCase() === current.toLowerCase())) {
-        return [...existing, {value: current, label: `Add "${current}"`}].sort((a,b) => a.label.localeCompare(b.label));
-    }
-    return existing;
-  }, [vendors, formData.vendor]);
+    return vendors.map(v => ({ value: v.name, label: v.name }))
+      .sort((a,b) => a.label.localeCompare(b.label));
+  }, [vendors]);
 
   const isLoading = isUserLoading || expensesLoading || categoriesLoading || propertiesLoading || tenantsLoading || vendorsLoading;
 
@@ -405,7 +406,6 @@ export default function ExpensesPage() {
                     placeholder="Select or add a vendor"
                     searchPlaceholder="Search vendors..."
                     emptyPlaceholder="No vendor found."
-                    onInputChange={(input) => setFormData(p => ({...p, vendor: input}))}
                   />
                 </div>
               </div>
