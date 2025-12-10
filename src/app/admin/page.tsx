@@ -1,6 +1,6 @@
 'use client';
 import { MainLayout } from '@/components/MainLayout';
-import { useUser, useAuth } from '@/firebase';
+import { useUser, useAuth, useDoc, useFirestore, useMemoFirebase } from '@/firebase';
 import { Loader2 } from 'lucide-react';
 import { useRouter } from 'next/navigation';
 import { useEffect, useState } from 'react';
@@ -12,18 +12,29 @@ import {
   CardHeader,
   CardTitle,
 } from '@/components/ui/card';
-import { IdTokenResult } from 'firebase/auth';
 import { AddUserForm } from '@/components/admin/AddUserForm';
 import { PropertiesManager } from '@/components/admin/PropertiesManager';
 import { UserRoleManager } from '@/components/admin/UserRoleManager';
 import { TenantsManager } from '@/components/admin/TenantsManager';
+import { doc } from 'firebase/firestore';
+
+interface UserProfile {
+  role: 'admin' | 'user' | 'assistant';
+}
 
 export default function AdminPage() {
   const auth = useAuth();
+  const firestore = useFirestore();
   const { user, isUserLoading } = useUser(auth);
   const router = useRouter();
-  const [isAdmin, setIsAdmin] = useState(false);
-  const [claimsLoading, setClaimsLoading] = useState(true);
+
+  const userProfileRef = useMemoFirebase(
+    () => (user ? doc(firestore, 'users', user.uid) : null),
+    [firestore, user]
+  );
+
+  const { data: userProfile, isLoading: isProfileLoading } =
+    useDoc<UserProfile>(userProfileRef);
 
   useEffect(() => {
     if (!isUserLoading && !user) {
@@ -32,23 +43,17 @@ export default function AdminPage() {
   }, [user, isUserLoading, router]);
 
   useEffect(() => {
-    if (user) {
-      // Pass true to force a refresh of the token
-      user.getIdTokenResult(true).then((idTokenResult: IdTokenResult) => {
-        const userRole = idTokenResult.claims.role;
-        if (userRole !== 'admin') {
-          router.push('/');
-        } else {
-          setIsAdmin(true);
-        }
-        setClaimsLoading(false);
-      });
-    } else if (!isUserLoading) {
-      router.push('/login');
+    if (!isUserLoading && !isProfileLoading) {
+      if (userProfile?.role !== 'admin') {
+        router.push('/');
+      }
     }
-  }, [user, isUserLoading, router]);
+  }, [user, isUserLoading, userProfile, isProfileLoading, router]);
 
-  if (isUserLoading || claimsLoading || !isAdmin) {
+  const isAdmin = userProfile?.role === 'admin';
+  const isLoading = isUserLoading || isProfileLoading;
+  
+  if (isLoading || !isAdmin) {
     return (
       <div className="flex h-screen w-full items-center justify-center bg-background">
         <Loader2 className="h-10 w-10 animate-spin text-primary" />

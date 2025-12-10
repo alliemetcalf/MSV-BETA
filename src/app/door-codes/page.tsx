@@ -58,7 +58,10 @@ import { DoorCode, DoorLockType, PropertyType } from '@/types/door-code';
 import { format } from 'date-fns';
 import { useRouter } from 'next/navigation';
 import { getAllDoorCodes, GetAllDoorCodesOutput } from '@/ai/flows/get-all-door-codes-flow';
-import { IdTokenResult } from 'firebase/auth';
+
+interface UserProfile {
+  role: 'admin' | 'user' | 'assistant';
+}
 
 type EnrichedDoorCode = GetAllDoorCodesOutput[0]['codes'][0] & {
   userEmail: string;
@@ -69,8 +72,13 @@ export default function DoorCodesPage() {
   const { user, isUserLoading } = useUser(auth);
   const firestore = useFirestore();
   const router = useRouter();
-  const [isAdmin, setIsAdmin] = useState(false);
-  const [claimsLoading, setClaimsLoading] = useState(true);
+  
+  const userProfileRef = useMemoFirebase(
+    () => (user ? doc(firestore, 'users', user.uid) : null),
+    [firestore, user]
+  );
+  const { data: userProfile, isLoading: profileLoading } = useDoc<UserProfile>(userProfileRef);
+  const isAdmin = userProfile?.role === 'admin';
 
   const [isFormDialogOpen, setIsFormDialogOpen] = useState(false);
   const [isInstructionDialogOpen, setIsInstructionDialogOpen] = useState(false);
@@ -103,35 +111,22 @@ export default function DoorCodesPage() {
   }, [user, isUserLoading, router]);
 
   useEffect(() => {
-    if (user) {
-      setClaimsLoading(true);
-      user.getIdTokenResult().then((idTokenResult: IdTokenResult) => {
-        const userRole = idTokenResult.claims.role;
-        const isAdminUser = userRole === 'admin';
-        setIsAdmin(isAdminUser);
-        setClaimsLoading(false);
-
-        if (isAdminUser) {
-          setAllCodesLoading(true);
-          getAllDoorCodes().then(data => {
-            const enrichedCodes = data.flatMap(userWithCodes => 
-              userWithCodes.codes.map(code => ({
-                ...code,
-                // The AI flow returns lastChanged as a string, convert it back
-                lastChanged: code.lastChanged ? Timestamp.fromDate(new Date(code.lastChanged)) : null,
-                userEmail: userWithCodes.email,
-                userId: userWithCodes.uid,
-              }))
-            );
-            setAllUsersCodes(enrichedCodes);
-          }).finally(() => setAllCodesLoading(false));
-        }
-      });
-    } else if (!isUserLoading) {
-      setIsAdmin(false);
-      setClaimsLoading(false);
+    if (isAdmin) {
+      setAllCodesLoading(true);
+      getAllDoorCodes().then(data => {
+        const enrichedCodes = data.flatMap(userWithCodes => 
+          userWithCodes.codes.map(code => ({
+            ...code,
+            // The AI flow returns lastChanged as a string, convert it back
+            lastChanged: code.lastChanged ? Timestamp.fromDate(new Date(code.lastChanged)) : null,
+            userEmail: userWithCodes.email,
+            userId: userWithCodes.uid,
+          }))
+        );
+        setAllUsersCodes(enrichedCodes);
+      }).finally(() => setAllCodesLoading(false));
     }
-  }, [user, isUserLoading]);
+  }, [isAdmin]);
 
 
   const doorCodesCollectionRef = useMemoFirebase(
@@ -309,7 +304,7 @@ export default function DoorCodesPage() {
     handleDialogClose();
   };
 
-  if (isUserLoading || claimsLoading || !user) {
+  if (isUserLoading || profileLoading || !user) {
     return (
       <div className="flex h-screen w-full items-center justify-center bg-background">
         <Loader2 className="h-10 w-10 animate-spin text-primary" />

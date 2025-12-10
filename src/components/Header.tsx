@@ -1,4 +1,3 @@
-
 'use client';
 
 import Link from 'next/link';
@@ -12,11 +11,9 @@ import {
 } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { Button } from './ui/button';
-import { useAuth, useUser } from '@/firebase';
+import { useAuth, useUser, useFirestore, useDoc, useMemoFirebase } from '@/firebase';
 import { signOut } from 'firebase/auth';
 import { useToast } from '@/hooks/use-toast';
-import { useEffect, useState } from 'react';
-import { IdTokenResult } from 'firebase/auth';
 import {
   DropdownMenu,
   DropdownMenuContent,
@@ -24,25 +21,27 @@ import {
   DropdownMenuSeparator,
   DropdownMenuTrigger,
 } from '@/components/ui/dropdown-menu';
+import { doc } from 'firebase/firestore';
+
+interface UserProfile {
+  role: 'admin' | 'user' | 'assistant';
+}
 
 export function Header() {
   const pathname = usePathname();
   const { toast } = useToast();
   const router = useRouter();
   const auth = useAuth();
+  const firestore = useFirestore();
   const { user } = useUser(auth);
-  const [isAdmin, setIsAdmin] = useState(false);
 
-  useEffect(() => {
-    if (user) {
-      user.getIdTokenResult().then((idTokenResult: IdTokenResult) => {
-        const userRole = idTokenResult.claims.role;
-        setIsAdmin(userRole === 'admin');
-      });
-    } else {
-      setIsAdmin(false);
-    }
-  }, [user]);
+  const userProfileRef = useMemoFirebase(
+    () => (user ? doc(firestore, 'users', user.uid) : null),
+    [firestore, user]
+  );
+  const { data: userProfile } = useDoc<UserProfile>(userProfileRef);
+  const isAdmin = userProfile?.role === 'admin';
+
 
   const handleLogout = async () => {
     if (!auth) return;

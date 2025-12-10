@@ -3,7 +3,7 @@
     "UserProfile": {
       "title": "UserProfile",
       "type": "object",
-      "description": "Represents a user's public profile information.",
+      "description": "Represents a user's public profile information and role.",
       "properties": {
         "displayName": {
           "type": "string",
@@ -12,8 +12,14 @@
         "bio": {
           "type": "string",
           "description": "A short biography for the user."
+        },
+        "role": {
+          "type": "string",
+          "description": "The user's role in the system.",
+          "enum": ["admin", "user", "assistant"]
         }
-      }
+      },
+      "required": ["role"]
     },
     "DoorCode": {
       "title": "DoorCode",
@@ -161,7 +167,7 @@
         "schema": {
           "$ref": "#/entities/UserProfile"
         },
-        "description": "Stores the public profile for a user."
+        "description": "Stores the public profile for a user, including their role."
       },
       {
         "path": "/users/{userId}/doorCodes",

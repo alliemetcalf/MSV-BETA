@@ -9,6 +9,7 @@
 import { ai } from '@/ai/genkit';
 import { z } from 'genkit';
 import { getAuth } from 'firebase-admin/auth';
+import { getFirestore } from 'firebase-admin/firestore';
 import { initializeApp, getApps, cert } from 'firebase-admin/app';
 import serviceAccount from '@/../firebase-service-account.json';
 
@@ -40,17 +41,25 @@ const listUsersFlow = ai.defineFlow(
   },
   async () => {
     try {
-      const userRecords = await getAuth().listUsers();
-      const users = userRecords.users.map((user) => ({
-        uid: user.uid,
-        email: user.email,
-        displayName: user.displayName,
-        role: user.customClaims?.['role'] || 'user',
-      }));
-      return users;
+      const auth = getAuth();
+      const db = getFirestore();
+      const userRecords = await auth.listUsers();
+
+      const userPromises = userRecords.users.map(async (user) => {
+        const userDoc = await db.collection('users').doc(user.uid).get();
+        const role = userDoc.exists ? userDoc.data()?.role : 'user';
+
+        return {
+          uid: user.uid,
+          email: user.email,
+          displayName: user.displayName,
+          role: role || 'user',
+        };
+      });
+
+      return await Promise.all(userPromises);
     } catch (error: any) {
       console.error('Error listing users:', error);
-      // In case of an error, return an empty array or handle as needed
       return [];
     }
   }

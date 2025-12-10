@@ -3,7 +3,7 @@ rules_version = '2';
 service cloud.firestore {
   match /databases/{database}/documents {
 
-    // Helper Functions for Reusable Logic
+    // Global Helper Functions
     function isSignedIn() {
       return request.auth != null;
     }
@@ -12,18 +12,42 @@ service cloud.firestore {
       return isSignedIn() && request.auth.uid == userId;
     }
     
-    function isAdmin() {
-      // Check for the 'admin' role in the user's authentication token (custom claim).
-      return isSignedIn() && request.auth.token.role == 'admin';
+    // Role-based access helpers
+    function getUserRole(uid) {
+      // Get the user's role from their profile document in the /users collection.
+      return get(/databases/$(database)/documents/users/$(uid)).data.role;
     }
 
-    // Allow owners to write to their own user-specific data. Admins can read any user's data.
-    match /users/{userId}/{document=**} {
-      // Any signed in user can read any profile, but only owners or admins can write.
-      allow read: if isSignedIn();
-      allow write: if isOwner(userId) || isAdmin();
+    function isAdmin() {
+      // An admin is a signed-in user whose role in their user document is 'admin'.
+      return isSignedIn() && getUserRole(request.auth.uid) == 'admin';
     }
     
+    function isAssistant() {
+       return isSignedIn() && getUserRole(request.auth.uid) == 'assistant';
+    }
+
+    // Rule Definitions
+
+    // Users Collection:
+    // - Anyone can read a user's profile.
+    // - Only the user themselves or an admin can update a profile.
+    // - Admins cannot change a user's role directly on the document, 
+    //   this must be done via the backend flow which this rule allows.
+    match /users/{userId} {
+      allow read: if isSignedIn();
+      allow write: if isOwner(userId);
+      // Admins can also write, but cannot change the role field directly.
+      allow update: if isAdmin() && !(request.resource.data.role is string && resource.data.role != request.resource.data.role);
+    }
+    
+    // User Subcollections (e.g., doorCodes)
+    // - Owners can read/write their own subcollections.
+    // - Admins can read/write any user's subcollections.
+    match /users/{userId}/{document=**} {
+       allow read, write: if isOwner(userId) || isAdmin();
+    }
+
     // Site configuration can be read by any signed-in user, but only written by admins.
     match /siteConfiguration/{document=**} {
       allow read: if isSignedIn();
@@ -31,15 +55,9 @@ service cloud.firestore {
     }
     
     // Tenants can be read/listed by any signed-in user, but only written by admins.
-    match /tenants/{tenantId} {
-      allow read, list: if isSignedIn();
+    match /tenants/{document=**} {
+      allow read: if isSignedIn();
       allow write: if isAdmin();
-    }
-    
-    // Fallback rule to allow any signed-in user to read/list any other collection.
-    // This is more permissive for development.
-    match /{path=**} {
-      allow read, list: if isSignedIn();
     }
   }
 }

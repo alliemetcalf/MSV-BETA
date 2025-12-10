@@ -27,7 +27,7 @@ import { updateUserRole } from '@/ai/flows/update-user-role-flow';
 import { useToast } from '@/hooks/use-toast';
 import { Loader2, RefreshCw } from 'lucide-react';
 import { Button } from '../ui/button';
-import { getAuth } from 'firebase/auth';
+import { useAuth } from '@/firebase';
 
 type User = ListUsersOutput[0];
 
@@ -36,12 +36,16 @@ export function UserRoleManager() {
   const [isLoading, setIsLoading] = useState(true);
   const [isUpdating, setIsUpdating] = useState<Record<string, boolean>>({});
   const { toast } = useToast();
+  const auth = useAuth();
 
   const fetchUsers = async () => {
     setIsLoading(true);
     try {
+      const currentUserUid = auth?.currentUser?.uid;
       const userList = await listUsers();
-      setUsers(userList);
+      // Filter out the current user from the list
+      const filteredUsers = userList.filter(user => user.uid !== currentUserUid);
+      setUsers(filteredUsers);
     } catch (error) {
       toast({
         variant: 'destructive',
@@ -54,29 +58,24 @@ export function UserRoleManager() {
   };
 
   useEffect(() => {
-    fetchUsers();
-  }, []);
+    if (auth) {
+      fetchUsers();
+    }
+  }, [auth]);
 
   const handleRoleChange = async (uid: string, newRole: 'admin' | 'user' | 'assistant') => {
     setIsUpdating((prev) => ({ ...prev, [uid]: true }));
     try {
       const result = await updateUserRole({ uid, role: newRole });
       if (result.success) {
-        // Find the user in the list and update their role locally
-        const updatedUsers = users.map((user) =>
-          user.uid === uid ? { ...user, role: newRole } : user
+        setUsers((currentUsers) =>
+          currentUsers.map((user) =>
+            user.uid === uid ? { ...user, role: newRole } : user
+          )
         );
-        setUsers(updatedUsers);
-
-        // Force a token refresh for the current user if they are the one being changed
-        const auth = getAuth();
-        if (auth.currentUser && auth.currentUser.uid === uid) {
-          await auth.currentUser.getIdTokenResult(true);
-        }
-
         toast({
           title: 'Role Updated',
-          description: "User role has been successfully changed. The user may need to log in again for it to take full effect.",
+          description: "User's role has been successfully changed.",
         });
       } else {
         throw new Error(result.message || 'Failed to update role.');
@@ -99,7 +98,7 @@ export function UserRoleManager() {
       <CardHeader className="flex flex-row items-center justify-between">
         <div>
             <CardTitle>User Role Management</CardTitle>
-            <CardDescription>View and manage user roles.</CardDescription>
+            <CardDescription>View and manage user roles. You cannot change your own role.</CardDescription>
         </div>
         <Button variant="ghost" size="icon" onClick={fetchUsers} disabled={isLoading}>
             <RefreshCw className={`h-4 w-4 ${isLoading ? 'animate-spin' : ''}`} />

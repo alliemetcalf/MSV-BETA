@@ -10,6 +10,7 @@
 import { ai } from '@/ai/genkit';
 import { z } from 'genkit';
 import { getAuth } from 'firebase-admin/auth';
+import { getFirestore } from 'firebase-admin/firestore';
 import { initializeApp, getApps, cert } from 'firebase-admin/app';
 import serviceAccount from '@/../firebase-service-account.json';
 
@@ -51,7 +52,13 @@ const createUserFlow = ai.defineFlow(
         password: input.password,
       });
 
-      await getAuth().setCustomUserClaims(userRecord.uid, { role: input.role });
+      // Instead of custom claims, create a user profile document with the role.
+      const db = getFirestore();
+      await db.collection('users').doc(userRecord.uid).set({
+        role: input.role,
+        email: userRecord.email,
+        displayName: userRecord.displayName || '',
+      });
 
       return {
         uid: userRecord.uid,

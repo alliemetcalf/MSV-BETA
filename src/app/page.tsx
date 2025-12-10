@@ -1,6 +1,6 @@
 'use client';
 
-import { useUser, useAuth } from '@/firebase';
+import { useUser, useAuth, useDoc, useFirestore, useMemoFirebase } from '@/firebase';
 import { useRouter } from 'next/navigation';
 import { useEffect, useState } from 'react';
 import {
@@ -12,14 +12,25 @@ import {
 } from '@/components/ui/card';
 import { UserCheck, Loader2 } from 'lucide-react';
 import { MainLayout } from '@/components/MainLayout';
-import { IdTokenResult } from 'firebase/auth';
+import { doc } from 'firebase/firestore';
+
+interface UserProfile {
+  role: 'admin' | 'user' | 'assistant';
+}
 
 export default function Home() {
   const auth = useAuth();
+  const firestore = useFirestore();
   const { user, isUserLoading } = useUser(auth);
   const router = useRouter();
-  const [role, setRole] = useState<'admin' | 'user' | null>(null);
-  const [claimsLoading, setClaimsLoading] = useState(true);
+
+  const userProfileRef = useMemoFirebase(
+    () => (user ? doc(firestore, 'users', user.uid) : null),
+    [firestore, user]
+  );
+
+  const { data: userProfile, isLoading: isProfileLoading } =
+    useDoc<UserProfile>(userProfileRef);
 
   useEffect(() => {
     if (!isUserLoading && !user) {
@@ -27,25 +38,9 @@ export default function Home() {
     }
   }, [user, isUserLoading, router]);
 
-  useEffect(() => {
-    if (user) {
-      setClaimsLoading(true);
-      user.getIdTokenResult().then((idTokenResult: IdTokenResult) => {
-        const userRole = idTokenResult.claims.role;
-        if (userRole === 'admin') {
-          setRole('admin');
-        } else {
-          setRole('user');
-        }
-        setClaimsLoading(false);
-      });
-    } else {
-      setRole(null);
-      setClaimsLoading(false);
-    }
-  }, [user]);
+  const isLoading = isUserLoading || isProfileLoading;
 
-  if (isUserLoading || claimsLoading || !user) {
+  if (isLoading || !user) {
     return (
       <div className="flex h-screen w-full items-center justify-center bg-background">
         <Loader2 className="h-10 w-10 animate-spin text-primary" />
@@ -65,7 +60,7 @@ export default function Home() {
               Welcome
             </CardTitle>
             <CardDescription className="font-body">
-              Welcome back, {user.email}! (Role: {role})
+              Welcome back, {user.email}! (Role: {userProfile?.role || '...'})
             </CardDescription>
           </CardHeader>
         </Card>
