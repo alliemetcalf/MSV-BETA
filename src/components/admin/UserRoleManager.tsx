@@ -27,6 +27,7 @@ import { updateUserRole } from '@/ai/flows/update-user-role-flow';
 import { useToast } from '@/hooks/use-toast';
 import { Loader2, RefreshCw } from 'lucide-react';
 import { Button } from '../ui/button';
+import { getAuth } from 'firebase/auth';
 
 type User = ListUsersOutput[0];
 
@@ -61,14 +62,21 @@ export function UserRoleManager() {
     try {
       const result = await updateUserRole({ uid, role: newRole });
       if (result.success) {
-        setUsers((prevUsers) =>
-          prevUsers.map((user) =>
-            user.uid === uid ? { ...user, role: newRole } : user
-          )
+        // Find the user in the list and update their role locally
+        const updatedUsers = users.map((user) =>
+          user.uid === uid ? { ...user, role: newRole } : user
         );
+        setUsers(updatedUsers);
+
+        // Force a token refresh for the current user if they are the one being changed
+        const auth = getAuth();
+        if (auth.currentUser && auth.currentUser.uid === uid) {
+          await auth.currentUser.getIdTokenResult(true);
+        }
+
         toast({
           title: 'Role Updated',
-          description: 'User role has been successfully changed.',
+          description: "User role has been successfully changed. The user may need to log in again for it to take full effect.",
         });
       } else {
         throw new Error(result.message || 'Failed to update role.');

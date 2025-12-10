@@ -33,7 +33,8 @@ export default function AdminPage() {
 
   useEffect(() => {
     if (user) {
-      user.getIdTokenResult().then((idTokenResult: IdTokenResult) => {
+      // Pass true to force a refresh of the token
+      user.getIdTokenResult(true).then((idTokenResult: IdTokenResult) => {
         const userRole = idTokenResult.claims.role;
         if (userRole !== 'admin') {
           router.push('/');
