@@ -229,12 +229,12 @@ export function TenantsManager() {
     setEditingTenant(tenant);
     setFormData({
       name: tenant.name,
-      email: tenant.email,
-      phone: tenant.phone,
+      email: tenant.email || '',
+      phone: tenant.phone || '',
       property: tenant.property,
-      room: tenant.room,
-      notes: tenant.notes,
-      photoUrl: tenant.photoUrl,
+      room: tenant.room || '',
+      notes: tenant.notes || '',
+      photoUrl: tenant.photoUrl || '',
     });
     setIsFormDialogOpen(true);
   };
