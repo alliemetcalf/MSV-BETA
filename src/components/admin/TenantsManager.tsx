@@ -516,7 +516,7 @@ export function TenantsManager() {
                 variant="outline"
                 onClick={handleDialogClose}
               >
-                Cancel
+                { editingTenant ? 'Close' : 'Cancel' }
               </Button>
               <Button type="submit">Save</Button>
             </DialogFooter>
