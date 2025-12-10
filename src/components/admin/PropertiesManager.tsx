@@ -420,7 +420,6 @@ export function PropertiesManager() {
                   <TableHead>Name</TableHead>
                   <TableHead>Address</TableHead>
                   <TableHead>Mortgage</TableHead>
-                  <TableHead>Avg. Expense/Tenant</TableHead>
                   <TableHead className="text-right">Actions</TableHead>
                 </TableRow>
               </TableHeader>
@@ -447,7 +446,6 @@ export function PropertiesManager() {
                       </TableCell>
                     <TableCell>{prop.address}</TableCell>
                     <TableCell>{prop.mortgage ? moneyFormatter.format(prop.mortgage) : ''}</TableCell>
-                    <TableCell>{prop.averageExpensePerTenant ? moneyFormatter.format(prop.averageExpensePerTenant) : ''}</TableCell>
                     <TableCell className="text-right">
                       <Button
                         variant="ghost"
