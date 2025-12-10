@@ -389,7 +389,6 @@ export function TenantsManager() {
                   <TableHead>Name</TableHead>
                   <TableHead>Property</TableHead>
                   <TableHead>Room</TableHead>
-                  <TableHead>Rent</TableHead>
                   <TableHead>Status</TableHead>
                   <TableHead className="text-right">Actions</TableHead>
                 </TableRow>
@@ -417,9 +416,6 @@ export function TenantsManager() {
                     </TableCell>
                     <TableCell>{tenant.property}</TableCell>
                     <TableCell>{tenant.room}</TableCell>
-                    <TableCell>
-                      {moneyFormatter.format(tenant.rent || 0)}
-                    </TableCell>
                     <TableCell>
                       <Badge variant={tenant.active ? 'secondary' : 'outline'}>
                         {tenant.active ? 'Active' : 'Inactive'}
