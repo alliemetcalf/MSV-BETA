@@ -54,10 +54,22 @@ import {
   SelectValue,
 } from '@/components/ui/select';
 import { Textarea } from '@/components/ui/textarea';
-import { Loader2, PlusCircle, Edit, Trash2, User as UserIcon } from 'lucide-react';
+import {
+  Loader2,
+  PlusCircle,
+  Edit,
+  Trash2,
+  User as UserIcon,
+} from 'lucide-react';
 import { Tenant } from '@/types/tenant';
 import { useToast } from '@/hooks/use-toast';
 import { Progress } from '../ui/progress';
+import {
+  Accordion,
+  AccordionContent,
+  AccordionItem,
+  AccordionTrigger,
+} from '@/components/ui/accordion';
 
 function TenantImageUploader({
   tenantId,
@@ -79,11 +91,11 @@ function TenantImageUploader({
     if (file && tenantId) {
       handleFileUpload(file);
     } else {
-        toast({
-            variant: 'destructive',
-            title: 'Cannot Upload',
-            description: 'Please save the tenant before uploading a photo.',
-        })
+      toast({
+        variant: 'destructive',
+        title: 'Cannot Upload',
+        description: 'Please save the tenant before uploading a photo.',
+      });
     }
   };
 
@@ -211,6 +223,27 @@ export function TenantsManager() {
     useDoc<{ options: string[] }>(propertiesDocRef);
   const properties = propertiesData?.options || [];
 
+  const groupedTenants = useMemo(() => {
+    if (!tenants) return {};
+    const grouped = tenants.reduce(
+      (acc, tenant) => {
+        const { property } = tenant;
+        if (!acc[property]) {
+          acc[property] = [];
+        }
+        acc[property].push(tenant);
+        return acc;
+      },
+      {} as Record<string, Tenant[]>
+    );
+    // Sort tenants within each property group by name
+    for (const property in grouped) {
+      grouped[property].sort((a, b) => a.name.localeCompare(b.name));
+    }
+    // Sort properties by name
+    return Object.fromEntries(Object.entries(grouped).sort(([a], [b]) => a.localeCompare(b)));
+  }, [tenants]);
+
   const handleAddClick = () => {
     setEditingTenant(null);
     setFormData({
@@ -293,17 +326,21 @@ export function TenantsManager() {
     }
 
     try {
+      const dataToSave = {
+          ...formData,
+          photoUrl: formData.photoUrl || ''
+      };
       if (editingTenant) {
         const docRef = doc(firestore, 'tenants', editingTenant.id);
-        await updateDoc(docRef, formData);
+        await updateDoc(docRef, dataToSave);
         toast({ title: 'Success', description: 'Tenant updated.' });
       } else {
         const newDocRef = await addDoc(
           collection(firestore, 'tenants'),
-          formData
+          dataToSave
         );
         // After creating the doc, we can set it for editing to get an ID for photo uploads
-        setEditingTenant({ ...formData, id: newDocRef.id });
+        setEditingTenant({ ...dataToSave, id: newDocRef.id });
         toast({ title: 'Success', description: 'Tenant added. You can now upload a photo.' });
         // Don't close the dialog, so the user can upload a photo
         return;
@@ -336,79 +373,83 @@ export function TenantsManager() {
           </Button>
         </CardHeader>
         <CardContent>
-          {isLoading && <Loader2 className="mx-auto h-8 w-8 animate-spin" />}
-          {tenantsError && (
-            <p className="text-destructive">Error: {tenantsError.message}</p>
-          )}
-          {!isLoading && (
-            <Table>
-              <TableHeader>
-                <TableRow>
-                  <TableHead>Name</TableHead>
-                  <TableHead>Property</TableHead>
-                  <TableHead>Room</TableHead>
-                  <TableHead>Email</TableHead>
-                  <TableHead>Phone</TableHead>
-                  <TableHead className="text-right">Actions</TableHead>
-                </TableRow>
-              </TableHeader>
-              <TableBody>
-                {tenants && tenants.length > 0 ? (
-                  tenants.map((tenant) => (
-                    <TableRow key={tenant.id}>
-                      <TableCell className="flex items-center gap-2">
-                        <div className="w-8 h-8 rounded-full bg-muted overflow-hidden flex-shrink-0">
-                          {tenant.photoUrl ? (
-                            <Image
-                              src={tenant.photoUrl}
-                              alt={tenant.name}
-                              width={32}
-                              height={32}
-                              className="object-cover w-full h-full"
-                            />
-                          ) : (
-                            <div className="w-full h-full flex items-center justify-center">
-                              <UserIcon className="w-5 h-5 text-muted-foreground" />
-                            </div>
-                          )}
-                        </div>
-                        {tenant.name}
-                      </TableCell>
-                      <TableCell>{tenant.property}</TableCell>
-                      <TableCell>{tenant.room}</TableCell>
-                      <TableCell>{tenant.email}</TableCell>
-                      <TableCell>{tenant.phone}</TableCell>
-                      <TableCell className="text-right">
-                        <Button
-                          variant="ghost"
-                          size="icon"
-                          onClick={() => handleEditClick(tenant)}
-                        >
-                          <Edit />
-                        </Button>
-                        <Button
-                          variant="ghost"
-                          size="icon"
-                          onClick={() => handleDeleteClick(tenant.id)}
-                          className="text-destructive hover:text-destructive/80"
-                        >
-                          <Trash2 />
-                        </Button>
-                      </TableCell>
-                    </TableRow>
-                  ))
-                ) : (
-                  <TableRow>
-                    <TableCell
-                      colSpan={6}
-                      className="text-center text-muted-foreground py-8"
-                    >
-                      No tenants found.
-                    </TableCell>
-                  </TableRow>
-                )}
-              </TableBody>
-            </Table>
+          {isLoading ? (
+            <div className="flex justify-center py-8">
+              <Loader2 className="mx-auto h-8 w-8 animate-spin" />
+            </div>
+          ) : tenantsError ? (
+            <p className="text-destructive text-center py-8">Error: {tenantsError.message}</p>
+          ) : tenants && tenants.length > 0 ? (
+            <Accordion type="multiple" className="w-full">
+              {Object.entries(groupedTenants).map(([property, tenantList]) => (
+                <AccordionItem value={property} key={property}>
+                  <AccordionTrigger className="text-xl font-semibold hover:no-underline">
+                    {property} ({tenantList.length})
+                  </AccordionTrigger>
+                  <AccordionContent>
+                    <Table>
+                      <TableHeader>
+                        <TableRow>
+                          <TableHead>Name</TableHead>
+                          <TableHead>Room</TableHead>
+                          <TableHead>Email</TableHead>
+                          <TableHead>Phone</TableHead>
+                          <TableHead className="text-right">Actions</TableHead>
+                        </TableRow>
+                      </TableHeader>
+                      <TableBody>
+                        {tenantList.map((tenant) => (
+                          <TableRow key={tenant.id}>
+                            <TableCell className="flex items-center gap-2">
+                              <div className="w-8 h-8 rounded-full bg-muted overflow-hidden flex-shrink-0">
+                                {tenant.photoUrl ? (
+                                  <Image
+                                    src={tenant.photoUrl}
+                                    alt={tenant.name}
+                                    width={32}
+                                    height={32}
+                                    className="object-cover w-full h-full"
+                                  />
+                                ) : (
+                                  <div className="w-full h-full flex items-center justify-center">
+                                    <UserIcon className="w-5 h-5 text-muted-foreground" />
+                                  </div>
+                                )}
+                              </div>
+                              {tenant.name}
+                            </TableCell>
+                            <TableCell>{tenant.room}</TableCell>
+                            <TableCell>{tenant.email}</TableCell>
+                            <TableCell>{tenant.phone}</TableCell>
+                            <TableCell className="text-right">
+                              <Button
+                                variant="ghost"
+                                size="icon"
+                                onClick={() => handleEditClick(tenant)}
+                              >
+                                <Edit className="w-4 h-4" />
+                              </Button>
+                              <Button
+                                variant="ghost"
+                                size="icon"
+                                onClick={() => handleDeleteClick(tenant.id)}
+                                className="text-destructive hover:text-destructive/80"
+                              >
+                                <Trash2 className="w-4 h-4" />
+                              </Button>
+                            </TableCell>
+                          </TableRow>
+                        ))}
+                      </TableBody>
+                    </Table>
+                  </AccordionContent>
+                </AccordionItem>
+              ))}
+            </Accordion>
+          ) : (
+             <div className="text-center text-muted-foreground py-8">
+                No tenants found. Click "Add Tenant" to get started.
+             </div>
           )}
         </CardContent>
       </Card>
@@ -516,7 +557,7 @@ export function TenantsManager() {
                 variant="outline"
                 onClick={handleDialogClose}
               >
-                { editingTenant ? 'Close' : 'Cancel' }
+                {editingTenant ? 'Close' : 'Cancel'}
               </Button>
               <Button type="submit">Save</Button>
             </DialogFooter>
