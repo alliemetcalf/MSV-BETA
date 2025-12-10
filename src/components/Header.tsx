@@ -9,7 +9,6 @@ import {
   LogOut,
   ShieldCheck,
   User as UserIcon,
-  Upload,
 } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { Button } from './ui/button';
@@ -70,7 +69,6 @@ export function Header() {
   const navItems = [
     { href: '/', label: 'Home' },
     { href: '/door-codes', label: 'Door Codes' },
-    { href: '/uploads', label: 'Uploads', icon: Upload},
   ];
 
   const adminNavItems = [{ href: '/admin', label: 'Admin', icon: ShieldCheck }];
