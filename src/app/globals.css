@@ -1,3 +1,5 @@
+@import "react-day-picker/dist/style.css";
+
 @tailwind base;
 @tailwind components;
 @tailwind utilities;
@@ -54,40 +56,5 @@
   }
   body {
     @apply bg-background text-foreground;
-  }
-  
-  /* Custom Day Picker Styles */
-  .rdp {
-    --rdp-cell-size: 40px;
-    --rdp-accent-color: hsl(var(--primary));
-    --rdp-background-color: hsl(var(--accent));
-    
-    --rdp-accent-color-dark: hsl(var(--primary));
-    --rdp-background-color-dark: hsl(var(--accent));
-    
-    --rdp-outline: 2px solid hsl(var(--ring));
-    --rdp-outline-selected: 3px solid hsl(var(--primary));
-    
-    margin: 1em 0;
-  }
-  .rdp-caption_label {
-    font-weight: 500;
-  }
-  .rdp-head_cell {
-    font-size: 0.8em;
-    font-weight: 500;
-    color: hsl(var(--muted-foreground));
-  }
-  .rdp-button:hover:not([disabled]):not(.rdp-day_selected) {
-    background-color: hsl(var(--accent));
-  }
-  .rdp-day_today {
-    font-weight: bold;
-    color: hsl(var(--accent));
-  }
-  .rdp-day_selected, .rdp-day_selected:hover {
-    background-color: hsl(var(--primary));
-    color: hsl(var(--primary-foreground));
-    font-weight: 500;
   }
 }
