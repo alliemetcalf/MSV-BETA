@@ -30,11 +30,18 @@ import {
   Phone,
   User as UserIcon,
   Home,
+  DollarSign,
+  Shield,
 } from 'lucide-react';
 import { Tenant } from '@/types/tenant';
 import { useRouter } from 'next/navigation';
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
 import { Badge } from '@/components/ui/badge';
+
+const moneyFormatter = new Intl.NumberFormat('en-US', {
+  style: 'currency',
+  currency: 'USD',
+});
 
 function getInitials(name: string) {
   if (!name) return '??';
@@ -169,6 +176,16 @@ export default function TenantsPage() {
                                       {tenant.phone || 'No phone'}
                                     </a>
                                   </div>
+                                   <div className="flex items-center gap-2">
+                                    <DollarSign className="w-4 h-4 text-muted-foreground" />
+                                    <span>Rent: {moneyFormatter.format(tenant.rent || 0)}</span>
+                                  </div>
+                                  {tenant.deposit && (
+                                     <div className="flex items-center gap-2">
+                                        <Shield className="w-4 h-4 text-muted-foreground" />
+                                        <span>Deposit: {moneyFormatter.format(tenant.deposit)}</span>
+                                    </div>
+                                  )}
                                   {tenant.notes && (
                                     <div className="pt-2">
                                       <p className="text-xs text-muted-foreground italic">
@@ -196,3 +213,5 @@ export default function TenantsPage() {
     </MainLayout>
   );
 }
+
+    

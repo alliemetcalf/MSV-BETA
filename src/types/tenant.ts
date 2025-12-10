@@ -6,7 +6,10 @@ export interface Tenant {
   property: string;
   room: string;
   rent: number;
+  deposit?: number;
   notes: string;
   photoUrl?: string;
   active: boolean;
 }
+
+    

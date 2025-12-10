@@ -184,6 +184,10 @@
           "type": "number",
           "description": "The monthly rent amount for the tenant."
         },
+        "deposit": {
+          "type": "number",
+          "description": "The security deposit amount paid by the tenant."
+        },
         "notes": {
           "type": "string",
           "description": "General notes about the tenant."
@@ -435,3 +439,5 @@
     ]
   }
 }
+
+    

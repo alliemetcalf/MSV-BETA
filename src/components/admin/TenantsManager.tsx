@@ -201,6 +201,7 @@ export function TenantsManager() {
     property: '',
     room: '',
     rent: 0,
+    deposit: 0,
     notes: '',
     photoUrl: '',
     active: true,
@@ -252,6 +253,7 @@ export function TenantsManager() {
       property: properties[0] || '',
       room: '',
       rent: 0,
+      deposit: 0,
       notes: '',
       photoUrl: '',
       active: true,
@@ -268,6 +270,7 @@ export function TenantsManager() {
       property: tenant.property,
       room: tenant.room || '',
       rent: tenant.rent || 0,
+      deposit: tenant.deposit || 0,
       notes: tenant.notes || '',
       photoUrl: tenant.photoUrl || '',
       active: tenant.active,
@@ -340,6 +343,7 @@ export function TenantsManager() {
         ...formData,
         photoUrl: formData.photoUrl || '',
         rent: Number(formData.rent) || 0,
+        deposit: Number(formData.deposit) || 0,
       };
       if (editingTenant) {
         const docRef = doc(firestore, 'tenants', editingTenant.id);
@@ -571,6 +575,19 @@ export function TenantsManager() {
                 />
               </div>
               <div className="grid grid-cols-4 items-center gap-4">
+                <Label htmlFor="deposit" className="text-right">
+                  Deposit
+                </Label>
+                <Input
+                  id="deposit"
+                  type="number"
+                  step="0.01"
+                  value={formData.deposit || ''}
+                  onChange={handleFormChange}
+                  className="col-span-3"
+                />
+              </div>
+              <div className="grid grid-cols-4 items-center gap-4">
                 <Label htmlFor="email" className="text-right">
                   Email
                 </Label>
@@ -622,3 +639,5 @@ export function TenantsManager() {
     </>
   );
 }
+
+    
