@@ -224,6 +224,7 @@ export default function RentPaymentsPage() {
       tenantId: selectedTenant.id,
       tenantName: selectedTenant.name,
       property: selectedTenant.property,
+      room: selectedTenant.room || 'N/A',
       date: Timestamp.fromDate(paymentDate),
       amount,
       category: formData.category,
@@ -286,7 +287,7 @@ export default function RentPaymentsPage() {
                   <TableRow>
                     <TableHead>Date</TableHead>
                     <TableHead>Tenant</TableHead>
-                    <TableHead>Property</TableHead>
+                    <TableHead>Property / Room</TableHead>
                     <TableHead>Category</TableHead>
                     <TableHead>Method</TableHead>
                     <TableHead>Notes</TableHead>
@@ -299,7 +300,7 @@ export default function RentPaymentsPage() {
                     <TableRow key={payment.id}>
                       <TableCell>{format(payment.date.toDate(), 'PPP')}</TableCell>
                       <TableCell>{payment.tenantName}</TableCell>
-                      <TableCell>{payment.property}</TableCell>
+                      <TableCell>{payment.property}{payment.room ? ` / ${payment.room}` : ''}</TableCell>
                       <TableCell>{payment.category}</TableCell>
                       <TableCell>{payment.paymentMethod}</TableCell>
                       <TableCell>{payment.notes}</TableCell>
@@ -435,5 +436,3 @@ export default function RentPaymentsPage() {
     </MainLayout>
   );
 }
-
-    

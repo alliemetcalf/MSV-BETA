@@ -337,6 +337,10 @@
           "type": "string",
           "description": "The property for which rent was paid."
         },
+        "room": {
+          "type": "string",
+          "description": "The specific room associated with this payment."
+        },
         "date": {
           "type": "string",
           "format": "date-time",
@@ -363,6 +367,7 @@
         "tenantId",
         "tenantName",
         "property",
+        "room",
         "date",
         "amount",
         "paymentMethod",
@@ -524,5 +529,3 @@
     ]
   }
 }
-
-    

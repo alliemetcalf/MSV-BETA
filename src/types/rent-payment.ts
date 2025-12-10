@@ -5,6 +5,7 @@ export interface RentPayment {
   tenantId: string;
   tenantName: string;
   property: string;
+  room: string;
   date: Timestamp;
   amount: number;
   category: string;
