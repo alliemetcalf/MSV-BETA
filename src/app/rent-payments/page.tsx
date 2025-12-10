@@ -52,6 +52,7 @@ export default function RentPaymentsPage() {
   const [isFormOpen, setIsFormOpen] = useState(false);
   const [editingPayment, setEditingPayment] = useState<RentPayment | null>(null);
   const [isSubmitting, setIsSubmitting] = useState(false);
+  const [isCalendarOpen, setIsCalendarOpen] = useState(false);
 
   const [formData, setFormData] = useState<{
     tenantId: string;
@@ -252,7 +253,7 @@ export default function RentPaymentsPage() {
               </div>
               <div className="grid grid-cols-4 items-center gap-4">
                 <Label htmlFor="date" className="text-right">Date</Label>
-                <Popover>
+                <Popover open={isCalendarOpen} onOpenChange={setIsCalendarOpen}>
                   <PopoverTrigger asChild>
                     <Button variant="outline" className={cn('col-span-3 justify-start text-left font-normal', !formData.date && 'text-muted-foreground')}>
                       <CalendarIcon className="mr-2 h-4 w-4" />
@@ -263,7 +264,10 @@ export default function RentPaymentsPage() {
                     <Calendar 
                       mode="single" 
                       selected={formData.date} 
-                      onSelect={(date) => setFormData(p => ({...p, date: date}))}
+                      onSelect={(date) => {
+                        setFormData(p => ({...p, date: date ?? undefined}));
+                        setIsCalendarOpen(false);
+                      }}
                       initialFocus 
                     />
                   </PopoverContent>
