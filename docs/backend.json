@@ -210,6 +210,11 @@
           "format": "date-time",
           "description": "The date the lease ends."
         },
+        "noticeReceivedDate": {
+          "type": "string",
+          "format": "date-time",
+          "description": "The date the 30-day notice was received from the tenant."
+        },
         "pendingMove": {
           "type": "object",
           "description": "Details for a tenant's scheduled future move.",
@@ -561,5 +566,3 @@
     ]
   }
 }
-
-    

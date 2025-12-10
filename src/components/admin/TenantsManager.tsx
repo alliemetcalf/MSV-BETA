@@ -398,6 +398,7 @@ export function TenantsManager() {
       active: tenant.active,
       leaseEffective: tenant.leaseEffective,
       leaseEnded: tenant.leaseEnded,
+      noticeReceivedDate: tenant.noticeReceivedDate,
     });
     setIsFormDialogOpen(true);
   };
@@ -470,6 +471,7 @@ export function TenantsManager() {
         deposit: Number(formData.deposit) || 0,
         leaseEffective: formData.leaseEffective || Timestamp.now(),
         leaseEnded: formData.leaseEnded || undefined,
+        noticeReceivedDate: formData.noticeReceivedDate || undefined,
       };
 
       if (editingTenant) {
@@ -806,6 +808,33 @@ export function TenantsManager() {
                   </div>
               </div>
               <div className="grid grid-cols-4 items-center gap-4">
+                  <Label htmlFor="noticeReceivedDate" className="text-right">30 Day Notice</Label>
+                  <div className="col-span-3">
+                     <Popover>
+                      <PopoverTrigger asChild>
+                        <Button
+                          variant={"outline"}
+                          className={cn(
+                            "w-full justify-start text-left font-normal",
+                            !formData.noticeReceivedDate && "text-muted-foreground"
+                          )}
+                        >
+                          <CalendarIcon className="mr-2 h-4 w-4" />
+                          {formData.noticeReceivedDate ? format(formData.noticeReceivedDate.toDate(), "PPP") : <span>Pick a date</span>}
+                        </Button>
+                      </PopoverTrigger>
+                      <PopoverContent className="w-auto p-0">
+                        <Calendar
+                          mode="single"
+                          selected={formData.noticeReceivedDate?.toDate()}
+                          onSelect={(d) => setFormData(p => ({...p, noticeReceivedDate: d ? Timestamp.fromDate(d) : undefined}))}
+                          initialFocus
+                        />
+                      </PopoverContent>
+                    </Popover>
+                  </div>
+              </div>
+              <div className="grid grid-cols-4 items-center gap-4">
                 <Label htmlFor="notes" className="text-right">
                   Notes
                 </Label>
@@ -911,5 +940,3 @@ export function TenantsManager() {
     </>
   );
 }
-
-    

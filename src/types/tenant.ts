@@ -22,7 +22,6 @@ export interface Tenant {
   active: boolean;
   leaseEffective?: Timestamp;
   leaseEnded?: Timestamp;
+  noticeReceivedDate?: Timestamp;
   pendingMove?: PendingMove;
 }
-
-    
