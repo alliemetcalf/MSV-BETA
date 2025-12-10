@@ -58,9 +58,10 @@ export default function UploadsPage() {
   }, [user, isUserLoading, router]);
 
   const listFiles = async () => {
-    if (!storage) return;
+    if (!storage || !user) return;
     setIsListingFiles(true);
     try {
+      // List all files in the root of the bucket for simplicity
       const listRef = ref(storage);
       const res = await listAll(listRef);
       const files = await Promise.all(
@@ -193,7 +194,9 @@ export default function UploadsPage() {
           </CardHeader>
           <CardContent>
             {isListingFiles ? (
-              <Loader2 className="mx-auto h-8 w-8 animate-spin" />
+              <div className="flex justify-center py-8">
+                <Loader2 className="h-8 w-8 animate-spin" />
+              </div>
             ) : (
               <Table>
                 <TableHeader>

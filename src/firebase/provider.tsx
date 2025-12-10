@@ -79,8 +79,6 @@ export const FirebaseProvider: React.FC<FirebaseProviderProps> = ({
       return;
     }
 
-    setUserAuthState({ user: null, isUserLoading: true, userError: null }); // Reset on auth instance change
-
     const unsubscribe = onAuthStateChanged(
       auth,
       (firebaseUser) => { // Auth state determined
@@ -176,14 +174,9 @@ export const useStorage = (): FirebaseStorage => {
  * @returns The memoized Firebase reference or query.
  */
 export function useMemoFirebase<T>(factory: () => T, deps: DependencyList): T {
-    // This custom hook simply wraps useMemo for creating stable Firebase refs/queries.
-    // It helps enforce the pattern of memoization for these objects.
     const memoized = useMemo(factory, deps);
 
     if (memoized && typeof memoized === 'object') {
-        // This is a bit of a hack to "tag" the memoized object.
-        // It helps the useCollection/useDoc hooks to verify that the
-        // reference they received was indeed memoized.
         // @ts-ignore
         memoized.__memo = true;
     }
