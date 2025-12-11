@@ -41,46 +41,40 @@ const migrateDoorCodesFlow = ai.defineFlow(
   async () => {
     let codesMigrated = 0;
     try {
-      const usersSnapshot = await db.collection('users').get();
+      // Directly target the specified user's doorCodes subcollection
+      const specificUserDocId = 'Ix3LurGh12PFTTkvS1ompsIEzqb2';
+      const sourceCollectionRef = db
+        .collection('users')
+        .doc(specificUserDocId)
+        .collection('doorCodes');
+
+      const doorCodesSnapshot = await sourceCollectionRef.get();
       
+      if (doorCodesSnapshot.empty) {
+        return {
+          success: true,
+          message: 'No door codes found at the specified location to migrate.',
+          codesMigrated: 0,
+        };
+      }
+
       const batch = db.batch();
       const newDoorCodesCollectionRef = db.collection('doorCodes');
 
-      for (const userDoc of usersSnapshot.docs) {
-        // This check correctly skips any invalid or non-existent user documents
-        if (!userDoc.exists) {
-            console.log(`Skipping non-existent user document: ${userDoc.id}`);
-            continue;
-        }
-
-        const doorCodesSnapshot = await userDoc.ref
-          .collection('doorCodes')
-          .get();
-          
-        if (!doorCodesSnapshot.empty) {
-          for (const codeDoc of doorCodesSnapshot.docs) {
-            const newDocRef = newDoorCodesCollectionRef.doc(); // Create new doc with a new ID
-            batch.set(newDocRef, codeDoc.data());
-            codesMigrated++;
-          }
-        }
+      for (const codeDoc of doorCodesSnapshot.docs) {
+        const newDocRef = newDoorCodesCollectionRef.doc(); // Create new doc with a new ID
+        batch.set(newDocRef, codeDoc.data());
+        codesMigrated++;
       }
 
       await batch.commit();
 
-      if (codesMigrated > 0) {
-        return {
-          success: true,
-          message: `Successfully migrated ${codesMigrated} door codes to the top-level collection.`,
-          codesMigrated,
-        };
-      } else {
-        return {
-          success: true,
-          message: 'No door codes found in user subcollections to migrate.',
-          codesMigrated: 0,
-        };
-      }
+      return {
+        success: true,
+        message: `Successfully migrated ${codesMigrated} door codes to the top-level collection.`,
+        codesMigrated,
+      };
+
     } catch (error: any) {
       return {
         success: false,
