@@ -45,6 +45,7 @@ export async function getAllDoorCodes(): Promise<GetAllDoorCodesOutput> {
   return getAllDoorCodesFlow();
 }
 
+// This comment will trigger a hot-reload of the server.
 const getAllDoorCodesFlow = ai.defineFlow(
   {
     name: 'getAllDoorCodesFlow',
