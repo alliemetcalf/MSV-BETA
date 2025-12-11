@@ -61,25 +61,17 @@ import {
 import { Property } from '@/types/property';
 import { Tenant } from '@/types/tenant';
 import { useRouter } from 'next/navigation';
-import {
-  getAllDoorCodes,
-  GetAllDoorCodesOutput,
-} from '@/ai/flows/get-all-door-codes-flow';
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
 import { Badge } from '@/components/ui/badge';
 import type { DoorCode, DoorLockType } from '@/types/door-code';
 import Image from 'next/image';
 import { format } from 'date-fns';
 
-type EnrichedDoorCode = DoorCode & {
-  userId: string;
-};
 interface RoomProfile {
   id: string;
   roomName: string;
   property: Property;
   tenant: Tenant;
-  doorCodes: EnrichedDoorCode[];
 }
 
 function getInitials(name: string) {
@@ -97,27 +89,8 @@ export default function RoomsPage() {
   const firestore = useFirestore();
   const router = useRouter();
 
-  // --- Dialog and Form State ---
-  const [isFormDialogOpen, setIsFormDialogOpen] = useState(false);
   const [isInstructionDialogOpen, setIsInstructionDialogOpen] = useState(false);
   const [selectedInstruction, setSelectedInstruction] = useState<DoorLockType | null>(null);
-  const [editingCode, setEditingCode] = useState<EnrichedDoorCode | null>(null);
-
-  const [formData, setFormData] = useState<{
-    location: string;
-    code: string;
-    adminProgrammingCode: string;
-    guestCode: string;
-    doorLockType: string;
-    property: string;
-  }>({
-    location: '',
-    code: '',
-    adminProgrammingCode: '',
-    guestCode: '',
-    doorLockType: '',
-    property: '',
-  });
 
   useEffect(() => {
     if (!isUserLoading && !user) {
@@ -140,20 +113,6 @@ export default function RoomsPage() {
   const { data: tenants, isLoading: tenantsLoading } =
     useCollection<Tenant>(tenantsCollectionRef);
 
-  const [allDoorCodes, setAllDoorCodes] =
-    useState<GetAllDoorCodesOutput | null>(null);
-  const [doorCodesLoading, setDoorCodesLoading] = useState(true);
-
-  useEffect(() => {
-    if (user) {
-      setDoorCodesLoading(true);
-      getAllDoorCodes()
-        .then(setAllDoorCodes)
-        .catch(console.error)
-        .finally(() => setDoorCodesLoading(false));
-    }
-  }, [user]);
-
   const lockTypesDocRef = useMemoFirebase(
     () => (user && firestore ? doc(firestore, 'siteConfiguration', 'lockTypes') : null),
     [firestore, user]
@@ -164,11 +123,10 @@ export default function RoomsPage() {
 
   // --- Data Processing ---
   const groupedRoomsByProperty = useMemo(() => {
-    if (!tenants || !properties || !allDoorCodes) {
+    if (!tenants || !properties) {
       return {};
     }
 
-    const flatDoorCodes = allDoorCodes.flatMap((u) => u.codes.map(c => ({...c, userId: u.uid})));
     const propertiesMap = new Map(properties.map((p) => [p.name, p]));
 
     const rooms: RoomProfile[] = tenants
@@ -176,27 +134,11 @@ export default function RoomsPage() {
         const property = propertiesMap.get(tenant.property);
         if (!property) return null;
 
-        const roomDoorCodes = flatDoorCodes.filter((code) => {
-          if (code.property !== tenant.property) return false;
-          const roomIdentifier = tenant.room.toLowerCase();
-          const locationIdentifier = code.location.toLowerCase();
-          
-          // Use a regex for a whole word match to avoid "Room 1" matching "Room 10"
-          const roomRegex = new RegExp(`\\b${roomIdentifier}\\b`, 'i');
-          if (roomRegex.test(locationIdentifier)) return true;
-
-          // Fallback for simple equality
-          if (roomIdentifier === locationIdentifier) return true;
-          
-          return false;
-        });
-
         return {
           id: tenant.id,
           roomName: tenant.room,
           property,
           tenant,
-          doorCodes: roomDoorCodes,
         };
       })
       .filter((r): r is RoomProfile => r !== null);
@@ -214,73 +156,15 @@ export default function RoomsPage() {
       },
       {} as Record<string, RoomProfile[]>
     );
-  }, [tenants, properties, allDoorCodes]);
+  }, [tenants, properties]);
 
   const sortedPropertyNames = useMemo(() => {
     return Object.keys(groupedRoomsByProperty).sort((a, b) => a.localeCompare(b));
   }, [groupedRoomsByProperty]);
 
-  // --- Event Handlers ---
-  const handleEditClick = (code: EnrichedDoorCode) => {
-    setEditingCode(code);
-    setFormData({
-      location: code.location,
-      code: code.code || '',
-      adminProgrammingCode: code.adminProgrammingCode || '',
-      guestCode: code.guestCode || '',
-      doorLockType: code.doorLockType || '',
-      property: code.property || '',
-    });
-    setIsFormDialogOpen(true);
-  };
-
-  const handleViewInstructions = (doorLockTypeName: string) => {
-    const instruction = lockTypes.find((lt) => lt.name === doorLockTypeName);
-    if (instruction) {
-      setSelectedInstruction(instruction);
-      setIsInstructionDialogOpen(true);
-    }
-  };
-
-  const handleDialogClose = () => {
-    setIsFormDialogOpen(false);
-    setEditingCode(null);
-  };
-
-  const handleFormChange = (e: React.ChangeEvent<HTMLInputElement>) => {
-    const { id, value } = e.target;
-    setFormData((prev) => ({ ...prev, [id]: value }));
-  };
-
-  const handleSelectChange = (field: 'doorLockType' | 'property') => (value: string) => {
-    setFormData((prev) => ({ ...prev, [field]: value }));
-  };
-
-  const handleFormSubmit = async (e: React.FormEvent) => {
-    e.preventDefault();
-    if (!firestore || !editingCode) return;
-
-    const codeData: Omit<DoorCode, 'id'> = {
-      ...formData,
-      lastChanged: serverTimestamp() as Timestamp,
-    };
-    
-    const docRef = doc(firestore, 'users', editingCode.userId, 'doorCodes', editingCode.id);
-    await updateDoc(docRef, codeData);
-
-    // Refresh all door codes data to show the update
-    setDoorCodesLoading(true);
-    getAllDoorCodes()
-      .then(setAllDoorCodes)
-      .catch(console.error)
-      .finally(() => setDoorCodesLoading(false));
-
-    handleDialogClose();
-  };
-
   // --- Render Logic ---
   const pageIsLoading =
-    isUserLoading || propertiesLoading || tenantsLoading || doorCodesLoading || lockTypesLoading;
+    isUserLoading || propertiesLoading || tenantsLoading || lockTypesLoading;
 
   if (pageIsLoading || !user) {
     return (
@@ -297,8 +181,7 @@ export default function RoomsPage() {
           <CardHeader>
             <CardTitle>Room Profiles</CardTitle>
             <CardDescription>
-              A detailed overview of each room, including assigned tenant and
-              door codes.
+              A detailed overview of each room and its assigned tenant.
             </CardDescription>
           </CardHeader>
           <CardContent>
@@ -357,27 +240,6 @@ export default function RoomsPage() {
                                 </div>
                               </div>
                             </div>
-                            {room.doorCodes.length > 0 && (
-                              <div className="space-y-2">
-                                <h4 className="font-semibold text-muted-foreground">Door Codes</h4>
-                                <div className="space-y-1">
-                                  {room.doorCodes.map(code => (
-                                    <div key={code.id} className="flex items-center justify-between text-sm p-2 rounded-md bg-muted/50">
-                                      <div className="flex items-center gap-2">
-                                        <KeyRound className="w-4 h-4 text-primary"/>
-                                        <span>{code.location}</span>
-                                      </div>
-                                      <div className="flex items-center gap-1">
-                                        <span className="font-mono text-xs bg-background px-2 py-1 rounded">{code.code}</span>
-                                        <Button variant="ghost" size="icon" className="h-6 w-6" onClick={() => handleEditClick(code)}>
-                                            <Edit className="h-4 w-4"/>
-                                        </Button>
-                                      </div>
-                                    </div>
-                                  ))}
-                                </div>
-                              </div>
-                            )}
                           </CardContent>
                         </Card>
                       ))}
@@ -393,108 +255,6 @@ export default function RoomsPage() {
           </CardContent>
         </Card>
       </div>
-
-      {/* Edit Door Code Dialog */}
-      <Dialog open={isFormDialogOpen} onOpenChange={setIsFormDialogOpen}>
-        <DialogContent>
-          <DialogHeader>
-            <DialogTitle>Edit Door Code</DialogTitle>
-            <div className="text-sm text-muted-foreground">
-                <div className='flex justify-between items-center'>
-                    <span>Update the details for this door code.</span>
-                    {editingCode && (
-                        <Button variant="outline" size="sm" onClick={() => handleViewInstructions(editingCode.doorLockType)}>
-                            <Info className="mr-2 h-4 w-4" />
-                            View Instructions
-                        </Button>
-                    )}
-                </div>
-            </div>
-          </DialogHeader>
-          <form onSubmit={handleFormSubmit}>
-            <div className="grid gap-4 py-4">
-              <div className="grid grid-cols-4 items-center gap-4">
-                <Label htmlFor="property" className="text-right">
-                  Property
-                </Label>
-                <Input id="property" value={formData.property} className="col-span-3" readOnly disabled/>
-              </div>
-              <div className="grid grid-cols-4 items-center gap-4">
-                <Label htmlFor="location" className="text-right">
-                  Location
-                </Label>
-                <Input
-                  id="location"
-                  value={formData.location}
-                  onChange={handleFormChange}
-                  className="col-span-3"
-                  required
-                />
-              </div>
-              <div className="grid grid-cols-4 items-center gap-4">
-                <Label htmlFor="doorLockType" className="text-right">
-                  Lock Type
-                </Label>
-                <Select
-                  onValueChange={handleSelectChange('doorLockType')}
-                  value={formData.doorLockType}
-                  required
-                >
-                  <SelectTrigger className="col-span-3">
-                    <SelectValue placeholder="Select a lock type" />
-                  </SelectTrigger>
-                  <SelectContent>
-                    {lockTypes.map((type) => (
-                      <SelectItem key={type.id} value={type.name}>
-                        {type.name}
-                      </SelectItem>
-                    ))}
-                  </SelectContent>
-                </Select>
-              </div>
-              <div className="grid grid-cols-4 items-center gap-4">
-                <Label htmlFor="code" className="text-right">
-                  Code
-                </Label>
-                <Input
-                  id="code"
-                  value={formData.code}
-                  onChange={handleFormChange}
-                  className="col-span-3"
-                />
-              </div>
-              <div className="grid grid-cols-4 items-center gap-4">
-                <Label htmlFor="adminProgrammingCode" className="text-right">
-                  Admin Code
-                </Label>
-                <Input
-                  id="adminProgrammingCode"
-                  value={formData.adminProgrammingCode}
-                  onChange={handleFormChange}
-                  className="col-span-3"
-                />
-              </div>
-              <div className="grid grid-cols-4 items-center gap-4">
-                <Label htmlFor="guestCode" className="text-right">
-                  Guest Code
-                </Label>
-                <Input
-                  id="guestCode"
-                  value={formData.guestCode}
-                  onChange={handleFormChange}
-                  className="col-span-3"
-                />
-              </div>
-            </div>
-            <DialogFooter>
-              <Button type="button" variant="outline" onClick={handleDialogClose}>
-                Cancel
-              </Button>
-              <Button type="submit">Save</Button>
-            </DialogFooter>
-          </form>
-        </DialogContent>
-      </Dialog>
       
       {/* View Instructions Dialog */}
       <Dialog open={isInstructionDialogOpen} onOpenChange={setIsInstructionDialogOpen}>
