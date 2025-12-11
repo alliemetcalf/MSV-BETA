@@ -35,14 +35,26 @@ const listUsersFlow = ai.defineFlow(
       const userRecords = await auth.listUsers();
 
       const userPromises = userRecords.users.map(async (user) => {
-        const userDoc = await db.collection('users').doc(user.uid).get();
-        const role = userDoc.exists ? userDoc.data()?.role : 'user';
+        const userDocRef = db.collection('users').doc(user.uid);
+        const userDoc = await userDocRef.get();
+        
+        let role = 'user'; // Default role
+
+        if (userDoc.exists) {
+          role = userDoc.data()?.role || 'user';
+        } else {
+          // If the user document doesn't exist, create it with a default role.
+          await userDocRef.set({
+            email: user.email,
+            role: 'user',
+          });
+        }
 
         return {
           uid: user.uid,
           email: user.email,
           displayName: user.displayName,
-          role: role || 'user',
+          role: role,
         };
       });
 
