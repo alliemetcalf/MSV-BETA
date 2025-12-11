@@ -9,7 +9,21 @@
 
 import { ai } from '@/ai/genkit';
 import { z } from 'genkit';
-import { db } from '@/firebase/admin';
+import { initializeApp, getApps, cert, App } from 'firebase-admin/app';
+import { getFirestore, Firestore } from 'firebase-admin/firestore';
+import { getAuth, Auth } from 'firebase-admin/auth';
+import serviceAccount from '@/../firebase-service-account.json';
+
+// Initialize Firebase Admin SDK
+if (!getApps().length) {
+  initializeApp({
+    credential: cert(serviceAccount),
+    databaseURL: "https://msv-beta.firebaseio.com",
+  });
+}
+const db: Firestore = getFirestore();
+const auth: Auth = getAuth();
+
 
 const DoorCodeSchema = z.object({
   id: z.string(),
