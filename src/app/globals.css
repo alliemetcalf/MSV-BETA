@@ -56,3 +56,67 @@
     @apply bg-background text-foreground;
   }
 }
+
+/* Override react-day-picker calendar layout */
+.rdp {
+  display: block !important;
+}
+
+.rdp-months {
+  display: flex !important;
+  flex-direction: column !important;
+}
+
+.rdp-month {
+  display: flex !important;
+  flex-direction: column !important;
+}
+
+.rdp-table {
+  width: 100% !important;
+  display: flex !important;
+  flex-direction: column !important;
+  border-collapse: separate !important;
+}
+
+.rdp-row {
+  display: flex !important;
+  width: 100% !important;
+}
+
+.rdp-head_row {
+  display: flex !important;
+  width: 100% !important;
+}
+
+.rdp-cell {
+  flex: 1 !important;
+  width: auto !important;
+  display: flex !important;
+  align-items: center !important;
+  justify-content: center !important;
+}
+
+.rdp-head_cell {
+  flex: 1 !important;
+  width: auto !important;
+  display: flex !important;
+  align-items: center !important;
+  justify-content: center !important;
+}
+
+.rdp-day_button {
+  width: 100% !important;
+  height: 100% !important;
+  display: flex !important;
+  align-items: center !important;
+  justify-content: center !important;
+  flex: 1 !important;
+}
+
+/* Ensure cells stay in flex layout */
+.rdp-cell button {
+  display: flex !important;
+  width: 100% !important;
+  height: 100% !important;
+}
