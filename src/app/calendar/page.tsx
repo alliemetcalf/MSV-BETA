@@ -1,7 +1,6 @@
 'use client';
 
 import * as React from 'react';
-import 'react-day-picker/dist/style.css';
 import { Calendar } from '@/components/ui/calendar';
 import { MainLayout } from '@/components/MainLayout';
 
