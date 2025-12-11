@@ -50,7 +50,7 @@ const migrateDoorCodesFlow = ai.defineFlow(
       if (doorCodesSnapshot.empty) {
         return {
           success: true,
-          message: `No door codes found at the specified path for user ${userId}.`,
+          message: `No door codes found at the specified path for user ${userId}. Nothing to migrate.`,
           codesMigrated: 0,
         };
       }
