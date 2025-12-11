@@ -55,8 +55,6 @@ service cloud.firestore {
     // Properties
     match /properties/{propertyId} {
       allow read, write: if isSuperAdmin() || isManager();
-      // Allow any signed-in user to list/get properties
-      allow list, get: if isSignedIn();
     }
 
     // Expenses
