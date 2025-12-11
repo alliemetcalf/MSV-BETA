@@ -12,7 +12,6 @@ import {
   Receipt,
   DollarSign,
   Landmark,
-  Calendar,
 } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { Button } from './ui/button';
@@ -64,7 +63,6 @@ export function Header() {
     { href: '/rooms', label: 'Rooms' },
     { href: '/expenses', label: 'Expenses' },
     { href: '/rent-payments', label: 'Rent Payments' },
-    { href: '/calendar', label: 'Calendar' },
   ];
 
   const adminNavItems = [{ href: '/admin', label: 'Admin', icon: ShieldCheck }];
@@ -96,7 +94,6 @@ export function Header() {
                   {item.label === 'Rent Payments' ? <DollarSign/> : null}
                   {item.label === 'Expenses' ? <Receipt/> : null}
                   {item.label === 'Properties' ? <Landmark/> : null}
-                  {item.label === 'Calendar' ? <Calendar className="h-4 w-4" /> : null}
                   {item.label}
                 </Link>
               ))}
