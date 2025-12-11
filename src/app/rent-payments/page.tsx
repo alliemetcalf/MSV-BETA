@@ -349,7 +349,11 @@ export default function RentPaymentsPage() {
                           <Calendar
                             mode="single"
                             selected={formData.date}
-                            onSelect={(d) => setFormData(p => ({...p, date: d || p.date }))}
+                            onSelect={(d) => {
+                              if (d) {
+                                setFormData(p => ({...p, date: d }));
+                              }
+                            }}
                             initialFocus
                           />
                         </PopoverContent>
