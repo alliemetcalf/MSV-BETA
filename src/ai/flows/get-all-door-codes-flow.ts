@@ -9,17 +9,8 @@
 
 import { ai } from '@/ai/genkit';
 import { z } from 'genkit';
-import { getAuth } from 'firebase-admin/auth';
-import { getFirestore } from 'firebase-admin/firestore';
-import { initializeApp, getApps, cert } from 'firebase-admin/app';
-import serviceAccount from '@/../firebase-service-account.json';
+import { auth, db } from '@/firebase/admin';
 
-// Initialize Firebase Admin SDK if not already initialized
-if (!getApps().length) {
-  initializeApp({
-    credential: cert(serviceAccount),
-  });
-}
 
 const DoorCodeSchema = z.object({
   id: z.string(),
@@ -45,15 +36,12 @@ export async function getAllDoorCodes(): Promise<GetAllDoorCodesOutput> {
   return getAllDoorCodesFlow();
 }
 
-// This comment will trigger a hot-reload of the server.
 const getAllDoorCodesFlow = ai.defineFlow(
   {
     name: 'getAllDoorCodesFlow',
     outputSchema: GetAllDoorCodesOutputSchema,
   },
   async () => {
-    const db = getFirestore();
-    const auth = getAuth();
     const allUsers = await auth.listUsers();
     
     const allDoorCodes: GetAllDoorCodesOutput = [];

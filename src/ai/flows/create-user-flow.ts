@@ -9,10 +9,8 @@
 
 import { ai } from '@/ai/genkit';
 import { z } from 'genkit';
-import { getAuth } from 'firebase-admin/auth';
-import { getFirestore } from 'firebase-admin/firestore';
-import { initializeApp, getApps, cert } from 'firebase-admin/app';
-import serviceAccount from '@/../firebase-service-account.json';
+import { auth, db } from '@/firebase/admin';
+
 
 const CreateUserInputSchema = z.object({
   email: z.string().email(),
@@ -28,12 +26,6 @@ const CreateUserOutputSchema = z.object({
 });
 export type CreateUserOutput = z.infer<typeof CreateUserOutputSchema>;
 
-// Initialize Firebase Admin SDK if not already initialized
-if (!getApps().length) {
-  initializeApp({
-    credential: cert(serviceAccount),
-  });
-}
 
 export async function createUser(input: CreateUserInput): Promise<CreateUserOutput> {
   return createUserFlow(input);
@@ -47,13 +39,12 @@ const createUserFlow = ai.defineFlow(
   },
   async (input) => {
     try {
-      const userRecord = await getAuth().createUser({
+      const userRecord = await auth.createUser({
         email: input.email,
         password: input.password,
       });
 
       // Create a user profile document with the role.
-      const db = getFirestore();
       await db.collection('users').doc(userRecord.uid).set({
         role: input.role,
         email: input.email,

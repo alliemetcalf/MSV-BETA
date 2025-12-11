@@ -9,9 +9,8 @@
 
 import { ai } from '@/ai/genkit';
 import { z } from 'genkit';
-import { getFirestore } from 'firebase-admin/firestore';
-import { initializeApp, getApps, cert } from 'firebase-admin/app';
-import serviceAccount from '@/../firebase-service-account.json';
+import { db } from '@/firebase/admin';
+
 
 const UpdateUserRoleInputSchema = z.object({
   uid: z.string(),
@@ -25,12 +24,6 @@ const UpdateUserRoleOutputSchema = z.object({
 });
 export type UpdateUserRoleOutput = z.infer<typeof UpdateUserRoleOutputSchema>;
 
-// Initialize Firebase Admin SDK if not already initialized
-if (!getApps().length) {
-  initializeApp({
-    credential: cert(serviceAccount),
-  });
-}
 
 export async function updateUserRole(
   input: UpdateUserRoleInput
@@ -46,7 +39,6 @@ const updateUserRoleFlow = ai.defineFlow(
   },
   async (input) => {
     try {
-      const db = getFirestore();
       const userRef = db.collection('users').doc(input.uid);
 
       await userRef.set({ role: input.role }, { merge: true });
