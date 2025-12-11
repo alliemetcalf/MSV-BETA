@@ -1,8 +1,8 @@
 'use server';
 /**
- * @fileOverview A one-time migration flow to move door codes to a top-level collection.
+ * @fileOverview A one-time, targeted migration flow to move door codes to a top-level collection.
  *
- * - migrateDoorCodes - Reads all door codes from user subcollections and copies them to the root.
+ * - migrateDoorCodes - Reads all door codes from a specific user's subcollection and copies them to the root.
  * - MigrateDoorCodesOutput - The return type for the migration function.
  */
 
@@ -41,11 +41,16 @@ const migrateDoorCodesFlow = ai.defineFlow(
   async () => {
     let codesMigrated = 0;
     try {
-      const usersSnapshot = await db.collection('users').get();
-      if (usersSnapshot.empty) {
+      // Hardcoded path to the specific user's door codes subcollection
+      const userId = 'Ix3LurGh12PFTTkvS1ompsIEzqb2';
+      const sourceCollectionRef = db.collection('users').doc(userId).collection('doorCodes');
+      
+      const doorCodesSnapshot = await sourceCollectionRef.get();
+
+      if (doorCodesSnapshot.empty) {
         return {
           success: true,
-          message: 'No users found to migrate codes from.',
+          message: `No door codes found at the specified path for user ${userId}.`,
           codesMigrated: 0,
         };
       }
@@ -53,29 +58,10 @@ const migrateDoorCodesFlow = ai.defineFlow(
       const batch = db.batch();
       const newDoorCodesCollectionRef = db.collection('doorCodes');
 
-      for (const userDoc of usersSnapshot.docs) {
-        // Check if the user document actually has data before proceeding
-        if (!userDoc.exists) {
-          continue; // Skip if the document is somehow invalid
-        }
-        const sourceCollectionRef = userDoc.ref.collection('doorCodes');
-        const doorCodesSnapshot = await sourceCollectionRef.get();
-
-        if (!doorCodesSnapshot.empty) {
-          for (const codeDoc of doorCodesSnapshot.docs) {
-            const newDocRef = newDoorCodesCollectionRef.doc(); // Create new doc with a new ID
-            batch.set(newDocRef, codeDoc.data());
-            codesMigrated++;
-          }
-        }
-      }
-
-      if (codesMigrated === 0) {
-        return {
-            success: true,
-            message: 'Migration complete. No door codes were found in user subcollections.',
-            codesMigrated: 0
-        }
+      for (const codeDoc of doorCodesSnapshot.docs) {
+        const newDocRef = newDoorCodesCollectionRef.doc(); // Create new doc with a new ID
+        batch.set(newDocRef, codeDoc.data());
+        codesMigrated++;
       }
 
       await batch.commit();
@@ -87,9 +73,17 @@ const migrateDoorCodesFlow = ai.defineFlow(
       };
 
     } catch (error: any) {
+      // Provide a more specific error message if possible
+      let errorMessage = 'An unknown error occurred during migration.';
+      if (error.code === 5) { // 5 is the gRPC code for NOT_FOUND
+        errorMessage = `NOT_FOUND: The specified path for the door codes subcollection could not be found. Please verify the path is correct. Details: ${error.message}`;
+      } else {
+        errorMessage = error.message || errorMessage;
+      }
+      
       return {
         success: false,
-        message: error.message || 'An unknown error occurred during migration.',
+        message: errorMessage,
         codesMigrated: 0,
       };
     }
