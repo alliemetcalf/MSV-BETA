@@ -2,5 +2,5 @@ export interface UserProfile {
   id: string;
   displayName?: string;
   bio?: string;
-  role?: 'admin' | 'user' | 'assistant';
+  role?: 'superadmin' | 'manager' | 'contractor' | 'user';
 }

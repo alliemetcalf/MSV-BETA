@@ -30,6 +30,7 @@ import { Button } from '../ui/button';
 import { useAuth } from '@/firebase';
 
 type User = ListUsersOutput[0];
+type Role = 'superadmin' | 'manager' | 'contractor' | 'user';
 
 export function UserRoleManager() {
   const [users, setUsers] = useState<User[]>([]);
@@ -63,7 +64,7 @@ export function UserRoleManager() {
     }
   }, [auth]);
 
-  const handleRoleChange = async (uid: string, newRole: 'admin' | 'user' | 'assistant') => {
+  const handleRoleChange = async (uid: string, newRole: Role) => {
     setIsUpdating((prev) => ({ ...prev, [uid]: true }));
     try {
       const result = await updateUserRole({ uid, role: newRole });
@@ -127,7 +128,7 @@ export function UserRoleManager() {
                     ) : (
                       <Select
                         value={user.role}
-                        onValueChange={(newRole: 'admin' | 'user' | 'assistant') =>
+                        onValueChange={(newRole: Role) =>
                           handleRoleChange(user.uid, newRole)
                         }
                       >
@@ -136,8 +137,9 @@ export function UserRoleManager() {
                         </SelectTrigger>
                         <SelectContent>
                           <SelectItem value="user">User</SelectItem>
-                          <SelectItem value="admin">Admin</SelectItem>
-                          <SelectItem value="assistant">Assistant</SelectItem>
+                          <SelectItem value="contractor">Contractor</SelectItem>
+                          <SelectItem value="manager">Manager</SelectItem>
+                          <SelectItem value="superadmin">Super Admin</SelectItem>
                         </SelectContent>
                       </Select>
                     )}

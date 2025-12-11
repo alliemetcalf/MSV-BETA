@@ -24,7 +24,7 @@ const db: Firestore = getFirestore();
 
 const UpdateUserRoleInputSchema = z.object({
   uid: z.string(),
-  role: z.enum(['admin', 'user', 'assistant']),
+  role: z.enum(['superadmin', 'manager', 'contractor', 'user']),
 });
 export type UpdateUserRoleInput = z.infer<typeof UpdateUserRoleInputSchema>;
 

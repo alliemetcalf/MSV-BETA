@@ -27,7 +27,7 @@ const auth: Auth = getAuth();
 const CreateUserInputSchema = z.object({
   email: z.string().email(),
   password: z.string().min(6),
-  role: z.enum(['admin', 'user', 'assistant']),
+  role: z.enum(['superadmin', 'manager', 'contractor', 'user']),
 });
 export type CreateUserInput = z.infer<typeof CreateUserInputSchema>;
 

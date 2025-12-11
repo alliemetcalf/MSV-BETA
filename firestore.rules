@@ -14,70 +14,72 @@ service cloud.firestore {
     
     // Role-based access helpers
     function getUserRole(uid) {
-      // Get the user's role from their user profile document in the /users collection.
       return get(/databases/$(database)/documents/users/$(uid)).data.role;
     }
 
-    function isAdmin() {
-      // An admin is a signed-in user whose role in their user document is 'admin'.
-      return isSignedIn() && getUserRole(request.auth.uid) == 'admin';
+    function isSuperAdmin() {
+      return isSignedIn() && getUserRole(request.auth.uid) == 'superadmin';
     }
     
-    function isAssistant() {
-       return isSignedIn() && getUserRole(request.auth.uid) == 'assistant';
+    function isManager() {
+       return isSignedIn() && getUserRole(request.auth.uid) == 'manager';
+    }
+
+    function isContractor() {
+       return isSignedIn() && getUserRole(request.auth.uid) == 'contractor';
     }
 
     // Rule Definitions
 
     // Users Collection:
-    // - Anyone can read a user's profile.
-    // - Only the user themselves or an admin can update a profile.
-    // - Admins cannot change a user's role directly on the document, 
-    //   this must be done via a backend flow.
+    // - SuperAdmins can read any user profile.
+    // - Users can read their own profile.
+    // - SuperAdmins can update any profile (except for changing roles via this method).
+    // - Users can update their own profile.
     match /users/{userId} {
-      allow read: if isSignedIn();
-      allow write: if isOwner(userId);
-      allow update: if isAdmin() && !(request.resource.data.role is string && resource.data.role != request.resource.data.role);
+      allow read: if isSuperAdmin() || isOwner(userId);
+      allow write: if isOwner(userId); // for initial profile creation on signup
+      allow update: if isSuperAdmin() && !(request.resource.data.role is string && resource.data.role != request.resource.data.role) || isOwner(userId);
     }
     
     // User Subcollections (e.g., doorCodes)
-    // - Owners can read/write their own subcollections.
-    // - Admins can read any user's subcollections.
+    // Only SuperAdmins and Managers can manage door codes.
     match /users/{userId}/doorCodes/{docId} {
-       allow read, write: if isOwner(userId) || isAdmin();
+       allow read, write: if isSuperAdmin() || isManager();
     }
 
-    // Site configuration can be read by any signed-in user, but only written by admins.
+    // Site configuration can only be read and written by SuperAdmins.
     match /siteConfiguration/{document=**} {
-      allow read: if isSignedIn();
-      allow write: if isAdmin();
+      allow read, write: if isSuperAdmin();
     }
     
-    // Tenants can be read, listed, and written by any signed-in user.
+    // Tenants can be read by SuperAdmins and Managers. Only they can write.
     match /tenants/{tenantId} {
-      allow get, list: if isSignedIn();
-      allow write: if isAdmin();
+      allow get, list: if isSuperAdmin() || isManager();
+      allow write: if isSuperAdmin() || isManager();
     }
 
-    // Property profiles can be read by any signed-in user, but only written by admins.
+    // Properties can be read by any signed-in user, but only written by SuperAdmins and Managers.
     match /properties/{propertyId} {
       allow get, list: if isSignedIn();
-      allow write: if isAdmin();
+      allow write: if isSuperAdmin() || isManager();
     }
 
-    // Expenses can be managed by admins.
+    // Expenses can be managed by SuperAdmins and Managers.
     match /expenses/{expenseId} {
-      allow read, list, write: if isAdmin();
+      allow read, list, write: if isSuperAdmin() || isManager();
     }
 
-    // Rent Payments can be managed by admins.
+    // Rent Payments can be managed by SuperAdmins and Managers.
     match /rentPayments/{paymentId} {
-      allow read, list, write: if isAdmin();
+      allow read, list, write: if isSuperAdmin() || isManager();
     }
 
-    // Contractor tasks can be managed by admins.
+    // Contractor tasks can be managed by SuperAdmins and Managers.
+    // Contractors can read tasks but not write them.
     match /contractorTasks/{taskId} {
-      allow read, list, write: if isAdmin();
+      allow read, list: if isSuperAdmin() || isManager() || isContractor();
+      allow write: if isSuperAdmin() || isManager();
     }
   }
 }

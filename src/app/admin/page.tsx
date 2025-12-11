@@ -1,8 +1,9 @@
 'use client';
 import { MainLayout } from '@/components/MainLayout';
 import { useUser, useAuth } from '@/firebase';
-import { Loader2, Users, Shield, Lock, Building, Wallet, Wrench } from 'lucide-react';
+import { Loader2, Users, Shield, Lock, Building, Wallet, Wrench, ShieldAlert } from 'lucide-react';
 import { useRouter } from 'next/navigation';
+import Link from 'next/link';
 import { useEffect } from 'react';
 import {
   Accordion,
@@ -26,6 +27,7 @@ import { LockTypesManager } from '@/components/admin/LockTypesManager';
 import { IncomeTypeManager } from '@/components/admin/IncomeTypeManager';
 import { PaymentMethodsManager } from '@/components/admin/PaymentMethodsManager';
 import { TaskSettingsManager } from '@/components/admin/TaskSettingsManager';
+import { Button } from '@/components/ui/button';
 
 export default function AdminPage() {
   const auth = useAuth();
@@ -53,12 +55,20 @@ export default function AdminPage() {
     <MainLayout>
       <div className="w-full max-w-6xl px-4 flex flex-col gap-8">
         <Card>
-          <CardHeader>
-            <CardTitle>Admin Panel</CardTitle>
-            <CardDescription>
-              Manage site-wide configurations and users here. Sections are
-              collapsible.
-            </CardDescription>
+          <CardHeader className="flex-row items-center justify-between">
+            <div>
+              <CardTitle>Admin Panel</CardTitle>
+              <CardDescription>
+                Manage site-wide configurations and users here. Sections are
+                collapsible.
+              </CardDescription>
+            </div>
+            <Link href="/admin/permissions">
+              <Button variant="outline">
+                <ShieldAlert className="mr-2 h-4 w-4" />
+                Manage Permissions
+              </Button>
+            </Link>
           </CardHeader>
         </Card>
 

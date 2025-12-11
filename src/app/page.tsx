@@ -15,7 +15,7 @@ import { MainLayout } from '@/components/MainLayout';
 import { doc } from 'firebase/firestore';
 
 interface UserProfile {
-  role: 'admin' | 'user' | 'assistant';
+  role: 'superadmin' | 'manager' | 'contractor' | 'user';
 }
 
 export default function Home() {

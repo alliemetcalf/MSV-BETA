@@ -17,9 +17,10 @@
           "type": "string",
           "description": "The user's role in the system.",
           "enum": [
-            "admin",
-            "user",
-            "assistant"
+            "superadmin",
+            "manager",
+            "contractor",
+            "user"
           ]
         },
         "email": {

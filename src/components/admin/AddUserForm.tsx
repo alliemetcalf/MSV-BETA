@@ -36,7 +36,7 @@ const addUserFormSchema = z.object({
   password: z
     .string()
     .min(6, { message: 'Password must be at least 6 characters.' }),
-  role: z.enum(['admin', 'user', 'assistant']).default('user'),
+  role: z.enum(['superadmin', 'manager', 'contractor', 'user']).default('user'),
 });
 
 export function AddUserForm() {
@@ -137,8 +137,9 @@ export function AddUserForm() {
                     </FormControl>
                     <SelectContent>
                       <SelectItem value="user">User</SelectItem>
-                      <SelectItem value="admin">Admin</SelectItem>
-                      <SelectItem value="assistant">Assistant</SelectItem>
+                      <SelectItem value="contractor">Contractor</SelectItem>
+                      <SelectItem value="manager">Manager</SelectItem>
+                      <SelectItem value="superadmin">Super Admin</SelectItem>
                     </SelectContent>
                   </Select>
                   <FormMessage />
