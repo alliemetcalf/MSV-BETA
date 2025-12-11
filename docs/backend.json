@@ -600,100 +600,83 @@
     ]
   },
   "firestore": {
-    "collections": [
-      {
-        "path": "/users/{userId}",
-        "schema": {
-          "$ref": "#/entities/UserProfile"
-        },
-        "description": "Stores the public profile for a user, including their role."
+    "/users/{userId}": {
+      "schema": {
+        "$ref": "#/entities/UserProfile"
       },
-      {
-        "path": "/doorCodes/{doorCodeId}",
-        "schema": {
-          "$ref": "#/entities/DoorCode"
-        },
-        "description": "Stores all door codes for all properties."
+      "description": "Stores the public profile for a user, including their role."
+    },
+    "/doorCodes/{doorCodeId}": {
+      "schema": {
+        "$ref": "#/entities/DoorCode"
       },
-      {
-        "path": "/siteConfiguration/lockTypes",
-        "schema": {
-          "$ref": "#/entities/LockTypesConfiguration"
-        },
-        "description": "Stores the list of available door lock types with their instructions."
+      "description": "Stores all door codes for all properties."
+    },
+    "/siteConfiguration/lockTypes": {
+      "schema": {
+        "$ref": "#/entities/LockTypesConfiguration"
       },
-      {
-        "path": "/siteConfiguration/expenseCategories",
-        "schema": {
-          "$ref": "#/entities/ExpenseCategoriesConfiguration"
-        },
-        "description": "Stores the list of available expense categories."
+      "description": "Stores the list of available door lock types with their instructions."
+    },
+    "/siteConfiguration/expenseCategories": {
+      "schema": {
+        "$ref": "#/entities/ExpenseCategoriesConfiguration"
       },
-      {
-        "path": "/siteConfiguration/vendors",
-        "schema": {
-          "$ref": "#/entities/VendorsConfiguration"
-        },
-        "description": "Stores the list of available vendors."
+      "description": "Stores the list of available expense categories."
+    },
+    "/siteConfiguration/vendors": {
+      "schema": {
+        "$ref": "#/entities/VendorsConfiguration"
       },
-      {
-        "path": "/siteConfiguration/incomeTypes",
-        "schema": {
-          "$ref": "#/entities/IncomeTypesConfiguration"
-        },
-        "description": "Stores the list of available income types."
+      "description": "Stores the list of available vendors."
+    },
+    "/siteConfiguration/incomeTypes": {
+      "schema": {
+        "$ref": "#/entities/IncomeTypesConfiguration"
       },
-      {
-        "path": "/siteConfiguration/paymentMethods",
-        "schema": {
-          "$ref": "#/entities/PaymentMethodsConfiguration"
-        },
-        "description": "Stores the list of available payment methods."
+      "description": "Stores the list of available income types."
+    },
+    "/siteConfiguration/paymentMethods": {
+      "schema": {
+        "$ref": "#/entities/PaymentMethodsConfiguration"
       },
-      {
-        "path": "/siteConfiguration/contractorTasks",
-        "schema": {
-          "$ref": "#/entities/ContractorTasksConfiguration"
-        },
-        "description": "Stores global settings for contractor tasks."
+      "description": "Stores the list of available payment methods."
+    },
+    "/siteConfiguration/contractorTasks": {
+      "schema": {
+        "$ref": "#/entities/ContractorTasksConfiguration"
       },
-      {
-        "path": "/properties/{propertyId}",
-        "schema": {
-          "$ref": "#/entities/Property"
-        },
-        "description": "Stores the detailed profile for each property."
+      "description": "Stores global settings for contractor tasks."
+    },
+    "/properties/{propertyId}": {
+      "schema": {
+        "$ref": "#/entities/Property"
       },
-      {
-        "path": "/tenants/{tenantId}",
-        "schema": {
-          "$ref": "#/entities/Tenant"
-        },
-        "description": "Stores information about individual tenants."
+      "description": "Stores the detailed profile for each property."
+    },
+    "/tenants/{tenantId}": {
+      "schema": {
+        "$ref": "#/entities/Tenant"
       },
-      {
-        "path": "/expenses/{expenseId}",
-        "schema": {
-          "$ref": "#/entities/Expense"
-        },
-        "description": "Stores all business expenses."
+      "description": "Stores information about individual tenants."
+    },
+    "/expenses/{expenseId}": {
+      "schema": {
+        "$ref": "#/entities/Expense"
       },
-      {
-        "path": "/rentPayments/{paymentId}",
-        "schema": {
-          "$ref": "#/entities/RentPayment"
-        },
-        "description": "Stores all recorded rent payments from tenants."
+      "description": "Stores all business expenses."
+    },
+    "/rentPayments/{paymentId}": {
+      "schema": {
+        "$ref": "#/entities/RentPayment"
       },
-      {
-        "path": "/contractorTasks/{taskId}",
-        "schema": {
-          "$ref": "#/entities/ContractorTask"
-        },
-        "description": "Stores all tasks for contractors."
-      }
-    ]
+      "description": "Stores all recorded rent payments from tenants."
+    },
+    "/contractorTasks/{taskId}": {
+      "schema": {
+        "$ref": "#/entities/ContractorTask"
+      },
+      "description": "Stores all tasks for contractors."
+    }
   }
 }
-
-    

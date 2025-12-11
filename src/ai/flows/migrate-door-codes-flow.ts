@@ -41,19 +41,11 @@ const migrateDoorCodesFlow = ai.defineFlow(
   async () => {
     let codesMigrated = 0;
     try {
-      // Directly target the specified user's doorCodes subcollection
-      const specificUserDocId = 'Ix3LurGh12PFTTkvS1ompsIEzqb2';
-      const sourceCollectionRef = db
-        .collection('users')
-        .doc(specificUserDocId)
-        .collection('doorCodes');
-
-      const doorCodesSnapshot = await sourceCollectionRef.get();
-      
-      if (doorCodesSnapshot.empty) {
+      const usersSnapshot = await db.collection('users').get();
+      if (usersSnapshot.empty) {
         return {
           success: true,
-          message: 'No door codes found at the specified location to migrate.',
+          message: 'No users found to migrate codes from.',
           codesMigrated: 0,
         };
       }
@@ -61,10 +53,29 @@ const migrateDoorCodesFlow = ai.defineFlow(
       const batch = db.batch();
       const newDoorCodesCollectionRef = db.collection('doorCodes');
 
-      for (const codeDoc of doorCodesSnapshot.docs) {
-        const newDocRef = newDoorCodesCollectionRef.doc(); // Create new doc with a new ID
-        batch.set(newDocRef, codeDoc.data());
-        codesMigrated++;
+      for (const userDoc of usersSnapshot.docs) {
+        // Check if the user document actually has data before proceeding
+        if (!userDoc.exists) {
+          continue; // Skip if the document is somehow invalid
+        }
+        const sourceCollectionRef = userDoc.ref.collection('doorCodes');
+        const doorCodesSnapshot = await sourceCollectionRef.get();
+
+        if (!doorCodesSnapshot.empty) {
+          for (const codeDoc of doorCodesSnapshot.docs) {
+            const newDocRef = newDoorCodesCollectionRef.doc(); // Create new doc with a new ID
+            batch.set(newDocRef, codeDoc.data());
+            codesMigrated++;
+          }
+        }
+      }
+
+      if (codesMigrated === 0) {
+        return {
+            success: true,
+            message: 'Migration complete. No door codes were found in user subcollections.',
+            codesMigrated: 0
+        }
       }
 
       await batch.commit();
