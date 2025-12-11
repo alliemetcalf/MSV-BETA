@@ -9,7 +9,7 @@
 import { ai } from '@/ai/genkit';
 import { z } from 'genkit';
 import { initializeApp, getApps, cert } from 'firebase-admin/app';
-import { getFirestore, Firestore, CollectionReference } from 'firebase-admin/firestore';
+import { getFirestore, Firestore } from 'firebase-admin/firestore';
 import serviceAccount from '@/../firebase-service-account.json';
 
 // Initialize Firebase Admin SDK
@@ -39,44 +39,42 @@ const migrateDoorCodesFlow = ai.defineFlow(
     outputSchema: MigrateDoorCodesOutputSchema,
   },
   async () => {
+    const sourcePath = 'users/Ix3LurGh12PFTTkvS1ompsIEzqb2/doorCodes';
+    const destinationCollection = db.collection('doorCodes');
     let codesMigrated = 0;
-    try {
-      // Hardcoded path to the specific user's door codes subcollection
-      const userId = 'Ix3LurGh12PFTTkvS1ompsIEzqb2';
-      const sourceCollectionRef = db.collection('users').doc(userId).collection('doorCodes');
-      
-      const doorCodesSnapshot = await sourceCollectionRef.get();
 
-      if (doorCodesSnapshot.empty) {
+    try {
+      const sourceCollectionRef = db.collection(sourcePath);
+      const snapshot = await sourceCollectionRef.get();
+
+      if (snapshot.empty) {
         return {
-          success: true,
-          message: `No door codes found at the specified path for user ${userId}. Nothing to migrate.`,
+          success: false,
+          message: `No documents found at path: ${sourcePath}. Please double-check the path is correct.`,
           codesMigrated: 0,
         };
       }
 
       const batch = db.batch();
-      const newDoorCodesCollectionRef = db.collection('doorCodes');
-
-      for (const codeDoc of doorCodesSnapshot.docs) {
-        const newDocRef = newDoorCodesCollectionRef.doc(); // Create new doc with a new ID
-        batch.set(newDocRef, codeDoc.data());
+      snapshot.forEach(doc => {
+        const newDocRef = destinationCollection.doc(); // Create new doc with a new ID
+        batch.set(newDocRef, doc.data());
         codesMigrated++;
-      }
+      });
 
       await batch.commit();
 
       return {
         success: true,
-        message: `Successfully migrated ${codesMigrated} door codes to the top-level collection.`,
-        codesMigrated,
+        message: `Successfully migrated ${codesMigrated} door codes.`,
+        codesMigrated: codesMigrated,
       };
 
     } catch (error: any) {
       // Provide a more specific error message if possible
       let errorMessage = 'An unknown error occurred during migration.';
       if (error.code === 5) { // 5 is the gRPC code for NOT_FOUND
-        errorMessage = `NOT_FOUND: The specified path for the door codes subcollection could not be found. Please verify the path is correct. Details: ${error.message}`;
+        errorMessage = `NOT_FOUND: The path '${sourcePath}' could not be found. Please verify the user ID and subcollection name are correct and that the script has the necessary permissions. Details: ${error.message}`;
       } else {
         errorMessage = error.message || errorMessage;
       }
