@@ -232,7 +232,7 @@ export default function TenantsPage() {
                  <div>
                     <h2 className="text-2xl font-bold mb-4">Active Tenants</h2>
                     {groupedTenants.active ? (
-                        <Accordion type="multiple" className="w-full">
+                        <Accordion type="multiple" className="w-full" defaultValue={Object.keys(groupedTenants.active)}>
                            {renderTenantList(groupedTenants.active)}
                         </Accordion>
                     ) : (
@@ -241,18 +241,24 @@ export default function TenantsPage() {
                         </div>
                     )}
                  </div>
-                 <div>
-                    <h2 className="text-2xl font-bold mb-4">Inactive Tenants</h2>
-                     {groupedTenants.inactive ? (
-                        <Accordion type="multiple" className="w-full">
-                           {renderTenantList(groupedTenants.inactive)}
-                        </Accordion>
-                    ) : (
-                         <div className="text-center text-muted-foreground py-8">
-                            No inactive tenants found.
-                        </div>
-                    )}
-                 </div>
+                 <Accordion type="single" collapsible className="w-full">
+                    <AccordionItem value="inactive-tenants">
+                      <AccordionTrigger>
+                        <h2 className="text-2xl font-bold">Inactive Tenants</h2>
+                      </AccordionTrigger>
+                      <AccordionContent>
+                         {groupedTenants.inactive ? (
+                            <Accordion type="multiple" className="w-full">
+                               {renderTenantList(groupedTenants.inactive)}
+                            </Accordion>
+                        ) : (
+                             <div className="text-center text-muted-foreground py-8">
+                                No inactive tenants found.
+                            </div>
+                        )}
+                      </AccordionContent>
+                    </AccordionItem>
+                </Accordion>
               </div>
             )}
             {!tenantsLoading && (!tenants || tenants.length === 0) && (
