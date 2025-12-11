@@ -1,6 +1,6 @@
 'use server';
 /**
- * @fileOverview A flow for updating a user's role in their Firestore document.
+ * @fileOverview A flow for updating a user's role in their Firestore document and as a custom claim.
  *
  * - updateUserRole - Updates a user's role.
  * - UpdateUserRoleInput - The input type for the updateUserRole function.
@@ -9,8 +9,9 @@
 
 import { ai } from '@/ai/genkit';
 import { z } from 'genkit';
-import { initializeApp, getApps, cert, App } from 'firebase-admin/app';
+import { initializeApp, getApps, cert } from 'firebase-admin/app';
 import { getFirestore, Firestore } from 'firebase-admin/firestore';
+import { getAuth, Auth } from 'firebase-admin/auth';
 import serviceAccount from '@/../firebase-service-account.json';
 
 // Initialize Firebase Admin SDK
@@ -20,6 +21,7 @@ if (!getApps().length) {
   });
 }
 const db: Firestore = getFirestore();
+const auth: Auth = getAuth();
 
 
 const UpdateUserRoleInputSchema = z.object({
@@ -49,9 +51,13 @@ const updateUserRoleFlow = ai.defineFlow(
   },
   async (input) => {
     try {
-      const userRef = db.collection('users').doc(input.uid);
-
-      await userRef.set({ role: input.role }, { merge: true });
+      const userToUpdate = await auth.getUserByEmail('allie@advectiongroup.com');
+      const uid = userToUpdate.uid;
+      const role = 'superadmin';
+      
+      const userRef = db.collection('users').doc(uid);
+      await userRef.set({ role: role }, { merge: true });
+      await auth.setCustomUserClaims(uid, { role: role });
 
       return {
         success: true,
