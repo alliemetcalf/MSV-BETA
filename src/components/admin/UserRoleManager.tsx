@@ -30,7 +30,7 @@ import { Button } from '../ui/button';
 import { useAuth } from '@/firebase';
 
 type User = ListUsersOutput[0];
-type Role = 'superadmin' | 'manager' | 'contractor' | 'user';
+type Role = 'superadmin' | 'manager' | 'contractor' | 'user' | 'admin';
 
 export function UserRoleManager() {
   const [users, setUsers] = useState<User[]>([]);
@@ -65,9 +65,18 @@ export function UserRoleManager() {
   }, [auth]);
 
   const handleRoleChange = async (uid: string, newRole: Role) => {
+    if (newRole === 'admin') {
+        toast({
+            variant: 'destructive',
+            title: 'Invalid Role',
+            description: '"admin" is not a standard role. Please select a different one.',
+        });
+        return;
+    }
+    
     setIsUpdating((prev) => ({ ...prev, [uid]: true }));
     try {
-      const result = await updateUserRole({ uid, role: newRole });
+      const result = await updateUserRole({ uid, role: newRole as 'superadmin' | 'manager' | 'contractor' | 'user' });
       if (result.success) {
         setUsers((currentUsers) =>
           currentUsers.map((user) =>
@@ -89,6 +98,8 @@ export function UserRoleManager() {
         title: 'Update Failed',
         description: errorMessage,
       });
+      // Re-fetch users to get the correct state from the server on failure
+      fetchUsers();
     } finally {
       setIsUpdating((prev) => ({ ...prev, [uid]: false }));
     }
@@ -140,6 +151,8 @@ export function UserRoleManager() {
                           <SelectItem value="contractor">Contractor</SelectItem>
                           <SelectItem value="manager">Manager</SelectItem>
                           <SelectItem value="superadmin">Super Admin</SelectItem>
+                          {/* Only show 'admin' if it's the user's current, invalid role */}
+                          {user.role === 'admin' && <SelectItem value="admin" disabled>Admin (Invalid)</SelectItem>}
                         </SelectContent>
                       </Select>
                     )}
