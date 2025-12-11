@@ -85,6 +85,8 @@ export default function ExpensesPage() {
   const [newVendorName, setNewVendorName] = useState('');
   const [isSavingVendor, setIsSavingVendor] = useState(false);
 
+  const [isCalendarOpen, setIsCalendarOpen] = useState(false);
+
   const [formData, setFormData] = useState<{
     date: Date;
     amount: string;
@@ -406,7 +408,7 @@ export default function ExpensesPage() {
                 <div className="grid grid-cols-4 items-center gap-4">
                   <Label htmlFor="date" className="text-right">Date</Label>
                    <div className="col-span-3">
-                    <Popover>
+                    <Popover open={isCalendarOpen} onOpenChange={setIsCalendarOpen}>
                         <PopoverTrigger asChild>
                           <Button
                             variant={"outline"}
@@ -423,7 +425,12 @@ export default function ExpensesPage() {
                           <Calendar
                             mode="single"
                             selected={formData.date}
-                            onSelect={(d) => setFormData(p => ({...p, date: d || new Date()}))}
+                            onSelect={(day) => {
+                                if (day) {
+                                    setFormData(p => ({...p, date: day}));
+                                }
+                                setIsCalendarOpen(false);
+                            }}
                             initialFocus
                           />
                         </PopoverContent>
