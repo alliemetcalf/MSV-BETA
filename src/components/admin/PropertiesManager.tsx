@@ -241,25 +241,20 @@ export function PropertiesManager() {
 
       try {
         // 1. Get all unique property names from door codes and tenants
-        const allUsersSnapshot = await getDocs(collection(firestore, 'users'));
+        const doorCodesSnapshot = await getDocs(collection(firestore, 'doorCodes'));
         const tenantsSnapshot = await getDocs(collection(firestore, 'tenants'));
 
         const propertyNames = new Set<string>();
 
-        // From Tenants
         tenantsSnapshot.forEach(doc => {
             const tenant = doc.data() as Tenant;
             if (tenant.property) propertyNames.add(tenant.property);
         });
 
-        // From Door Codes (nested in users)
-        for (const userDoc of allUsersSnapshot.docs) {
-          const doorCodesSnapshot = await getDocs(collection(userDoc.ref, 'doorCodes'));
-          doorCodesSnapshot.forEach(codeDoc => {
-            const code = codeDoc.data() as DoorCode;
+        doorCodesSnapshot.forEach(doc => {
+            const code = doc.data() as DoorCode;
             if (code.property) propertyNames.add(code.property);
-          });
-        }
+        });
         
         const existingPropertyNames = new Set(properties?.map(p => p.name) || []);
         const namesToMigrate = [...propertyNames].filter(name => !existingPropertyNames.has(name));
@@ -629,3 +624,5 @@ export function PropertiesManager() {
     </>
   );
 }
+
+    

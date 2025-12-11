@@ -76,11 +76,11 @@ export default function DoorCodesPage() {
   const { data: userProfile, isLoading: profileLoading } = useDoc<UserProfile>(userProfileRef);
 
   const doorCodesQuery = useMemoFirebase(() => {
-    if (!isDataReady || !firestore) {
+    if (!firestore) {
       return null;
     }
     return collection(firestore, 'doorCodes');
-  }, [firestore, isDataReady]);
+  }, [firestore]);
 
   const { data: doorCodes, isLoading: userCodesLoading, error: userCodesError } = useCollection<DoorCode>(doorCodesQuery);
   
@@ -234,7 +234,7 @@ export default function DoorCodesPage() {
     handleDialogClose();
   };
 
-  const isPageLoading = isUserLoading || !isDataReady;
+  const isPageLoading = isUserLoading || profileLoading;
 
   if (isPageLoading) {
     return (
@@ -258,10 +258,12 @@ export default function DoorCodesPage() {
                 Manage your property door codes here.
               </CardDescription>
             </div>
-            <Button onClick={handleAddClick}>
-              <PlusCircle className="mr-2 h-4 w-4" />
-              Add Code
-            </Button>
+            {(userProfile?.role === 'superadmin' || userProfile?.role === 'manager') && (
+              <Button onClick={handleAddClick}>
+                <PlusCircle className="mr-2 h-4 w-4" />
+                Add Code
+              </Button>
+            )}
           </CardHeader>
           <CardContent>
             {isDataLoading && (
@@ -292,9 +294,11 @@ export default function DoorCodesPage() {
                                   <TableHead>Admin Code</TableHead>
                                   <TableHead>Guest Code</TableHead>
                                   <TableHead>Last Changed</TableHead>
-                                  <TableHead className="text-right">
-                                    Actions
-                                  </TableHead>
+                                  {(userProfile?.role === 'superadmin' || userProfile?.role === 'manager') && (
+                                    <TableHead className="text-right">
+                                      Actions
+                                    </TableHead>
+                                  )}
                                 </TableRow>
                               </TableHeader>
                               <TableBody>
@@ -325,25 +329,27 @@ export default function DoorCodesPage() {
                                           'PPP p'
                                         )}
                                     </TableCell>
-                                    <TableCell className="text-right">
-                                      <Button
-                                        variant="ghost"
-                                        size="icon"
-                                        onClick={() => handleEditClick(code)}
-                                      >
-                                        <Edit className="h-4 w-4" />
-                                      </Button>
-                                      <Button
-                                        variant="ghost"
-                                        size="icon"
-                                        onClick={() =>
-                                          handleDeleteClick(code)
-                                        }
-                                        className="text-destructive hover:text-destructive/80"
-                                      >
-                                        <Trash2 className="h-4 w-4" />
-                                      </Button>
-                                    </TableCell>
+                                    {(userProfile?.role === 'superadmin' || userProfile?.role === 'manager') && (
+                                      <TableCell className="text-right">
+                                        <Button
+                                          variant="ghost"
+                                          size="icon"
+                                          onClick={() => handleEditClick(code)}
+                                        >
+                                          <Edit className="h-4 w-4" />
+                                        </Button>
+                                        <Button
+                                          variant="ghost"
+                                          size="icon"
+                                          onClick={() =>
+                                            handleDeleteClick(code)
+                                          }
+                                          className="text-destructive hover:text-destructive/80"
+                                        >
+                                          <Trash2 className="h-4 w-4" />
+                                        </Button>
+                                      </TableCell>
+                                    )}
                                   </TableRow>
                                 ))}
                               </TableBody>
@@ -516,3 +522,5 @@ export default function DoorCodesPage() {
     </MainLayout>
   );
 }
+
+    
