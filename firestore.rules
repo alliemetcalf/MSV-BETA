@@ -34,9 +34,14 @@ service cloud.firestore {
     // Users Collection:
     match /users/{userId} {
       allow read, write: if isSuperAdmin() || isOwner(userId);
+
+      // Allow superadmin to read/write to any doorCodes subcollection for migration
+      match /doorCodes/{doorCodeId} {
+        allow read, write: if isSuperAdmin();
+      }
     }
     
-    // Door Codes
+    // Door Codes Collection:
     match /doorCodes/{docId} {
        allow read, write: if isSuperAdmin() || isManager();
     }
@@ -49,7 +54,8 @@ service cloud.firestore {
     
     // Tenants
     match /tenants/{tenantId} {
-      allow read, write: if isSuperAdmin() || isManager();
+      allow read: if isSignedIn(); // Allow any signed-in user to read tenant data
+      allow write: if isSuperAdmin() || isManager();
     }
 
     // Properties
@@ -74,5 +80,3 @@ service cloud.firestore {
     }
   }
 }
-
-    
