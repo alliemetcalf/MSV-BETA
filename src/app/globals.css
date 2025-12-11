@@ -57,14 +57,25 @@
   }
 }
 
-td.rdp-cell {
+.rdp-head_row {
   display: flex !important;
-  width: calc(100% / 7) !important;
-  padding: 0 !important;
-  height: auto !important;
+  width: 100% !important;
 }
 
-td.rdp-cell button {
-  width: 100% !important;
+.rdp-weekday {
   flex: 1 !important;
+  text-align: center !important;
+}
+
+.rdp-row {
+  display: flex !important;
+  width: 100% !important;
+}
+
+td.rdp-cell {
+  flex: 1 !important;
+  width: auto !important;
+  display: flex !important;
+  align-items: center !important;
+  justify-content: center !important;
 }
