@@ -27,6 +27,7 @@ if (existingApp) {
 } else {
   adminApp = initializeApp({
     credential: cert(serviceAccount),
+    databaseURL: "https://msv-beta.firebaseio.com",
   }, ADMIN_APP_NAME);
 }
 
