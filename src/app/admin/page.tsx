@@ -1,7 +1,7 @@
 'use client';
 import { MainLayout } from '@/components/MainLayout';
 import { useUser, useAuth } from '@/firebase';
-import { Loader2, Users, Shield, Lock, Building, Wallet, Wrench, ShieldAlert } from 'lucide-react';
+import { Loader2, Users, Shield, Lock, Building, Wallet, Wrench, ShieldAlert, DatabaseZap } from 'lucide-react';
 import { useRouter } from 'next/navigation';
 import Link from 'next/link';
 import { useEffect } from 'react';
@@ -28,6 +28,7 @@ import { IncomeTypeManager } from '@/components/admin/IncomeTypeManager';
 import { PaymentMethodsManager } from '@/components/admin/PaymentMethodsManager';
 import { TaskSettingsManager } from '@/components/admin/TaskSettingsManager';
 import { Button } from '@/components/ui/button';
+import { DataMigrationManager } from '@/components/admin/DataMigrationManager';
 
 export default function AdminPage() {
   const auth = useAuth();
@@ -135,6 +136,21 @@ export default function AdminPage() {
             <AccordionContent className="p-4 pt-0">
               <div className="grid md:grid-cols-2 gap-8">
                  <LockTypesManager />
+              </div>
+            </AccordionContent>
+          </AccordionItem>
+
+          {/* Data Migration Section */}
+          <AccordionItem value="data-migration" className="border rounded-lg">
+            <AccordionTrigger className="p-4 text-lg font-semibold hover:no-underline">
+              <div className="flex items-center gap-3">
+                <DatabaseZap className="h-6 w-6 text-primary" />
+                Data Migration
+              </div>
+            </AccordionTrigger>
+            <AccordionContent className="p-4 pt-0">
+              <div className="grid md:grid-cols-2 gap-8">
+                 <DataMigrationManager />
               </div>
             </AccordionContent>
           </AccordionItem>
