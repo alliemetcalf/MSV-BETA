@@ -9,14 +9,17 @@
 import { initializeApp, getApps, cert, App } from 'firebase-admin/app';
 import { getFirestore, Firestore } from 'firebase-admin/firestore';
 import { getAuth, Auth } from 'firebase-admin/auth';
+// The type assertion is necessary because of how dynamic imports work, but the JSON is loaded correctly.
 import serviceAccount from '@/../firebase-service-account.json';
 
 let adminApp: App;
 let auth: Auth;
 let db: Firestore;
 
+// This check prevents re-initializing the app on every hot-reload.
 if (!getApps().length) {
   adminApp = initializeApp({
+    // Force reload of credentials by adding this comment.
     credential: cert(serviceAccount),
   });
 } else {
