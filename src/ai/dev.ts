@@ -4,3 +4,4 @@ import './flows/create-user-flow';
 import './flows/list-users-flow';
 import './flows/update-user-role-flow';
 import './flows/migrate-door-codes-flow';
+import './flows/list-collections-flow';
