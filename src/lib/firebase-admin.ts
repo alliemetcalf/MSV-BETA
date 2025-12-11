@@ -5,9 +5,12 @@ import serviceAccount from '@/../firebase-service-account.json';
 
 let app: App;
 
+const databaseURL = `https://${serviceAccount.project_id}.firebaseio.com`;
+
 if (!getApps().length) {
   app = initializeApp({
     credential: cert(serviceAccount),
+    databaseURL: databaseURL,
   });
 } else {
   app = getApps()[0];
