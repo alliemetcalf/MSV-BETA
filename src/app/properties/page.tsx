@@ -46,10 +46,6 @@ import { Property } from '@/types/property';
 import { Tenant } from '@/types/tenant';
 import { useRouter } from 'next/navigation';
 import {
-  getAllDoorCodes,
-  GetAllDoorCodesOutput,
-} from '@/ai/flows/get-all-door-codes-flow';
-import {
   Accordion,
   AccordionContent,
   AccordionItem,
@@ -58,6 +54,8 @@ import {
 import { Badge } from '@/components/ui/badge';
 import { Separator } from '@/components/ui/separator';
 import { cn } from '@/lib/utils';
+import { useDoc } from '@/firebase';
+import { DoorCode } from '@/types/door-code';
 
 const moneyFormatter = new Intl.NumberFormat('en-US', {
   style: 'currency',
@@ -110,18 +108,15 @@ export default function PropertiesPage() {
     error: tenantsError,
   } = useCollection<Tenant>(tenantsCollectionRef);
 
-  const [allDoorCodes, setAllDoorCodes] =
-    React.useState<GetAllDoorCodesOutput | null>(null);
-  const [doorCodesLoading, setDoorCodesLoading] = React.useState(true);
-
-  React.useEffect(() => {
-    if (user) {
-      getAllDoorCodes()
-        .then(setAllDoorCodes)
-        .catch(console.error)
-        .finally(() => setDoorCodesLoading(false));
+  const doorCodesQuery = useMemoFirebase(() => {
+    if (!user || !firestore) {
+      return null;
     }
-  }, [user]);
+    return collection(firestore, 'users', user.uid, 'doorCodes');
+  }, [firestore, user]);
+
+  const { data: doorCodes, isLoading: doorCodesLoading } = useCollection<DoorCode>(doorCodesQuery);
+
 
   const tenantsByProperty = React.useMemo(() => {
     if (!tenants) return {};
@@ -138,9 +133,8 @@ export default function PropertiesPage() {
   }, [tenants]);
 
   const doorCodesByProperty = React.useMemo(() => {
-    if (!allDoorCodes) return {};
-    const flatCodes = allDoorCodes.flatMap((user) => user.codes);
-    return flatCodes.reduce(
+    if (!doorCodes) return {};
+    return doorCodes.reduce(
       (acc, code) => {
         if (!acc[code.property]) {
           acc[code.property] = [];
@@ -148,9 +142,9 @@ export default function PropertiesPage() {
         acc[code.property].push(code);
         return acc;
       },
-      {} as Record<string, typeof flatCodes>
+      {} as Record<string, DoorCode[]>
     );
-  }, [allDoorCodes]);
+  }, [doorCodes]);
 
   const sortedProperties = React.useMemo(() => {
     if (!properties) return [];
