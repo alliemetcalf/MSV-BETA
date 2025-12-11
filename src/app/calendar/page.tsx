@@ -5,7 +5,11 @@ import { Calendar } from '@/components/ui/calendar';
 import { MainLayout } from '@/components/MainLayout';
 
 export default function CalendarPage() {
-  const [date, setDate] = React.useState<Date | undefined>(new Date());
+  const [date, setDate] = React.useState<Date | undefined>(undefined);
+
+  React.useEffect(() => {
+    setDate(new Date());
+  }, []);
 
   return (
     <MainLayout>
@@ -17,7 +21,7 @@ export default function CalendarPage() {
           className="rounded-md border"
         />
         <p className="mt-4">
-          Selected date: {date ? date.toDateString() : 'None'}
+          Selected date: {date ? date.toDateString() : 'Loading...'}
         </p>
       </div>
     </MainLayout>
