@@ -32,54 +32,46 @@ service cloud.firestore {
     // Rule Definitions
 
     // Users Collection:
-    // - SuperAdmins can read any user profile.
-    // - Users can read their own profile.
-    // - SuperAdmins can update any profile (except for changing roles via this method).
-    // - Users can update their own profile.
     match /users/{userId} {
-      allow read: if isSuperAdmin() || isOwner(userId);
-      allow write: if isOwner(userId); // for initial profile creation on signup
-      allow update: if isSuperAdmin() && !(request.resource.data.role is string && resource.data.role != request.resource.data.role) || isOwner(userId);
+      allow read, write: if isSuperAdmin() || isOwner(userId);
     }
     
     // User Subcollections (e.g., doorCodes)
-    // Only SuperAdmins and Managers can manage door codes.
     match /users/{userId}/doorCodes/{docId} {
        allow read, write: if isSuperAdmin() || isManager();
     }
 
-    // Site configuration can only be read and written by SuperAdmins.
+    // Site configuration
     match /siteConfiguration/{document=**} {
       allow read, write: if isSuperAdmin();
     }
     
-    // Tenants can be read by SuperAdmins and Managers. Only they can write.
+    // Tenants
     match /tenants/{tenantId} {
-      allow get, list: if isSuperAdmin() || isManager();
-      allow write: if isSuperAdmin() || isManager();
+      allow read, write: if isSuperAdmin() || isManager();
     }
 
-    // Properties can be read by any signed-in user, but only written by SuperAdmins and Managers.
+    // Properties
     match /properties/{propertyId} {
-      allow get, list: if isSignedIn();
-      allow write: if isSuperAdmin() || isManager();
+      allow read, write: if isSuperAdmin() || isManager();
+      // Allow any signed-in user to list/get properties
+      allow list, get: if isSignedIn();
     }
 
-    // Expenses can be managed by SuperAdmins and Managers.
+    // Expenses
     match /expenses/{expenseId} {
-      allow read, list, write: if isSuperAdmin() || isManager();
+      allow read, write: if isSuperAdmin() || isManager();
     }
 
-    // Rent Payments can be managed by SuperAdmins and Managers.
+    // Rent Payments
     match /rentPayments/{paymentId} {
-      allow read, list, write: if isSuperAdmin() || isManager();
+      allow read, write: if isSuperAdmin() || isManager();
     }
 
-    // Contractor tasks can be managed by SuperAdmins and Managers.
-    // Contractors can read tasks but not write them.
+    // Contractor tasks
     match /contractorTasks/{taskId} {
-      allow read, list: if isSuperAdmin() || isManager() || isContractor();
-      allow write: if isSuperAdmin() || isManager();
+      allow read, write: if isSuperAdmin() || isManager();
+      allow list, get: if isContractor();
     }
   }
 }
