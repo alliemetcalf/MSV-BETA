@@ -57,14 +57,9 @@ import {
 import { Loader2, PlusCircle, Edit, Trash2, Info } from 'lucide-react';
 import { DoorCode, DoorLockType } from '@/types/door-code';
 import { Property } from '@/types/property';
+import { UserProfile } from '@/types/user-profile';
 import { format } from 'date-fns';
 import { useRouter } from 'next/navigation';
-
-interface UserProfile {
-  role: 'admin' | 'user' | 'assistant';
-  displayName?: string;
-  email?: string;
-}
 
 export default function DoorCodesPage() {
   const auth = useAuth();
@@ -80,7 +75,7 @@ export default function DoorCodesPage() {
   );
   const { data: userProfile, isLoading: profileLoading } = useDoc<UserProfile>(userProfileRef);
 
-  const isAdmin = userProfile?.role === 'admin';
+  const isAdmin = userProfile?.role === 'superadmin';
 
   // This query will now run for all users, including admins.
   const doorCodesQuery = useMemoFirebase(() => {
