@@ -8,17 +8,7 @@
 
 import { ai } from '@/ai/genkit';
 import { z } from 'genkit';
-import { initializeApp, getApps, cert } from 'firebase-admin/app';
-import { getFirestore, Firestore } from 'firebase-admin/firestore';
-import serviceAccount from '@/../firebase-service-account.json';
-
-// Initialize Firebase Admin SDK
-if (!getApps().length) {
-  initializeApp({
-    credential: cert(serviceAccount),
-  });
-}
-const db: Firestore = getFirestore();
+import { db } from '@/lib/firebase-admin';
 
 const ListCollectionsOutputSchema = z.object({
   success: z.boolean(),
