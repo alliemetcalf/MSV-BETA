@@ -64,6 +64,7 @@ import {
   Move,
   Info,
   XCircle,
+  CalendarIcon,
 } from 'lucide-react';
 import { Tenant, PendingMove } from '@/types/tenant';
 import { Property } from '@/types/property';
@@ -73,7 +74,8 @@ import { Switch } from '@/components/ui/switch';
 import { Badge } from '../ui/badge';
 import { ref, uploadBytesResumable, getDownloadURL } from 'firebase/storage';
 import { RadioGroup, RadioGroupItem } from '@/components/ui/radio-group';
-import { DateDropdowns } from '../ui/DateDropdowns';
+import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
+import { Calendar } from '@/components/ui/calendar';
 import { format, isBefore, startOfDay, sub } from 'date-fns';
 import { cn } from '@/lib/utils';
 import { Alert, AlertDescription } from '../ui/alert';
@@ -757,28 +759,80 @@ export function TenantsManager() {
                <div className="grid grid-cols-4 items-center gap-4">
                   <Label htmlFor="leaseEffective" className="text-right">Lease Effective</Label>
                   <div className="col-span-3">
-                    <DateDropdowns 
-                      date={formData.leaseEffective?.toDate()} 
-                      setDate={(d) => setFormData(p => ({...p, leaseEffective: d ? Timestamp.fromDate(d) : undefined}))}
-                    />
+                    <Popover>
+                      <PopoverTrigger asChild>
+                        <Button
+                          variant={"outline"}
+                          className={cn(
+                            "w-full justify-start text-left font-normal",
+                            !formData.leaseEffective && "text-muted-foreground"
+                          )}
+                        >
+                          <CalendarIcon className="mr-2 h-4 w-4" />
+                          {formData.leaseEffective ? format(formData.leaseEffective.toDate(), "PPP") : <span>Pick a date</span>}
+                        </Button>
+                      </PopoverTrigger>
+                      <PopoverContent className="w-auto p-0">
+                        <Calendar
+                          mode="single"
+                          selected={formData.leaseEffective?.toDate()}
+                          onSelect={(d) => setFormData(p => ({...p, leaseEffective: d ? Timestamp.fromDate(d) : undefined}))}
+                          initialFocus
+                        />
+                      </PopoverContent>
+                    </Popover>
                   </div>
               </div>
                <div className="grid grid-cols-4 items-center gap-4">
                   <Label htmlFor="leaseEnded" className="text-right">Lease Ended</Label>
                   <div className="col-span-3">
-                     <DateDropdowns 
-                      date={formData.leaseEnded?.toDate()} 
-                      setDate={(d) => setFormData(p => ({...p, leaseEnded: d ? Timestamp.fromDate(d) : undefined}))}
-                    />
+                     <Popover>
+                      <PopoverTrigger asChild>
+                        <Button
+                          variant={"outline"}
+                          className={cn(
+                            "w-full justify-start text-left font-normal",
+                            !formData.leaseEnded && "text-muted-foreground"
+                          )}
+                        >
+                          <CalendarIcon className="mr-2 h-4 w-4" />
+                          {formData.leaseEnded ? format(formData.leaseEnded.toDate(), "PPP") : <span>Pick a date (optional)</span>}
+                        </Button>
+                      </PopoverTrigger>
+                      <PopoverContent className="w-auto p-0">
+                        <Calendar
+                          mode="single"
+                          selected={formData.leaseEnded?.toDate()}
+                          onSelect={(d) => setFormData(p => ({...p, leaseEnded: d ? Timestamp.fromDate(d) : undefined}))}
+                        />
+                      </PopoverContent>
+                    </Popover>
                   </div>
               </div>
               <div className="grid grid-cols-4 items-center gap-4">
                   <Label htmlFor="noticeReceivedDate" className="text-right">30 Day Notice</Label>
                   <div className="col-span-3">
-                     <DateDropdowns 
-                      date={formData.noticeReceivedDate?.toDate()} 
-                      setDate={(d) => setFormData(p => ({...p, noticeReceivedDate: d ? Timestamp.fromDate(d) : undefined}))}
-                    />
+                     <Popover>
+                      <PopoverTrigger asChild>
+                        <Button
+                          variant={"outline"}
+                          className={cn(
+                            "w-full justify-start text-left font-normal",
+                            !formData.noticeReceivedDate && "text-muted-foreground"
+                          )}
+                        >
+                          <CalendarIcon className="mr-2 h-4 w-4" />
+                          {formData.noticeReceivedDate ? format(formData.noticeReceivedDate.toDate(), "PPP") : <span>Pick a date (optional)</span>}
+                        </Button>
+                      </PopoverTrigger>
+                      <PopoverContent className="w-auto p-0">
+                        <Calendar
+                          mode="single"
+                          selected={formData.noticeReceivedDate?.toDate()}
+                          onSelect={(d) => setFormData(p => ({...p, noticeReceivedDate: d ? Timestamp.fromDate(d) : undefined}))}
+                        />
+                      </PopoverContent>
+                    </Popover>
                   </div>
               </div>
               <div className="grid grid-cols-4 items-center gap-4">
@@ -831,11 +885,29 @@ export function TenantsManager() {
                 <div className="grid grid-cols-4 items-center gap-4">
                     <Label htmlFor="moveDate" className="text-right">Move-in Date</Label>
                     <div className='col-span-3'>
-                        <DateDropdowns
-                          date={moveData.moveDate}
-                          setDate={(d) => setMoveData(p => ({...p, moveDate: d}))}
-                          disabledDate={(date) => isBefore(date, startOfDay(new Date()))}
-                        />
+                        <Popover>
+                          <PopoverTrigger asChild>
+                            <Button
+                              variant={"outline"}
+                              className={cn(
+                                "w-full justify-start text-left font-normal",
+                                !moveData.moveDate && "text-muted-foreground"
+                              )}
+                            >
+                              <CalendarIcon className="mr-2 h-4 w-4" />
+                              {moveData.moveDate ? format(moveData.moveDate, "PPP") : <span>Pick a date</span>}
+                            </Button>
+                          </PopoverTrigger>
+                          <PopoverContent className="w-auto p-0">
+                            <Calendar
+                              mode="single"
+                              selected={moveData.moveDate}
+                              onSelect={(d) => setMoveData(p => ({...p, moveDate: d}))}
+                              disabled={(date) => isBefore(date, startOfDay(new Date()))}
+                              initialFocus
+                            />
+                          </PopoverContent>
+                        </Popover>
                     </div>
                 </div>
                 <div className="grid grid-cols-4 items-center gap-4">

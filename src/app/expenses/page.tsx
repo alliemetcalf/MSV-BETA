@@ -48,11 +48,14 @@ import { Textarea } from '@/components/ui/textarea';
 import { Progress } from '@/components/ui/progress';
 import { useToast } from '@/hooks/use-toast';
 import Image from 'next/image';
-import { Loader2, PlusCircle, Edit, Trash2, Paperclip, X } from 'lucide-react';
+import { Loader2, PlusCircle, Edit, Trash2, Paperclip, X, CalendarIcon } from 'lucide-react';
 import { Expense, ExpenseCategory, Vendor } from '@/types/expense';
 import { Property } from '@/types/property';
 import { Tenant } from '@/types/tenant';
-import { DateDropdowns } from '@/components/ui/DateDropdowns';
+import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
+import { Calendar } from '@/components/ui/calendar';
+import { format } from 'date-fns';
+import { cn } from '@/lib/utils';
 
 
 const moneyFormatter = new Intl.NumberFormat('en-US', {
@@ -403,7 +406,28 @@ export default function ExpensesPage() {
                 <div className="grid grid-cols-4 items-center gap-4">
                   <Label htmlFor="date" className="text-right">Date</Label>
                    <div className="col-span-3">
-                      <DateDropdowns date={formData.date} setDate={(d) => setFormData(p => ({...p, date: d || new Date()}))} />
+                    <Popover>
+                        <PopoverTrigger asChild>
+                          <Button
+                            variant={"outline"}
+                            className={cn(
+                              "w-full justify-start text-left font-normal",
+                              !formData.date && "text-muted-foreground"
+                            )}
+                          >
+                            <CalendarIcon className="mr-2 h-4 w-4" />
+                            {formData.date ? format(formData.date, "PPP") : <span>Pick a date</span>}
+                          </Button>
+                        </PopoverTrigger>
+                        <PopoverContent className="w-auto p-0">
+                          <Calendar
+                            mode="single"
+                            selected={formData.date}
+                            onSelect={(d) => setFormData(p => ({...p, date: d || new Date()}))}
+                            initialFocus
+                          />
+                        </PopoverContent>
+                      </Popover>
                    </div>
                 </div>
                 <div className="grid grid-cols-4 items-center gap-4">
