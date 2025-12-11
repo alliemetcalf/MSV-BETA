@@ -777,7 +777,7 @@ export function TenantsManager() {
                           {formData.leaseEffective ? format(formData.leaseEffective.toDate(), "PPP") : <span>Pick a date</span>}
                         </Button>
                       </PopoverTrigger>
-                      <PopoverContent className="w-auto p-0">
+                      <PopoverContent className="w-auto p-0" onInteractOutside={(e) => e.preventDefault()}>
                         <Calendar
                           mode="single"
                           selected={formData.leaseEffective?.toDate()}
@@ -807,7 +807,7 @@ export function TenantsManager() {
                           {formData.leaseEnded ? format(formData.leaseEnded.toDate(), "PPP") : <span>Pick a date (optional)</span>}
                         </Button>
                       </PopoverTrigger>
-                      <PopoverContent className="w-auto p-0">
+                      <PopoverContent className="w-auto p-0" onInteractOutside={(e) => e.preventDefault()}>
                         <Calendar
                           mode="single"
                           selected={formData.leaseEnded?.toDate()}
@@ -836,7 +836,7 @@ export function TenantsManager() {
                           {formData.noticeReceivedDate ? format(formData.noticeReceivedDate.toDate(), "PPP") : <span>Pick a date (optional)</span>}
                         </Button>
                       </PopoverTrigger>
-                      <PopoverContent className="w-auto p-0">
+                      <PopoverContent className="w-auto p-0" onInteractOutside={(e) => e.preventDefault()}>
                         <Calendar
                           mode="single"
                           selected={formData.noticeReceivedDate?.toDate()}
@@ -912,7 +912,7 @@ export function TenantsManager() {
                               {moveData.moveDate ? format(moveData.moveDate, "PPP") : <span>Pick a date</span>}
                             </Button>
                           </PopoverTrigger>
-                          <PopoverContent className="w-auto p-0">
+                          <PopoverContent className="w-auto p-0" onInteractOutside={(e) => e.preventDefault()}>
                             <Calendar
                               mode="single"
                               selected={moveData.moveDate}

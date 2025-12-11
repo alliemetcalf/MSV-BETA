@@ -347,7 +347,7 @@ export default function RentPaymentsPage() {
                           {formData.date ? format(formData.date, "PPP") : <span>Pick a date</span>}
                         </Button>
                       </PopoverTrigger>
-                      <PopoverContent className="w-auto p-0">
+                      <PopoverContent className="w-auto p-0" onInteractOutside={(e) => e.preventDefault()}>
                         <Calendar
                           mode="single"
                           selected={formData.date}
