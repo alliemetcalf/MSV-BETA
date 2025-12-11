@@ -764,7 +764,7 @@ export function TenantsManager() {
                <div className="grid grid-cols-4 items-center gap-4">
                   <Label htmlFor="leaseEffective" className="text-right">Lease Effective</Label>
                   <div className="col-span-3">
-                    <Popover open={isLeaseEffectiveCalendarOpen} onOpenChange={setIsLeaseEffectiveCalendarOpen}>
+                    <Popover open={isLeaseEffectiveCalendarOpen} onOpenChange={setIsLeaseEffectiveCalendarOpen} modal={true}>
                       <PopoverTrigger asChild>
                         <Button
                           variant={"outline"}
@@ -777,7 +777,7 @@ export function TenantsManager() {
                           {formData.leaseEffective ? format(formData.leaseEffective.toDate(), "PPP") : <span>Pick a date</span>}
                         </Button>
                       </PopoverTrigger>
-                      <PopoverContent className="w-auto p-0" onInteractOutside={(e) => e.preventDefault()}>
+                      <PopoverContent className="w-auto p-0" onInteractOutside={(e) => { if (e.target !== e.currentTarget) e.preventDefault(); }}>
                         <Calendar
                           mode="single"
                           selected={formData.leaseEffective?.toDate()}
@@ -794,7 +794,7 @@ export function TenantsManager() {
                <div className="grid grid-cols-4 items-center gap-4">
                   <Label htmlFor="leaseEnded" className="text-right">Lease Ended</Label>
                   <div className="col-span-3">
-                     <Popover open={isLeaseEndedCalendarOpen} onOpenChange={setIsLeaseEndedCalendarOpen}>
+                     <Popover open={isLeaseEndedCalendarOpen} onOpenChange={setIsLeaseEndedCalendarOpen} modal={true}>
                       <PopoverTrigger asChild>
                         <Button
                           variant={"outline"}
@@ -807,7 +807,7 @@ export function TenantsManager() {
                           {formData.leaseEnded ? format(formData.leaseEnded.toDate(), "PPP") : <span>Pick a date (optional)</span>}
                         </Button>
                       </PopoverTrigger>
-                      <PopoverContent className="w-auto p-0" onInteractOutside={(e) => e.preventDefault()}>
+                      <PopoverContent className="w-auto p-0" onInteractOutside={(e) => { if (e.target !== e.currentTarget) e.preventDefault(); }}>
                         <Calendar
                           mode="single"
                           selected={formData.leaseEnded?.toDate()}
@@ -823,7 +823,7 @@ export function TenantsManager() {
               <div className="grid grid-cols-4 items-center gap-4">
                   <Label htmlFor="noticeReceivedDate" className="text-right">30 Day Notice</Label>
                   <div className="col-span-3">
-                     <Popover open={isNoticeReceivedCalendarOpen} onOpenChange={setIsNoticeReceivedCalendarOpen}>
+                     <Popover open={isNoticeReceivedCalendarOpen} onOpenChange={setIsNoticeReceivedCalendarOpen} modal={true}>
                       <PopoverTrigger asChild>
                         <Button
                           variant={"outline"}
@@ -836,7 +836,7 @@ export function TenantsManager() {
                           {formData.noticeReceivedDate ? format(formData.noticeReceivedDate.toDate(), "PPP") : <span>Pick a date (optional)</span>}
                         </Button>
                       </PopoverTrigger>
-                      <PopoverContent className="w-auto p-0" onInteractOutside={(e) => e.preventDefault()}>
+                      <PopoverContent className="w-auto p-0" onInteractOutside={(e) => { if (e.target !== e.currentTarget) e.preventDefault(); }}>
                         <Calendar
                           mode="single"
                           selected={formData.noticeReceivedDate?.toDate()}
@@ -899,7 +899,7 @@ export function TenantsManager() {
                 <div className="grid grid-cols-4 items-center gap-4">
                     <Label htmlFor="moveDate" className="text-right">Move-in Date</Label>
                     <div className='col-span-3'>
-                        <Popover open={isMoveDateCalendarOpen} onOpenChange={setIsMoveDateCalendarOpen}>
+                        <Popover open={isMoveDateCalendarOpen} onOpenChange={setIsMoveDateCalendarOpen} modal={true}>
                           <PopoverTrigger asChild>
                             <Button
                               variant={"outline"}
@@ -912,7 +912,7 @@ export function TenantsManager() {
                               {moveData.moveDate ? format(moveData.moveDate, "PPP") : <span>Pick a date</span>}
                             </Button>
                           </PopoverTrigger>
-                          <PopoverContent className="w-auto p-0" onInteractOutside={(e) => e.preventDefault()}>
+                          <PopoverContent className="w-auto p-0" onInteractOutside={(e) => { if (e.target !== e.currentTarget) e.preventDefault(); }}>
                             <Calendar
                               mode="single"
                               selected={moveData.moveDate}

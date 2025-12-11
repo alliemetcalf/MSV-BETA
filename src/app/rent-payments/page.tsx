@@ -334,7 +334,7 @@ export default function RentPaymentsPage() {
               <div className="grid grid-cols-4 items-center gap-4">
                 <Label htmlFor="date" className="text-right">Date</Label>
                  <div className="col-span-3">
-                    <Popover open={isCalendarOpen} onOpenChange={setIsCalendarOpen}>
+                    <Popover open={isCalendarOpen} onOpenChange={setIsCalendarOpen} modal={true}>
                       <PopoverTrigger asChild>
                         <Button
                           variant={"outline"}
@@ -347,7 +347,7 @@ export default function RentPaymentsPage() {
                           {formData.date ? format(formData.date, "PPP") : <span>Pick a date</span>}
                         </Button>
                       </PopoverTrigger>
-                      <PopoverContent className="w-auto p-0" onInteractOutside={(e) => e.preventDefault()}>
+                      <PopoverContent className="w-auto p-0" onInteractOutside={(e) => { if (e.target !== e.currentTarget) e.preventDefault(); }}>
                         <Calendar
                           mode="single"
                           selected={formData.date}
