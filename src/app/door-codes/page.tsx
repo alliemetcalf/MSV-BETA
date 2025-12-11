@@ -75,15 +75,12 @@ export default function DoorCodesPage() {
   );
   const { data: userProfile, isLoading: profileLoading } = useDoc<UserProfile>(userProfileRef);
 
-  const isAdmin = userProfile?.role === 'superadmin';
-
-  // This query will now run for all users, including admins.
   const doorCodesQuery = useMemoFirebase(() => {
-    if (!isDataReady || !user || !firestore) {
+    if (!isDataReady || !firestore) {
       return null;
     }
-    return collection(firestore, 'users', user.uid, 'doorCodes');
-  }, [firestore, user, isDataReady]);
+    return collection(firestore, 'doorCodes');
+  }, [firestore, isDataReady]);
 
   const { data: doorCodes, isLoading: userCodesLoading, error: userCodesError } = useCollection<DoorCode>(doorCodesQuery);
   
@@ -185,10 +182,10 @@ export default function DoorCodesPage() {
   };
 
   const handleDeleteClick = async (code: DoorCode) => {
-    if (!firestore || !user) return;
+    if (!firestore) return;
     
     if (confirm('Are you sure you want to delete this door code?')) {
-      const docRef = doc(firestore, 'users', user.uid, 'doorCodes', code.id);
+      const docRef = doc(firestore, 'doorCodes', code.id);
       await deleteDoc(docRef);
     }
   };
@@ -219,7 +216,7 @@ export default function DoorCodesPage() {
   const handleFormSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     
-    if (!user || !firestore || !formData.location || !formData.doorLockType || !formData.property) return;
+    if (!firestore || !formData.location || !formData.doorLockType || !formData.property) return;
     
     const codeData: Omit<DoorCode, 'id'> = {
       ...formData,
@@ -227,10 +224,10 @@ export default function DoorCodesPage() {
     };
 
     if (editingCode) {
-        const docRef = doc(firestore, 'users', user.uid, 'doorCodes', editingCode.id);
+        const docRef = doc(firestore, 'doorCodes', editingCode.id);
         await updateDoc(docRef, codeData);
     } else {
-      const collectionRef = collection(firestore, 'users', user.uid, 'doorCodes');
+      const collectionRef = collection(firestore, 'doorCodes');
       await addDoc(collectionRef, codeData);
     }
 

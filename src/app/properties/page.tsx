@@ -54,7 +54,6 @@ import {
 import { Badge } from '@/components/ui/badge';
 import { Separator } from '@/components/ui/separator';
 import { cn } from '@/lib/utils';
-import { useDoc } from '@/firebase';
 import { DoorCode } from '@/types/door-code';
 
 const moneyFormatter = new Intl.NumberFormat('en-US', {
@@ -109,11 +108,11 @@ export default function PropertiesPage() {
   } = useCollection<Tenant>(tenantsCollectionRef);
 
   const doorCodesQuery = useMemoFirebase(() => {
-    if (!user || !firestore) {
+    if (!firestore) {
       return null;
     }
-    return collection(firestore, 'users', user.uid, 'doorCodes');
-  }, [firestore, user]);
+    return collection(firestore, 'doorCodes');
+  }, [firestore]);
 
   const { data: doorCodes, isLoading: doorCodesLoading } = useCollection<DoorCode>(doorCodesQuery);
 

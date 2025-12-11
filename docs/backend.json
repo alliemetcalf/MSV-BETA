@@ -609,11 +609,11 @@
         "description": "Stores the public profile for a user, including their role."
       },
       {
-        "path": "/users/{userId}/doorCodes",
+        "path": "/doorCodes/{doorCodeId}",
         "schema": {
           "$ref": "#/entities/DoorCode"
         },
-        "description": "Stores door codes for a specific user."
+        "description": "Stores all door codes for all properties."
       },
       {
         "path": "/siteConfiguration/lockTypes",

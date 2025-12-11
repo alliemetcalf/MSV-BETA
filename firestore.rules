@@ -36,8 +36,8 @@ service cloud.firestore {
       allow read, write: if isSuperAdmin() || isOwner(userId);
     }
     
-    // User Subcollections (e.g., doorCodes)
-    match /users/{userId}/doorCodes/{docId} {
+    // Door Codes
+    match /doorCodes/{docId} {
        allow read, write: if isSuperAdmin() || isManager();
     }
 
