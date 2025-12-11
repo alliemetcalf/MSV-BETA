@@ -73,11 +73,13 @@
 }
 
 .rdp-cell {
-  flex: 1 !important;
-  width: auto !important;
+  width: calc(100% / 7) !important;
+  display: table-cell !important;
+  text-align: center !important;
 }
 
 .rdp-head_cell {
-  flex: 1 !important;
-  width: auto !important;
+  width: calc(100% / 7) !important;
+  display: table-cell !important;
+  text-align: center !important;
 }
