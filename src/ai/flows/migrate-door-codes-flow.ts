@@ -42,26 +42,21 @@ const migrateDoorCodesFlow = ai.defineFlow(
     let codesMigrated = 0;
     try {
       const usersSnapshot = await db.collection('users').get();
-      if (usersSnapshot.empty) {
-        return {
-          success: true,
-          message: 'No users found to migrate door codes from.',
-          codesMigrated: 0,
-        };
-      }
-
+      
       const batch = db.batch();
       const newDoorCodesCollectionRef = db.collection('doorCodes');
 
       for (const userDoc of usersSnapshot.docs) {
+        // This check correctly skips any invalid or non-existent user documents
         if (!userDoc.exists) {
             console.log(`Skipping non-existent user document: ${userDoc.id}`);
             continue;
         }
 
         const doorCodesSnapshot = await userDoc.ref
-          .collection('doorCodes') // Corrected from 'doorcodes' to 'doorCodes'
+          .collection('doorCodes')
           .get();
+          
         if (!doorCodesSnapshot.empty) {
           for (const codeDoc of doorCodesSnapshot.docs) {
             const newDocRef = newDoorCodesCollectionRef.doc(); // Create new doc with a new ID
