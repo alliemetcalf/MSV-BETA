@@ -59,18 +59,12 @@ import { DoorCode, DoorLockType } from '@/types/door-code';
 import { Property } from '@/types/property';
 import { format } from 'date-fns';
 import { useRouter } from 'next/navigation';
-import { getAllDoorCodes, GetAllDoorCodesOutput } from '@/ai/flows/get-all-door-codes-flow';
 
 interface UserProfile {
   role: 'admin' | 'user' | 'assistant';
   displayName?: string;
   email?: string;
 }
-
-type EnrichedDoorCode = DoorCode & {
-  userEmail?: string;
-  userId: string;
-};
 
 export default function DoorCodesPage() {
   const auth = useAuth();
@@ -86,39 +80,22 @@ export default function DoorCodesPage() {
   );
   const { data: userProfile, isLoading: profileLoading } = useDoc<UserProfile>(userProfileRef);
 
-  const [allUsersCodes, setAllUsersCodes] = useState<GetAllDoorCodesOutput | null>(null);
-  const [isFetchingAllCodes, setIsFetchingAllCodes] = useState(false);
-
   const isAdmin = userProfile?.role === 'admin';
 
-  // This query will only run for non-admins. Admins get data from the flow.
+  // This query will now run for all users, including admins.
   const doorCodesQuery = useMemoFirebase(() => {
-    if (!isDataReady || !user || !firestore || isAdmin) {
+    if (!isDataReady || !user || !firestore) {
       return null;
     }
     return collection(firestore, 'users', user.uid, 'doorCodes');
-  }, [firestore, user, isDataReady, isAdmin]);
+  }, [firestore, user, isDataReady]);
 
-  const { data: userDoorCodes, isLoading: userCodesLoading, error: userCodesError } = useCollection<DoorCode>(doorCodesQuery);
+  const { data: doorCodes, isLoading: userCodesLoading, error: userCodesError } = useCollection<DoorCode>(doorCodesQuery);
   
-  const doorCodes = isAdmin 
-    ? (allUsersCodes || []).flatMap(u => u.codes.map(c => ({...c, userId: u.uid, userEmail: u.email}))) 
-    : userDoorCodes;
-
-  useEffect(() => {
-    if (userProfile?.role === 'admin' && allUsersCodes === null) {
-      setIsFetchingAllCodes(true);
-      getAllDoorCodes()
-        .then(setAllUsersCodes)
-        .catch(console.error)
-        .finally(() => setIsFetchingAllCodes(false));
-    }
-  }, [userProfile?.role, allUsersCodes]);
-
   const [isFormDialogOpen, setIsFormDialogOpen] = useState(false);
   const [isInstructionDialogOpen, setIsInstructionDialogOpen] = useState(false);
   const [selectedInstruction, setSelectedInstruction] = useState<DoorLockType | null>(null);
-  const [editingCode, setEditingCode] = useState<DoorCode | EnrichedDoorCode | null>(null);
+  const [editingCode, setEditingCode] = useState<DoorCode | null>(null);
 
   const [formData, setFormData] = useState<{
     location: string;
@@ -175,7 +152,7 @@ export default function DoorCodesPage() {
         acc[property].push(code);
         return acc;
       },
-      {} as Record<string, (DoorCode | EnrichedDoorCode)[]>
+      {} as Record<string, DoorCode[]>
     );
 
     for (const property in grouped) {
@@ -199,7 +176,7 @@ export default function DoorCodesPage() {
     setIsFormDialogOpen(true);
   };
 
-  const handleEditClick = (code: DoorCode | EnrichedDoorCode) => {
+  const handleEditClick = (code: DoorCode) => {
     setEditingCode(code);
     setFormData({
       location: code.location,
@@ -212,30 +189,12 @@ export default function DoorCodesPage() {
     setIsFormDialogOpen(true);
   };
 
-  const handleDeleteClick = async (code: DoorCode | EnrichedDoorCode) => {
+  const handleDeleteClick = async (code: DoorCode) => {
     if (!firestore || !user) return;
     
-    let userIdForDeletion = user.uid;
-    if ('userId' in code) {
-      userIdForDeletion = code.userId;
-    }
-    
     if (confirm('Are you sure you want to delete this door code?')) {
-      const docRef = doc(firestore, 'users', userIdForDeletion, 'doorCodes', code.id);
+      const docRef = doc(firestore, 'users', user.uid, 'doorCodes', code.id);
       await deleteDoc(docRef);
-       if (isAdmin) {
-        setAllUsersCodes(current => {
-            if (!current) return null;
-            return current
-              .map(u => {
-                if (u.uid === userIdForDeletion) {
-                  return { ...u, codes: u.codes.filter(c => c.id !== code.id) };
-                }
-                return u;
-              })
-              .filter(u => u.codes.length > 0);
-        });
-      }
     }
   };
   
@@ -272,26 +231,12 @@ export default function DoorCodesPage() {
       lastChanged: serverTimestamp() as Timestamp,
     };
 
-    let userIdForWrite = user.uid;
-    
-    if (editingCode && 'userId' in editingCode) { 
-        userIdForWrite = editingCode.userId;
-    }
-
     if (editingCode) {
-        const docRef = doc(firestore, 'users', userIdForWrite, 'doorCodes', editingCode.id);
+        const docRef = doc(firestore, 'users', user.uid, 'doorCodes', editingCode.id);
         await updateDoc(docRef, codeData);
     } else {
-      const collectionRef = collection(firestore, 'users', userIdForWrite, 'doorCodes');
+      const collectionRef = collection(firestore, 'users', user.uid, 'doorCodes');
       await addDoc(collectionRef, codeData);
-    }
-
-    if (isAdmin) {
-      setIsFetchingAllCodes(true);
-      getAllDoorCodes()
-        .then(setAllUsersCodes)
-        .catch(console.error)
-        .finally(() => setIsFetchingAllCodes(false));
     }
 
     handleDialogClose();
@@ -307,8 +252,8 @@ export default function DoorCodesPage() {
     );
   }
   
-  const codesError = isAdmin ? null : userCodesError;
-  const isDataLoading = (isAdmin ? isFetchingAllCodes : userCodesLoading) || lockTypesLoading || propertiesLoading;
+  const codesError = userCodesError;
+  const isDataLoading = userCodesLoading || lockTypesLoading || propertiesLoading;
 
   return (
     <MainLayout>
@@ -318,7 +263,7 @@ export default function DoorCodesPage() {
             <div>
               <CardTitle>Door Codes</CardTitle>
               <CardDescription>
-                {isAdmin ? 'Viewing all user door codes as an admin.' : 'Manage your property door codes here.'}
+                Manage your property door codes here.
               </CardDescription>
             </div>
             <Button onClick={handleAddClick}>
@@ -355,7 +300,6 @@ export default function DoorCodesPage() {
                                   <TableHead>Admin Code</TableHead>
                                   <TableHead>Guest Code</TableHead>
                                   <TableHead>Last Changed</TableHead>
-                                  {isAdmin && <TableHead>User</TableHead>}
                                   <TableHead className="text-right">
                                     Actions
                                   </TableHead>
@@ -363,7 +307,7 @@ export default function DoorCodesPage() {
                               </TableHeader>
                               <TableBody>
                                 {codes.map((code) => (
-                                  <TableRow key={code.id + (isAdmin ? (code as EnrichedDoorCode).userId : '')}>
+                                  <TableRow key={code.id}>
                                     <TableCell>{code.location}</TableCell>
                                     <TableCell>
                                       <div className="flex items-center gap-2">
@@ -383,18 +327,12 @@ export default function DoorCodesPage() {
                                       {code.guestCode}
                                     </TableCell>
                                     <TableCell>
-                                      {code.lastChanged && typeof code.lastChanged === 'string' &&
-                                        format(
-                                          new Date(code.lastChanged as string),
-                                          'PPP p'
-                                        )}
                                       {code.lastChanged && typeof code.lastChanged === 'object' && 'toDate' in code.lastChanged &&
                                         format(
                                           (code.lastChanged as Timestamp).toDate(),
                                           'PPP p'
                                         )}
                                     </TableCell>
-                                    {isAdmin && <TableCell>{(code as EnrichedDoorCode).userEmail}</TableCell>}
                                     <TableCell className="text-right">
                                       <Button
                                         variant="ghost"
@@ -586,5 +524,3 @@ export default function DoorCodesPage() {
     </MainLayout>
   );
 }
-
-    
