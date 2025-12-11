@@ -54,14 +54,13 @@ const migrateDoorCodesFlow = ai.defineFlow(
       const newDoorCodesCollectionRef = db.collection('doorCodes');
 
       for (const userDoc of usersSnapshot.docs) {
-        // This is the critical fix: Check if the document exists before proceeding.
         if (!userDoc.exists) {
             console.log(`Skipping non-existent user document: ${userDoc.id}`);
             continue;
         }
 
         const doorCodesSnapshot = await userDoc.ref
-          .collection('doorCodes')
+          .collection('doorCodes') // Corrected from 'doorcodes' to 'doorCodes'
           .get();
         if (!doorCodesSnapshot.empty) {
           for (const codeDoc of doorCodesSnapshot.docs) {
