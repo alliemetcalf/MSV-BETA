@@ -20,12 +20,12 @@ interface Permission {
 }
 
 const permissionsData: Permission[] = [
-  { page: 'Home', path: '/', superadmin: 'read', manager: 'read', contractor: 'read', user: 'read' },
+  { page: 'Home', path: '/', superadmin: 'read/write', manager: 'read', contractor: 'read', user: 'read' },
   { page: 'Profile', path: '/profile', superadmin: 'read/write', manager: 'read/write', contractor: 'read/write', user: 'read/write' },
   { page: 'Door Codes', path: '/door-codes', superadmin: 'read/write', manager: 'read/write', contractor: 'none', user: 'none' },
-  { page: 'Tenants', path: '/tenants', superadmin: 'read', manager: 'read', contractor: 'none', user: 'none' },
-  { page: 'Properties', path: '/properties', superadmin: 'read', manager: 'read', contractor: 'read', user: 'read' },
-  { page: 'Rooms', path: '/rooms', superadmin: 'read', manager: 'read', contractor: 'none', user: 'read' },
+  { page: 'Tenants', path: '/tenants', superadmin: 'read/write', manager: 'read', contractor: 'none', user: 'none' },
+  { page: 'Properties', path: '/properties', superadmin: 'read/write', manager: 'read', contractor: 'read', user: 'read' },
+  { page: 'Rooms', path: '/rooms', superadmin: 'read/write', manager: 'read', contractor: 'none', user: 'read' },
   { page: 'Expenses', path: '/expenses', superadmin: 'read/write', manager: 'read/write', contractor: 'none', user: 'none' },
   { page: 'Rent Payments', path: '/rent-payments', superadmin: 'read/write', manager: 'read/write', contractor: 'none', user: 'none' },
   { page: 'Tasks', path: '/tasks', superadmin: 'read/write', manager: 'read/write', contractor: 'read', user: 'none' },
