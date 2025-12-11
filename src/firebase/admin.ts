@@ -6,7 +6,6 @@
  * It exports the initialized Firestore database and Auth services.
  */
 
-// Force reload of credentials by adding this comment.
 import { initializeApp, getApps, cert, App } from 'firebase-admin/app';
 import { getFirestore, Firestore } from 'firebase-admin/firestore';
 import { getAuth, Auth } from 'firebase-admin/auth';
