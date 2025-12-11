@@ -12,6 +12,7 @@ import {
   Receipt,
   DollarSign,
   Landmark,
+  Calendar,
 } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { Button } from './ui/button';
@@ -63,6 +64,7 @@ export function Header() {
     { href: '/rooms', label: 'Rooms' },
     { href: '/expenses', label: 'Expenses' },
     { href: '/rent-payments', label: 'Rent Payments' },
+    { href: '/calendar', label: 'Calendar' },
   ];
 
   const adminNavItems = [{ href: '/admin', label: 'Admin', icon: ShieldCheck }];
@@ -77,7 +79,7 @@ export function Header() {
               className="flex items-center gap-2 text-primary font-bold"
             >
               <KeyRound className="h-6 w-6" />
-              <span>AMCP</span>
+              <span className="font-headline text-2xl">AMCP</span>
             </Link>
             <nav className="hidden md:flex items-center space-x-4">
               {navItems.map((item) => (
@@ -94,6 +96,7 @@ export function Header() {
                   {item.label === 'Rent Payments' ? <DollarSign/> : null}
                   {item.label === 'Expenses' ? <Receipt/> : null}
                   {item.label === 'Properties' ? <Landmark/> : null}
+                  {item.label === 'Calendar' ? <Calendar className="h-4 w-4" /> : null}
                   {item.label}
                 </Link>
               ))}
