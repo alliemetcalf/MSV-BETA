@@ -1,3 +1,4 @@
+
 'use client';
 
 import React, { useState, useEffect, useMemo } from 'react';
@@ -69,6 +70,7 @@ export default function RentPaymentsPage() {
   const [isConfirmDialogOpen, setIsConfirmDialogOpen] = useState(false);
   const [paymentToDelete, setPaymentToDelete] = useState<RentPayment | null>(null);
   const [tenantFilter, setTenantFilter] = useState<'active' | 'inactive'>('active');
+  const [isCalendarOpen, setIsCalendarOpen] = useState(false);
 
   const [formData, setFormData] = useState<{
     tenantId: string;
@@ -332,7 +334,7 @@ export default function RentPaymentsPage() {
               <div className="grid grid-cols-4 items-center gap-4">
                 <Label htmlFor="date" className="text-right">Date</Label>
                  <div className="col-span-3">
-                    <Popover>
+                    <Popover open={isCalendarOpen} onOpenChange={setIsCalendarOpen}>
                         <PopoverTrigger asChild>
                           <Button
                             variant={"outline"}
@@ -349,10 +351,11 @@ export default function RentPaymentsPage() {
                           <Calendar
                             mode="single"
                             selected={formData.date}
-                            onSelect={(d) => {
-                              if (d) {
-                                setFormData(p => ({...p, date: d }));
+                            onSelect={(day) => {
+                              if (day) {
+                                setFormData(p => ({ ...p, date: day }));
                               }
+                              setIsCalendarOpen(false);
                             }}
                             initialFocus
                           />
