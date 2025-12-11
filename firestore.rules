@@ -43,7 +43,8 @@ service cloud.firestore {
 
     // Site configuration
     match /siteConfiguration/{document=**} {
-      allow read, write: if isSuperAdmin();
+      allow read: if isSignedIn();
+      allow write: if isSuperAdmin();
     }
     
     // Tenants
