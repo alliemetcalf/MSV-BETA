@@ -1,4 +1,3 @@
-'use server';
 /**
  * @fileOverview Initializes the Firebase Admin SDK for backend use.
  *
