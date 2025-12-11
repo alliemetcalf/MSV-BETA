@@ -38,15 +38,13 @@ export function UserRoleManager() {
   const [isUpdating, setIsUpdating] = useState<Record<string, boolean>>({});
   const { toast } = useToast();
   const auth = useAuth();
+  const currentUserUid = auth?.currentUser?.uid;
 
   const fetchUsers = async () => {
     setIsLoading(true);
     try {
-      const currentUserUid = auth?.currentUser?.uid;
       const userList = await listUsers();
-      // Filter out the current user from the list
-      const filteredUsers = userList.filter(user => user.uid !== currentUserUid);
-      setUsers(filteredUsers);
+      setUsers(userList);
     } catch (error) {
       toast({
         variant: 'destructive',
@@ -110,7 +108,7 @@ export function UserRoleManager() {
       <CardHeader className="flex flex-row items-center justify-between">
         <div>
             <CardTitle>User Role Management</CardTitle>
-            <CardDescription>View and manage user roles. You cannot change your own role.</CardDescription>
+            <CardDescription>View and manage user roles.</CardDescription>
         </div>
         <Button variant="ghost" size="icon" onClick={fetchUsers} disabled={isLoading}>
             <RefreshCw className={`h-4 w-4 ${isLoading ? 'animate-spin' : ''}`} />
@@ -142,6 +140,7 @@ export function UserRoleManager() {
                         onValueChange={(newRole: Role) =>
                           handleRoleChange(user.uid, newRole)
                         }
+                        disabled={user.uid === currentUserUid}
                       >
                         <SelectTrigger className="w-[180px]">
                           <SelectValue placeholder="Select role" />
