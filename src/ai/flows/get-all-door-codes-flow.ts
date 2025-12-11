@@ -9,8 +9,7 @@
 
 import { ai } from '@/ai/genkit';
 import { z } from 'genkit';
-import { auth, db } from '@/firebase/admin';
-
+import { db } from '@/firebase/admin';
 
 const DoorCodeSchema = z.object({
   id: z.string(),
@@ -20,7 +19,7 @@ const DoorCodeSchema = z.object({
   guestCode: z.string(),
   doorLockType: z.string(),
   property: z.string(),
-  lastChanged: z.string().optional().describe("ISO 8601 string"),
+  lastChanged: z.string().optional().describe('ISO 8601 string'),
 });
 
 const UserWithCodesSchema = z.object({
@@ -42,12 +41,14 @@ const getAllDoorCodesFlow = ai.defineFlow(
     outputSchema: GetAllDoorCodesOutputSchema,
   },
   async () => {
-    const allUsers = await auth.listUsers();
+    // Temporarily get all user documents directly from firestore
+    // instead of listing auth users, to bypass the initialization issue.
+    const usersSnapshot = await db.collection('users').get();
     
     const allDoorCodes: GetAllDoorCodesOutput = [];
 
-    for (const user of allUsers.users) {
-      const doorCodesSnapshot = await db.collection('users').doc(user.uid).collection('doorCodes').get();
+    for (const user of usersSnapshot.docs) {
+      const doorCodesSnapshot = await user.ref.collection('doorCodes').get();
       
       if (!doorCodesSnapshot.empty) {
         const codes = doorCodesSnapshot.docs.map(doc => {
@@ -66,8 +67,8 @@ const getAllDoorCodesFlow = ai.defineFlow(
         });
 
         allDoorCodes.push({
-          uid: user.uid,
-          email: user.email,
+          uid: user.id,
+          email: user.data().email, // Get email from user profile doc
           codes: codes,
         });
       }
