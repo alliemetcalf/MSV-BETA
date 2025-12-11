@@ -56,3 +56,15 @@
     @apply bg-background text-foreground;
   }
 }
+
+td.rdp-cell {
+  display: flex !important;
+  width: calc(100% / 7) !important;
+  padding: 0 !important;
+  height: auto !important;
+}
+
+td.rdp-cell button {
+  width: 100% !important;
+  flex: 1 !important;
+}
