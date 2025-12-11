@@ -9,7 +9,7 @@
 import { ai } from '@/ai/genkit';
 import { z } from 'genkit';
 import { initializeApp, getApps, cert } from 'firebase-admin/app';
-import { getFirestore, Firestore } from 'firebase-admin/firestore';
+import { getFirestore, Firestore, CollectionReference } from 'firebase-admin/firestore';
 import serviceAccount from '@/../firebase-service-account.json';
 
 // Initialize Firebase Admin SDK
