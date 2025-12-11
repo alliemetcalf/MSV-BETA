@@ -126,13 +126,15 @@ export default function RoomsPage() {
     if (!tenants || !properties) {
       return {};
     }
-
-    const propertiesMap = new Map(properties.map((p) => [p.name, p]));
+    
+    // Only consider active properties
+    const activeProperties = properties.filter(p => p.active);
+    const activePropertiesMap = new Map(activeProperties.map((p) => [p.name, p]));
 
     const rooms: RoomProfile[] = tenants
       .map((tenant) => {
-        const property = propertiesMap.get(tenant.property);
-        if (!property) return null;
+        const property = activePropertiesMap.get(tenant.property);
+        if (!property) return null; // This will filter out rooms in inactive properties
 
         return {
           id: tenant.id,
