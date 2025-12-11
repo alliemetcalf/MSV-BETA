@@ -12,7 +12,7 @@ import { Button } from '@/components/ui/button';
 import { useToast } from '@/hooks/use-toast';
 import { migrateDoorCodes } from '@/ai/flows/migrate-door-codes-flow';
 import { listCollections } from '@/ai/flows/list-collections-flow';
-import { Loader2, DatabaseZap, List } from 'lucide-react';
+import { Loader2, DatabaseZap, List, AlertTriangle } from 'lucide-react';
 import { Alert, AlertDescription, AlertTitle } from '@/components/ui/alert';
 
 export function DataMigrationManager() {
@@ -20,6 +20,7 @@ export function DataMigrationManager() {
   const [isMigrating, setIsMigrating] = useState(false);
   const [isListing, setIsListing] = useState(false);
   const [collections, setCollections] = useState<string[] | null>(null);
+  const [listError, setListError] = useState<string | null>(null);
 
   const handleMigration = async () => {
     setIsMigrating(true);
@@ -49,6 +50,7 @@ export function DataMigrationManager() {
   const handleListCollections = async () => {
     setIsListing(true);
     setCollections(null);
+    setListError(null);
     try {
       const result = await listCollections();
       if (result.success && result.collections) {
@@ -63,11 +65,7 @@ export function DataMigrationManager() {
     } catch (error) {
        const errorMessage =
         error instanceof Error ? error.message : 'An unexpected error occurred.';
-      toast({
-        variant: 'destructive',
-        title: 'Listing Failed',
-        description: errorMessage,
-      });
+       setListError(errorMessage);
     } finally {
       setIsListing(false);
     }
@@ -93,6 +91,15 @@ export function DataMigrationManager() {
             )}
             {isListing ? 'Listing...' : 'List Top-Level Collections'}
             </Button>
+            {listError && (
+                 <Alert variant="destructive" className="mt-4">
+                    <AlertTriangle className="h-4 w-4" />
+                    <AlertTitle>Listing Failed</AlertTitle>
+                    <AlertDescription>
+                        <pre className="text-xs whitespace-pre-wrap font-mono">{listError}</pre>
+                    </AlertDescription>
+                </Alert>
+            )}
             {collections && (
                 <Alert className="mt-4">
                     <AlertTitle>Found Collections:</AlertTitle>

@@ -35,9 +35,12 @@ const listCollectionsFlow = ai.defineFlow(
         collections: collectionIds,
       };
     } catch (error: any) {
+      // Create a detailed error message for better diagnostics.
+      const errorMessage = `Failed to list collections. Error: ${error.name} - ${error.message}. Details: ${error.details || 'No additional details.'}`;
+      console.error(errorMessage, error);
       return {
         success: false,
-        message: error.message || 'An unknown error occurred.',
+        message: errorMessage,
       };
     }
   }
