@@ -7,6 +7,7 @@ import {
   useMemoFirebase,
   useCollection,
   useAuth,
+  useDoc,
 } from '@/firebase';
 import {
   collection,
@@ -37,7 +38,7 @@ import { Label } from '@/components/ui/label';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { useToast } from '@/hooks/use-toast';
 import { Loader2, PlusCircle, Edit, Trash2, CalendarIcon } from 'lucide-react';
-import { ContractorTask } from '@/types/contractor-task';
+import { ContractorTask, TaskType } from '@/types/contractor-task';
 import { Property } from '@/types/property';
 import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
 import { Calendar } from '@/components/ui/calendar';
@@ -69,7 +70,7 @@ export default function TasksPage() {
   const [isDateOfTaskCalendarOpen, setIsDateOfTaskCalendarOpen] = useState(false);
   const [isDatePaidCalendarOpen, setIsDatePaidCalendarOpen] = useState(false);
 
-  const [formData, setFormData] = useState<Omit<ContractorTask, 'id'>>({
+  const [formData, setFormData] = useState<Omit<ContractorTask, 'id' | 'mileageRate'>>({
     dateOfTask: Timestamp.now(),
     taskType: '',
     property: '',
@@ -80,7 +81,6 @@ export default function TasksPage() {
     hoursWorked: undefined,
     hourlyRate: undefined,
     mileage: undefined,
-    mileageRate: undefined,
     totalPaid: undefined,
     datePaid: undefined,
     totalInvoiceAmount: undefined,
@@ -106,6 +106,12 @@ export default function TasksPage() {
   const { data: properties, isLoading: propertiesLoading } = useCollection<Property>(propertiesCollectionRef);
   const propertyNames = useMemo(() => properties?.map(p => p.name).sort() || [], [properties]);
 
+  const taskSettingsDocRef = useMemoFirebase(
+    () => (user && firestore ? doc(firestore, 'siteConfiguration', 'contractorTasks') : null),
+    [firestore, user]
+  );
+  const { data: taskSettingsData, isLoading: taskSettingsLoading } = useDoc<{ mileageRate: number, taskTypes: TaskType[] }>(taskSettingsDocRef);
+
   const sortedTasks = useMemo(() => {
     if (!tasks) return [];
     return [...tasks].sort((a, b) => b.dateOfTask.toMillis() - a.dateOfTask.toMillis());
@@ -124,7 +130,6 @@ export default function TasksPage() {
       hoursWorked: undefined,
       hourlyRate: undefined,
       mileage: undefined,
-      mileageRate: 0.70, // Default mileage rate
       totalPaid: undefined,
       datePaid: undefined,
       totalInvoiceAmount: undefined,
@@ -134,8 +139,9 @@ export default function TasksPage() {
 
   const handleEditClick = (task: ContractorTask) => {
     setEditingTask(task);
+    const { mileageRate, ...rest } = task;
     setFormData({
-      ...task,
+      ...rest,
     });
     setIsFormOpen(true);
   };
@@ -163,8 +169,10 @@ export default function TasksPage() {
     if (!firestore || !user) return;
     
     setIsSubmitting(true);
+    
+    const mileageRate = taskSettingsData?.mileageRate || 0;
 
-    const dataToSave = { ...formData };
+    const dataToSave = { ...formData, mileageRate };
 
     try {
       if (editingTask) {
@@ -188,11 +196,11 @@ export default function TasksPage() {
     setFormData((prev) => ({ ...prev, [id]: parsedValue }));
   };
 
-  const handleSelectChange = (field: keyof ContractorTask) => (value: string) => {
+  const handleSelectChange = (field: keyof Omit<ContractorTask, 'id' | 'mileageRate'>) => (value: string) => {
       setFormData(prev => ({ ...prev, [field]: value }));
   };
 
-  const isLoading = isUserLoading || tasksLoading || propertiesLoading;
+  const isLoading = isUserLoading || tasksLoading || propertiesLoading || taskSettingsLoading;
 
   if (isLoading) {
     return <div className="flex h-screen w-full items-center justify-center bg-background"><Loader2 className="h-10 w-10 animate-spin text-primary" /></div>;
@@ -274,7 +282,10 @@ export default function TasksPage() {
                       <PopoverTrigger asChild>
                         <Button
                           variant={"outline"}
-                          className={cn("w-full justify-start text-left font-normal", !formData.dateOfTask && "text-muted-foreground")}
+                          className={cn(
+                            "w-full justify-start text-left font-normal",
+                            !formData.dateOfTask && "text-muted-foreground"
+                          )}
                         >
                           <CalendarIcon className="mr-2 h-4 w-4" />
                           {formData.dateOfTask ? format(formData.dateOfTask.toDate(), "PPP") : <span>Pick a date</span>}
@@ -295,7 +306,12 @@ export default function TasksPage() {
                 </div>
                 <div className="space-y-2">
                   <Label htmlFor="taskType">Task Type</Label>
-                  <Input id="taskType" value={formData.taskType || ''} onChange={handleFormChange} required />
+                  <Select onValueChange={handleSelectChange('taskType')} value={formData.taskType} required>
+                    <SelectTrigger><SelectValue placeholder="Select a task type" /></SelectTrigger>
+                    <SelectContent>
+                      {taskSettingsData?.taskTypes?.map(type => <SelectItem key={type.id} value={type.name}>{type.name}</SelectItem>)}
+                    </SelectContent>
+                  </Select>
                 </div>
                 <div className="space-y-2">
                   <Label htmlFor="property">Property</Label>
@@ -337,10 +353,6 @@ export default function TasksPage() {
                 <div className="space-y-2">
                   <Label htmlFor="mileage">Mileage</Label>
                   <Input id="mileage" type="number" step="0.1" value={formData.mileage || ''} onChange={handleFormChange} />
-                </div>
-                <div className="space-y-2">
-                  <Label htmlFor="mileageRate">Mileage Rate</Label>
-                  <Input id="mileageRate" type="number" step="0.01" value={formData.mileageRate || ''} onChange={handleFormChange} />
                 </div>
                 <div className="space-y-2">
                   <Label htmlFor="totalPaid">Total Paid</Label>

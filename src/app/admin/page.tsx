@@ -1,7 +1,7 @@
 'use client';
 import { MainLayout } from '@/components/MainLayout';
 import { useUser, useAuth } from '@/firebase';
-import { Loader2, Users, Shield, Lock, Building, Wallet, ShoppingCart, Coins, CreditCard } from 'lucide-react';
+import { Loader2, Users, Shield, Lock, Building, Wallet, Wrench } from 'lucide-react';
 import { useRouter } from 'next/navigation';
 import { useEffect } from 'react';
 import {
@@ -25,6 +25,7 @@ import { VendorsManager } from '@/components/admin/VendorsManager';
 import { LockTypesManager } from '@/components/admin/LockTypesManager';
 import { IncomeTypeManager } from '@/components/admin/IncomeTypeManager';
 import { PaymentMethodsManager } from '@/components/admin/PaymentMethodsManager';
+import { TaskSettingsManager } from '@/components/admin/TaskSettingsManager';
 
 export default function AdminPage() {
   const auth = useAuth();
@@ -99,7 +100,7 @@ export default function AdminPage() {
             <AccordionTrigger className="p-4 text-lg font-semibold hover:no-underline">
               <div className="flex items-center gap-3">
                 <Wallet className="h-6 w-6 text-primary" />
-                Financials Management
+                Financials & Tasks Configuration
               </div>
             </AccordionTrigger>
             <AccordionContent className="p-4 pt-0">
@@ -108,6 +109,7 @@ export default function AdminPage() {
                  <ExpenseCategoryManager />
                  <VendorsManager />
                  <PaymentMethodsManager />
+                 <TaskSettingsManager />
               </div>
             </AccordionContent>
           </AccordionItem>
@@ -132,5 +134,3 @@ export default function AdminPage() {
     </MainLayout>
   );
 }
-
-    

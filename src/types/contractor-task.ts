@@ -17,3 +17,8 @@ export interface ContractorTask {
   totalInvoiceAmount?: number;
   status: 'Pending' | 'In Progress' | 'Completed' | 'Paid';
 }
+
+export type TaskType = {
+  id: string;
+  name: string;
+};

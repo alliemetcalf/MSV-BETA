@@ -553,6 +553,43 @@
         "property",
         "status"
       ]
+    },
+    "TaskType": {
+      "title": "TaskType",
+      "type": "object",
+      "description": "Represents a single predefined type for a contractor task.",
+      "properties": {
+        "id": {
+          "type": "string",
+          "description": "A unique identifier for the task type."
+        },
+        "name": {
+          "type": "string",
+          "description": "The name of the task type."
+        }
+      },
+      "required": [
+        "id",
+        "name"
+      ]
+    },
+    "ContractorTasksConfiguration": {
+      "title": "ContractorTasksConfiguration",
+      "type": "object",
+      "description": "Configuration for contractor tasks, including global mileage rate and predefined task types.",
+      "properties": {
+        "mileageRate": {
+          "type": "number",
+          "description": "The global mileage rate to be applied to tasks."
+        },
+        "taskTypes": {
+          "type": "array",
+          "description": "An array of predefined task type objects.",
+          "items": {
+            "$ref": "#/entities/TaskType"
+          }
+        }
+      }
     }
   },
   "auth": {
@@ -611,6 +648,13 @@
           "$ref": "#/entities/PaymentMethodsConfiguration"
         },
         "description": "Stores the list of available payment methods."
+      },
+      {
+        "path": "/siteConfiguration/contractorTasks",
+        "schema": {
+          "$ref": "#/entities/ContractorTasksConfiguration"
+        },
+        "description": "Stores global settings for contractor tasks."
       },
       {
         "path": "/properties/{propertyId}",
