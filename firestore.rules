@@ -74,5 +74,10 @@ service cloud.firestore {
     match /rentPayments/{paymentId} {
       allow read, list, write: if isAdmin();
     }
+
+    // Contractor tasks can be managed by admins.
+    match /contractorTasks/{taskId} {
+      allow read, list, write: if isAdmin();
+    }
   }
 }

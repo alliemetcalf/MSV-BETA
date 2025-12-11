@@ -476,6 +476,83 @@
           }
         }
       }
+    },
+    "ContractorTask": {
+      "title": "ContractorTask",
+      "type": "object",
+      "description": "Represents a single task assigned to a contractor.",
+      "properties": {
+        "invoiceNumber": {
+          "type": "number",
+          "description": "The invoice number this task belongs to."
+        },
+        "dateOfTask": {
+          "type": "string",
+          "format": "date-time",
+          "description": "The date the task was performed."
+        },
+        "taskType": {
+          "type": "string",
+          "description": "The category of the task."
+        },
+        "property": {
+          "type": "string",
+          "description": "The property where the task was performed."
+        },
+        "room": {
+          "type": "string",
+          "description": "The specific room number or identifier."
+        },
+        "description": {
+          "type": "string",
+          "description": "A description of the task."
+        },
+        "hoursWorked": {
+          "type": "number",
+          "description": "The number of hours worked."
+        },
+        "hourlyRate": {
+          "type": "number",
+          "description": "The hourly rate for the task."
+        },
+        "mileage": {
+          "type": "number",
+          "description": "Mileage for the task."
+        },
+        "mileageRate": {
+          "type": "number",
+          "description": "The rate per mile."
+        },
+        "totalPaid": {
+          "type": "number",
+          "description": "The total amount paid for this specific task."
+        },
+        "datePaid": {
+          "type": "string",
+          "format": "date-time",
+          "description": "The date the task was paid."
+        },
+        "totalInvoiceAmount": {
+          "type": "number",
+          "description": "The total amount for the entire invoice."
+        },
+        "status": {
+          "type": "string",
+          "description": "The status of the task.",
+          "enum": [
+            "Pending",
+            "In Progress",
+            "Completed",
+            "Paid"
+          ]
+        }
+      },
+      "required": [
+        "dateOfTask",
+        "taskType",
+        "property",
+        "status"
+      ]
     }
   },
   "auth": {
@@ -562,6 +639,13 @@
           "$ref": "#/entities/RentPayment"
         },
         "description": "Stores all recorded rent payments from tenants."
+      },
+      {
+        "path": "/contractorTasks/{taskId}",
+        "schema": {
+          "$ref": "#/entities/ContractorTask"
+        },
+        "description": "Stores all tasks for contractors."
       }
     ]
   }
