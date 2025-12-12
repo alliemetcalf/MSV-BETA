@@ -22,8 +22,8 @@ const createUserFlow = ai.defineFlow(
   },
   async (input) => {
     try {
-      const auth = getAdminAuth();
-      const db = getAdminFirestore();
+      const auth = await getAdminAuth();
+      const db = await getAdminFirestore();
 
       // 1. Create the user in Firebase Authentication
       const userRecord = await auth.createUser({
