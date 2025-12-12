@@ -1,8 +1,8 @@
 'use client';
 
-import { useUser, useAuth, useDoc, useFirestore, useMemoFirebase } from '@/firebase';
+import { useUser } from '@/firebase';
 import { useRouter } from 'next/navigation';
-import { useEffect, useState } from 'react';
+import { useEffect } from 'react';
 import {
   Card,
   CardContent,
@@ -12,25 +12,10 @@ import {
 } from '@/components/ui/card';
 import { UserCheck, Loader2 } from 'lucide-react';
 import { MainLayout } from '@/components/MainLayout';
-import { doc } from 'firebase/firestore';
-
-interface UserProfile {
-  role: 'superadmin' | 'manager' | 'contractor' | 'user';
-}
 
 export default function Home() {
-  const auth = useAuth();
-  const firestore = useFirestore();
-  const { user, isUserLoading } = useUser(auth);
+  const { user, userProfile, isUserLoading } = useUser();
   const router = useRouter();
-
-  const userProfileRef = useMemoFirebase(
-    () => (user ? doc(firestore, 'users', user.uid) : null),
-    [firestore, user]
-  );
-
-  const { data: userProfile, isLoading: isProfileLoading } =
-    useDoc<UserProfile>(userProfileRef);
 
   useEffect(() => {
     if (!isUserLoading && !user) {
@@ -38,9 +23,8 @@ export default function Home() {
     }
   }, [user, isUserLoading, router]);
 
-  const isLoading = isUserLoading || isProfileLoading;
 
-  if (isLoading || !user) {
+  if (isUserLoading || !user) {
     return (
       <div className="flex h-screen w-full items-center justify-center bg-background">
         <Loader2 className="h-10 w-10 animate-spin text-primary" />

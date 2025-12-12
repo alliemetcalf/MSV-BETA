@@ -40,18 +40,10 @@ type ProfileFormValues = z.infer<typeof profileFormSchema>;
 
 export default function ProfilePage() {
   const auth = useAuth();
-  const { user, isUserLoading } = useUser(auth);
+  const { user, userProfile, isUserLoading } = useUser();
   const firestore = useFirestore();
   const router = useRouter();
   const { toast } = useToast();
-
-  const userProfileRef = useMemoFirebase(
-    () => (user ? doc(firestore, 'users', user.uid) : null),
-    [firestore, user]
-  );
-
-  const { data: userProfile, isLoading: isProfileLoading } =
-    useDoc<UserProfile>(userProfileRef);
 
   const form = useForm<ProfileFormValues>({
     resolver: zodResolver(profileFormSchema),
@@ -82,7 +74,8 @@ export default function ProfilePage() {
   }, [userProfile, user, form]);
 
   async function onSubmit(data: ProfileFormValues) {
-    if (!user || !userProfileRef || !auth) return;
+    if (!user || !firestore || !auth) return;
+    const userProfileRef = doc(firestore, 'users', user.uid);
 
     try {
       // Update Firestore document
@@ -109,9 +102,7 @@ export default function ProfilePage() {
     }
   }
 
-  const isLoading = isUserLoading || isProfileLoading;
-
-  if (isLoading || !user) {
+  if (isUserLoading || !user) {
     return (
       <div className="flex h-screen w-full items-center justify-center bg-background">
         <Loader2 className="h-10 w-10 animate-spin text-primary" />

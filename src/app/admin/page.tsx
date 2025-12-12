@@ -1,6 +1,6 @@
 'use client';
 import { MainLayout } from '@/components/MainLayout';
-import { useUser, useAuth, useDoc, useFirestore, useMemoFirebase } from '@/firebase';
+import { useUser } from '@/firebase';
 import { Loader2, Users, Shield, Lock, Building, Wallet, Wrench, ShieldAlert, DatabaseZap } from 'lucide-react';
 import { useRouter } from 'next/navigation';
 import Link from 'next/link';
@@ -29,20 +29,12 @@ import { PaymentMethodsManager } from '@/components/admin/PaymentMethodsManager'
 import { TaskSettingsManager } from '@/components/admin/TaskSettingsManager';
 import { Button } from '@/components/ui/button';
 import { DataMigrationManager } from '@/components/admin/DataMigrationManager';
-import { UserProfile } from '@/types/user-profile';
-import { doc } from 'firebase/firestore';
 
 export default function AdminPage() {
-  const auth = useAuth();
-  const firestore = useFirestore();
-  const { user, isUserLoading } = useUser(auth);
+  const { user, userProfile, isUserLoading } = useUser();
   const router = useRouter();
 
-  const userProfileRef = useMemoFirebase(
-    () => (user ? doc(firestore, 'users', user.uid) : null),
-    [firestore, user]
-  );
-  const { data: userProfile, isLoading: isProfileLoading } = useDoc<UserProfile>(userProfileRef);
+  const isAuthorized = userProfile?.role === 'superadmin' || userProfile?.role === 'manager';
 
   useEffect(() => {
     // If loading is finished and there's still no user, redirect to login
@@ -51,19 +43,14 @@ export default function AdminPage() {
       return;
     }
     // Once user and profile are loaded, check role
-    if (!isUserLoading && !isProfileLoading && userProfile) {
-      if (userProfile.role !== 'superadmin' && userProfile.role !== 'manager') {
+    if (!isUserLoading && userProfile && !isAuthorized) {
         router.push('/'); // Redirect non-admins
-      }
     }
-  }, [user, isUserLoading, userProfile, isProfileLoading, router]);
-
-  const isLoading = isUserLoading || isProfileLoading;
-  const isAuthorized = userProfile?.role === 'superadmin' || userProfile?.role === 'manager';
+  }, [user, isUserLoading, userProfile, isAuthorized, router]);
 
 
   // Show loader until we are sure about the user's auth state and role
-  if (isLoading || !user || !isAuthorized) {
+  if (isUserLoading || !user || !isAuthorized) {
     return (
       <div className="flex h-screen w-full items-center justify-center bg-background">
         <Loader2 className="h-10 w-10 animate-spin text-primary" />

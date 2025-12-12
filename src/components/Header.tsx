@@ -8,15 +8,17 @@ import {
   LogOut,
   ShieldCheck,
   User as UserIcon,
-  Home,
   Receipt,
   DollarSign,
   Landmark,
   ListTodo,
+  Users,
+  Building,
+  DoorOpen,
 } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { Button } from './ui/button';
-import { useAuth, useDoc, useFirebaseApp, useFirestore, useMemoFirebase, useUser } from '@/firebase';
+import { useAuth, useUser } from '@/firebase';
 import { signOut } from 'firebase/auth';
 import { useToast } from '@/hooks/use-toast';
 import {
@@ -26,22 +28,13 @@ import {
   DropdownMenuSeparator,
   DropdownMenuTrigger,
 } from '@/components/ui/dropdown-menu';
-import { UserProfile } from '@/types/user-profile';
-import { doc } from 'firebase/firestore';
 
 export function Header() {
   const pathname = usePathname();
   const { toast } = useToast();
   const router = useRouter();
   const auth = useAuth();
-  const firestore = useFirestore();
-  const { user } = useUser(auth);
-
-  const userProfileRef = useMemoFirebase(
-    () => (user ? doc(firestore, 'users', user.uid) : null),
-    [firestore, user]
-  );
-  const { data: userProfile } = useDoc<UserProfile>(userProfileRef);
+  const { user, userProfile } = useUser();
 
   const handleLogout = async () => {
     if (!auth) return;
@@ -64,20 +57,28 @@ export function Header() {
       });
     }
   };
+  
+  const userRole = userProfile?.role;
+  const isSuperAdmin = userRole === 'superadmin';
+  const isManager = userRole === 'manager';
+  const isContractor = userRole === 'contractor';
 
   const navItems = [
-    { href: '/', label: 'Home' },
-    { href: '/door-codes', label: 'Door Codes' },
-    { href: '/tenants', label: 'Tenants' },
-    { href: '/properties', label: 'Properties' },
-    { href: '/rooms', label: 'Rooms' },
-    { href: '/expenses', label: 'Expenses' },
-    { href: '/rent-payments', label: 'Rent Payments' },
-    { href: '/tasks', label: 'Tasks', icon: ListTodo },
+    { href: '/', label: 'Home', icon: KeyRound, roles: ['superadmin', 'manager', 'contractor', 'user'] },
+    { href: '/door-codes', label: 'Door Codes', icon: DoorOpen, roles: ['superadmin', 'manager'] },
+    { href: '/tenants', label: 'Tenants', icon: Users, roles: ['superadmin', 'manager'] },
+    { href: '/properties', label: 'Properties', icon: Building, roles: ['superadmin', 'manager', 'contractor', 'user'] },
+    { href: '/rooms', label: 'Rooms', icon: Home, roles: ['superadmin', 'manager', 'user'] },
+    { href: '/expenses', label: 'Expenses', icon: Receipt, roles: ['superadmin', 'manager'] },
+    { href: '/rent-payments', label: 'Rent Payments', icon: DollarSign, roles: ['superadmin', 'manager'] },
+    { href: '/tasks', label: 'Tasks', icon: ListTodo, roles: ['superadmin', 'manager', 'contractor'] },
   ];
 
   const adminNavItems = [{ href: '/admin', label: 'Admin', icon: ShieldCheck }];
-  const canSeeAdmin = userProfile?.role === 'superadmin' || userProfile?.role === 'manager';
+  const canSeeAdmin = isSuperAdmin || isManager;
+
+  const visibleNavItems = navItems.filter(item => userRole && item.roles.includes(userRole));
+
 
   return (
     <header className="bg-card border-b sticky top-0 z-50">
@@ -92,7 +93,7 @@ export function Header() {
               <span className="font-headline text-2xl">AMCP</span>
             </Link>
             <nav className="hidden md:flex items-center space-x-4">
-              {navItems.map((item) => (
+              {visibleNavItems.map((item) => (
                 <Link
                   key={item.href}
                   href={item.href}
@@ -103,10 +104,7 @@ export function Header() {
                       : 'text-muted-foreground hover:bg-accent hover:text-accent-foreground'
                   )}
                 >
-                  {item.label === 'Rent Payments' ? <DollarSign/> : null}
-                  {item.label === 'Expenses' ? <Receipt/> : null}
-                  {item.label === 'Properties' ? <Landmark/> : null}
-                  {item.label === 'Tasks' ? <ListTodo/> : null}
+                  {item.icon && <item.icon className="h-4 w-4" />}
                   {item.label}
                 </Link>
               ))}

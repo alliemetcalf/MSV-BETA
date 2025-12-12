@@ -7,7 +7,6 @@ import {
   useMemoFirebase,
   useCollection,
   useDoc,
-  useAuth,
   useStorage,
 } from '@/firebase';
 import {
@@ -67,12 +66,21 @@ const NONE_VALUE = '_NONE_';
 const CREATE_NEW_VALUE = '_CREATE_NEW_';
 
 export default function ExpensesPage() {
-  const auth = useAuth();
-  const { user, isUserLoading } = useUser(auth);
+  const { user, userProfile, isUserLoading } = useUser();
   const firestore = useFirestore();
   const storage = useStorage();
   const router = useRouter();
   const { toast } = useToast();
+  
+  const isAuthorized = userProfile?.role === 'superadmin' || userProfile?.role === 'manager';
+
+  useEffect(() => {
+    if (!isUserLoading && !user) {
+      router.push('/login');
+    } else if (!isUserLoading && user && !isAuthorized) {
+      router.push('/');
+    }
+  }, [user, userProfile, isUserLoading, isAuthorized, router]);
 
   const [isFormOpen, setIsFormOpen] = useState(false);
   const [editingExpense, setEditingExpense] = useState<Expense | null>(null);
@@ -110,15 +118,9 @@ export default function ExpensesPage() {
   const [uploadProgress, setUploadProgress] = useState<number | null>(null);
   const [isUploading, setIsUploading] = useState(false);
 
-  useEffect(() => {
-    if (!isUserLoading && !user) {
-      router.push('/login');
-    }
-  }, [user, isUserLoading, router]);
-
   const expensesCollectionRef = useMemoFirebase(
-    () => (user && firestore ? collection(firestore, 'expenses') : null),
-    [firestore, user]
+    () => (user && firestore && isAuthorized ? collection(firestore, 'expenses') : null),
+    [firestore, user, isAuthorized]
   );
   const { data: expenses, isLoading: expensesLoading, error: expensesError } =
     useCollection<Expense>(expensesCollectionRef);
@@ -340,9 +342,9 @@ export default function ExpensesPage() {
     }
   };
 
-  const isLoading = isUserLoading || expensesLoading || categoriesLoading || propertiesLoading || tenantsLoading || vendorsLoading;
+  const isLoading = isUserLoading || (isAuthorized && expensesLoading) || categoriesLoading || propertiesLoading || tenantsLoading || vendorsLoading;
 
-  if (isLoading) {
+  if (isLoading || !user || !isAuthorized) {
     return <div className="flex h-screen w-full items-center justify-center bg-background"><Loader2 className="h-10 w-10 animate-spin text-primary" /></div>;
   }
 

@@ -37,7 +37,7 @@ const formSchema = z.object({
 
 export default function LoginPage() {
   const auth = useAuth();
-  const { user, isUserLoading } = useUser(auth);
+  const { user, isUserLoading } = useUser();
   const router = useRouter();
   const { toast } = useToast();
   const [isSubmitting, setIsSubmitting] = useState(false);

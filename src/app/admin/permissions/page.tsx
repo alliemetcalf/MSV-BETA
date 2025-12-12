@@ -5,7 +5,7 @@ import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@
 import { Badge } from '@/components/ui/badge';
 import { Check, X } from 'lucide-react';
 import { useRouter } from 'next/navigation';
-import { useUser, useAuth } from '@/firebase';
+import { useUser } from '@/firebase';
 import { useEffect } from 'react';
 
 type Role = 'superadmin' | 'manager' | 'contractor' | 'user';
@@ -20,7 +20,7 @@ interface Permission {
 }
 
 const permissionsData: Permission[] = [
-  { page: 'Home', path: '/', superadmin: 'read/write', manager: 'read', contractor: 'read', user: 'read' },
+  { page: 'Home', path: '/', superadmin: 'read/write', manager: 'read/write', contractor: 'read/write', user: 'read/write' },
   { page: 'Profile', path: '/profile', superadmin: 'read/write', manager: 'read/write', contractor: 'read/write', user: 'read/write' },
   { page: 'Door Codes', path: '/door-codes', superadmin: 'read/write', manager: 'read/write', contractor: 'none', user: 'none' },
   { page: 'Tenants', path: '/tenants', superadmin: 'read/write', manager: 'read', contractor: 'none', user: 'none' },
@@ -46,8 +46,7 @@ const PermissionCell = ({ access }: { access: string }) => {
 
 
 export default function PermissionsPage() {
-  const auth = useAuth();
-  const { user, isUserLoading } = useUser(auth);
+  const { user, isUserLoading } = useUser();
   const router = useRouter();
 
   useEffect(() => {

@@ -6,7 +6,6 @@ import {
   useFirestore,
   useMemoFirebase,
   useCollection,
-  useAuth,
   useDoc,
 } from '@/firebase';
 import {
@@ -54,11 +53,21 @@ const moneyFormatter = new Intl.NumberFormat('en-US', {
 const NONE_VALUE = '_NONE_';
 
 export default function TasksPage() {
-  const auth = useAuth();
-  const { user, isUserLoading } = useUser(auth);
+  const { user, userProfile, isUserLoading } = useUser();
   const firestore = useFirestore();
   const router = useRouter();
   const { toast } = useToast();
+
+  const isAuthorized = userProfile?.role === 'superadmin' || userProfile?.role === 'manager' || userProfile?.role === 'contractor';
+
+  useEffect(() => {
+    if (!isUserLoading && !user) {
+      router.push('/login');
+    } else if (!isUserLoading && user && !isAuthorized) {
+      router.push('/');
+    }
+  }, [user, userProfile, isUserLoading, isAuthorized, router]);
+
 
   const [isFormOpen, setIsFormOpen] = useState(false);
   const [editingTask, setEditingTask] = useState<ContractorTask | null>(null);
@@ -86,15 +95,9 @@ export default function TasksPage() {
     totalInvoiceAmount: undefined,
   });
 
-  useEffect(() => {
-    if (!isUserLoading && !user) {
-      router.push('/login');
-    }
-  }, [user, isUserLoading, router]);
-
   const tasksCollectionRef = useMemoFirebase(
-    () => (user && firestore ? collection(firestore, 'contractorTasks') : null),
-    [firestore, user]
+    () => (user && firestore && isAuthorized ? collection(firestore, 'contractorTasks') : null),
+    [firestore, user, isAuthorized]
   );
   const { data: tasks, isLoading: tasksLoading, error: tasksError } =
     useCollection<ContractorTask>(tasksCollectionRef);
@@ -200,9 +203,9 @@ export default function TasksPage() {
       setFormData(prev => ({ ...prev, [field]: value }));
   };
 
-  const isLoading = isUserLoading || tasksLoading || propertiesLoading || taskSettingsLoading;
+  const isLoading = isUserLoading || (isAuthorized && tasksLoading) || propertiesLoading || taskSettingsLoading;
 
-  if (isLoading) {
+  if (isLoading || !user || !isAuthorized) {
     return <div className="flex h-screen w-full items-center justify-center bg-background"><Loader2 className="h-10 w-10 animate-spin text-primary" /></div>;
   }
 

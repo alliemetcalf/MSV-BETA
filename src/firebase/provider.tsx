@@ -5,11 +5,11 @@ import { FirebaseApp } from 'firebase/app';
 import { Firestore } from 'firebase/firestore';
 import { Auth, User } from 'firebase/auth';
 import { FirebaseStorage } from 'firebase/storage';
-import { useUser as useUserHook, UserHookResult } from './auth/use-user';
+import { useUser as useUserAuthHook, UserHookResult } from './auth/use-user';
 import { FirebaseErrorListener } from '@/components/FirebaseErrorListener';
 
 // Combined state for the Firebase context
-export interface FirebaseContextState extends UserHookResult {
+export interface FirebaseContextState {
   areServicesAvailable: boolean; // True if core services (app, firestore, auth instance) are provided
   firebaseApp: FirebaseApp | null;
   firestore: Firestore | null;
@@ -38,8 +38,6 @@ export const FirebaseProvider: React.FC<FirebaseProviderProps> = ({
   auth,
   storage,
 }) => {
-  const { user, isUserLoading, userError } = useUserHook(auth);
-
   // Memoize the context value
   const contextValue = useMemo((): FirebaseContextState => {
     const servicesAvailable = !!(firebaseApp && firestore && auth && storage);
@@ -49,11 +47,8 @@ export const FirebaseProvider: React.FC<FirebaseProviderProps> = ({
       firestore: servicesAvailable ? firestore : null,
       auth: servicesAvailable ? auth : null,
       storage: servicesAvailable ? storage : null,
-      user,
-      isUserLoading,
-      userError,
     };
-  }, [firebaseApp, firestore, auth, storage, user, isUserLoading, userError]);
+  }, [firebaseApp, firestore, auth, storage]);
 
   return (
     <FirebaseContext.Provider value={contextValue}>
@@ -70,11 +65,6 @@ function useFirebaseContext() {
   }
   return context;
 }
-
-/** Hook to access the currently authenticated user. */
-export const useUser = (auth: Auth | null): UserHookResult => {
-  return useUserHook(auth);
-};
 
 /** Hook to access Firebase Auth instance. */
 export const useAuth = (): Auth | null => {

@@ -2,7 +2,7 @@
 'use client';
 
 import { useState, useEffect, useMemo } from 'react';
-import { useUser, useFirestore, useMemoFirebase, useCollection, useDoc, useAuth } from '@/firebase';
+import { useUser, useFirestore, useMemoFirebase, useCollection, useDoc } from '@/firebase';
 import Image from 'next/image';
 import {
   collection,
@@ -57,30 +57,31 @@ import {
 import { Loader2, PlusCircle, Edit, Trash2, Info } from 'lucide-react';
 import { DoorCode, DoorLockType } from '@/types/door-code';
 import { Property } from '@/types/property';
-import { UserProfile } from '@/types/user-profile';
 import { format } from 'date-fns';
 import { useRouter } from 'next/navigation';
 
 export default function DoorCodesPage() {
-  const auth = useAuth();
-  const { user, isUserLoading } = useUser(auth);
+  const { user, userProfile, isUserLoading } = useUser();
   const firestore = useFirestore();
   const router = useRouter();
 
-  const [isDataReady, setIsDataReady] = useState(false);
+  const isAuthorized = userProfile?.role === 'superadmin' || userProfile?.role === 'manager';
 
-  const userProfileRef = useMemoFirebase(
-    () => (user ? doc(firestore, 'users', user.uid) : null),
-    [firestore, user]
-  );
-  const { data: userProfile, isLoading: profileLoading } = useDoc<UserProfile>(userProfileRef);
+  useEffect(() => {
+    if (!isUserLoading && !user) {
+      router.push('/login');
+    } else if (!isUserLoading && user && !isAuthorized) {
+      router.push('/');
+    }
+  }, [user, userProfile, isUserLoading, isAuthorized, router]);
+
 
   const doorCodesQuery = useMemoFirebase(() => {
-    if (!firestore) {
+    if (!firestore || !isAuthorized) {
       return null;
     }
     return collection(firestore, 'doorCodes');
-  }, [firestore]);
+  }, [firestore, isAuthorized]);
 
   const { data: doorCodes, isLoading: userCodesLoading, error: userCodesError } = useCollection<DoorCode>(doorCodesQuery);
   
@@ -104,18 +105,6 @@ export default function DoorCodesPage() {
     doorLockType: '',
     property: '',
   });
-
-  useEffect(() => {
-    if (!isUserLoading && !user) {
-      router.push('/login');
-    }
-  }, [user, isUserLoading, router]);
-
-  useEffect(() => {
-    if (!isUserLoading && !profileLoading && user && userProfile) {
-      setIsDataReady(true);
-    }
-  }, [isUserLoading, profileLoading, user, userProfile]);
 
   const lockTypesDocRef = useMemoFirebase(
     () => (user && firestore ? doc(firestore, 'siteConfiguration', 'lockTypes') : null),
@@ -234,9 +223,8 @@ export default function DoorCodesPage() {
     handleDialogClose();
   };
 
-  const isPageLoading = isUserLoading || profileLoading;
 
-  if (isPageLoading) {
+  if (isUserLoading || !user || !isAuthorized) {
     return (
       <div className="flex h-screen w-full items-center justify-center bg-background">
         <Loader2 className="h-10 w-10 animate-spin text-primary" />
@@ -522,5 +510,3 @@ export default function DoorCodesPage() {
     </MainLayout>
   );
 }
-
-    
