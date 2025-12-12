@@ -33,7 +33,7 @@ service cloud.firestore {
 
     // Users Collection:
     match /users/{userId} {
-      // Allow superadmins to get any user document.
+      // Allow superadmins to read any user document.
       allow get: if isSuperAdmin();
 
       // Allow users to read their own document
@@ -44,16 +44,12 @@ service cloud.firestore {
 
       // Explicitly allow any signed in user to list the collection for the admin panel.
       allow list: if isSignedIn();
-
-      // Allow superadmin to read/write to any doorCodes subcollection for migration
-      match /doorCodes/{doorCodeId} {
-        allow read, write: if isSuperAdmin();
-      }
     }
     
     // Door Codes Collection:
     match /doorCodes/{docId} {
-       allow read, write: if isSuperAdmin() || isManager();
+       allow read: if isSuperAdmin() || isManager() || isContractor();
+       allow write: if isSuperAdmin() || isManager();
     }
 
     // Site configuration
@@ -64,7 +60,7 @@ service cloud.firestore {
     
     // Tenants
     match /tenants/{tenantId} {
-      allow read: if isSignedIn();
+      allow read: if isSuperAdmin() || isManager() || isContractor();
       allow write: if isSuperAdmin() || isManager();
     }
 
@@ -86,8 +82,9 @@ service cloud.firestore {
 
     // Contractor tasks
     match /contractorTasks/{taskId} {
-      allow read, write: if isSuperAdmin() || isManager();
-      allow list, get: if isContractor();
+      allow read, list: if isSuperAdmin() || isManager() || isContractor();
+      allow write: if isSuperAdmin() || isManager();
+      allow create, update: if isContractor() && request.resource.data.assignedTo == request.auth.uid;
     }
   }
 }

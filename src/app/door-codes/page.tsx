@@ -72,7 +72,7 @@ export default function DoorCodesPage() {
         router.push('/login');
         return;
       }
-      const authorized = userProfile?.role === 'superadmin' || userProfile?.role === 'manager';
+      const authorized = userProfile?.role === 'superadmin' || userProfile?.role === 'manager' || userProfile?.role === 'contractor';
       if (authorized) {
         setIsAuthorized(true);
       } else {

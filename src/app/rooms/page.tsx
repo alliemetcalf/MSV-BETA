@@ -84,38 +84,48 @@ function getInitials(name: string) {
 }
 
 export default function RoomsPage() {
-  const auth = useAuth();
-  const { user, isUserLoading } = useUser(auth);
+  const { user, userProfile, isUserLoading } = useUser();
   const firestore = useFirestore();
   const router = useRouter();
+  const [isAuthorized, setIsAuthorized] = useState(false);
 
   const [isInstructionDialogOpen, setIsInstructionDialogOpen] = useState(false);
   const [selectedInstruction, setSelectedInstruction] = useState<DoorLockType | null>(null);
 
   useEffect(() => {
-    if (!isUserLoading && !user) {
-      router.push('/login');
+    if (!isUserLoading) {
+      if (!user) {
+        router.push('/login');
+        return;
+      }
+      // Added contractor to authorized roles
+      const authorized = userProfile?.role === 'superadmin' || userProfile?.role === 'manager' || userProfile?.role === 'user' || userProfile?.role === 'contractor';
+      if (authorized) {
+        setIsAuthorized(true);
+      } else {
+        router.push('/');
+      }
     }
-  }, [user, isUserLoading, router]);
+  }, [user, userProfile, isUserLoading, router]);
 
   // --- Data Fetching ---
   const propertiesCollectionRef = useMemoFirebase(
-    () => (user && firestore ? collection(firestore, 'properties') : null),
-    [firestore, user]
+    () => (isAuthorized && firestore ? collection(firestore, 'properties') : null),
+    [firestore, isAuthorized]
   );
   const { data: properties, isLoading: propertiesLoading } =
     useCollection<Property>(propertiesCollectionRef);
 
   const tenantsCollectionRef = useMemoFirebase(
-    () => (user && firestore ? collection(firestore, 'tenants') : null),
-    [firestore, user]
+    () => (isAuthorized && firestore ? collection(firestore, 'tenants') : null),
+    [firestore, isAuthorized]
   );
   const { data: tenants, isLoading: tenantsLoading } =
     useCollection<Tenant>(tenantsCollectionRef);
 
   const lockTypesDocRef = useMemoFirebase(
-    () => (user && firestore ? doc(firestore, 'siteConfiguration', 'lockTypes') : null),
-    [firestore, user]
+    () => (isAuthorized && firestore ? doc(firestore, 'siteConfiguration', 'lockTypes') : null),
+    [firestore, isAuthorized]
   );
   const { data: lockTypesData, isLoading: lockTypesLoading } =
     useDoc<{ types: DoorLockType[] }>(lockTypesDocRef);
@@ -166,7 +176,7 @@ export default function RoomsPage() {
 
   // --- Render Logic ---
   const pageIsLoading =
-    isUserLoading || propertiesLoading || tenantsLoading || lockTypesLoading;
+    isUserLoading || !isAuthorized || propertiesLoading || tenantsLoading || lockTypesLoading;
 
   if (pageIsLoading || !user) {
     return (

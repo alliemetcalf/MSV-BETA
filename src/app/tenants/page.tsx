@@ -57,20 +57,29 @@ function getInitials(name: string) {
 }
 
 export default function TenantsPage() {
-  const auth = useAuth();
-  const { user, isUserLoading } = useUser(auth);
+  const { user, userProfile, isUserLoading } = useUser();
   const firestore = useFirestore();
   const router = useRouter();
+  const [isAuthorized, setIsAuthorized] = useState(false);
 
   useEffect(() => {
-    if (!isUserLoading && !user) {
-      router.push('/login');
+    if (!isUserLoading) {
+      if (!user) {
+        router.push('/login');
+        return;
+      }
+      const authorized = userProfile?.role === 'superadmin' || userProfile?.role === 'manager' || userProfile?.role === 'contractor';
+      if (authorized) {
+        setIsAuthorized(true);
+      } else {
+        router.push('/');
+      }
     }
-  }, [user, isUserLoading, router]);
+  }, [user, userProfile, isUserLoading, router]);
 
   const tenantsCollectionRef = useMemoFirebase(
-    () => (user && firestore ? collection(firestore, 'tenants') : null),
-    [firestore, user]
+    () => (user && firestore && isAuthorized ? collection(firestore, 'tenants') : null),
+    [firestore, user, isAuthorized]
   );
 
   const {
@@ -99,13 +108,15 @@ export default function TenantsPage() {
       );
   }, [tenants]);
 
-  if (isUserLoading || !user) {
+  if (isUserLoading || !isAuthorized) {
     return (
       <div className="flex h-screen w-full items-center justify-center bg-background">
         <Loader2 className="h-10 w-10 animate-spin text-primary" />
       </div>
     );
   }
+
+  const isLoading = tenantsLoading && isAuthorized;
 
   const renderTenantList = (tenantList: Record<string, Tenant[]>) => {
     return Object.entries(tenantList)
@@ -221,13 +232,13 @@ export default function TenantsPage() {
             </CardDescription>
           </CardHeader>
           <CardContent>
-            {tenantsLoading && (
+            {isLoading && (
               <Loader2 className="mx-auto h-8 w-8 animate-spin" />
             )}
             {tenantsError && (
               <p className="text-destructive">Error: {tenantsError.message}</p>
             )}
-            {!tenantsLoading && tenants && (
+            {!isLoading && tenants && (
               <div className="space-y-8">
                  <div>
                     <h2 className="text-2xl font-bold mb-4">Active Tenants</h2>
@@ -261,7 +272,7 @@ export default function TenantsPage() {
                 </Accordion>
               </div>
             )}
-            {!tenantsLoading && (!tenants || tenants.length === 0) && (
+            {!isLoading && (!tenants || tenants.length === 0) && (
               <div className="text-center text-muted-foreground py-8">
                 No tenants found.
               </div>

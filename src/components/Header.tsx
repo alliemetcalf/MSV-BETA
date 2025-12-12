@@ -65,10 +65,10 @@ export function Header() {
 
   const navItems = [
     { href: '/', label: 'Home', icon: KeyRound, roles: ['superadmin', 'manager', 'contractor', 'user'] },
-    { href: '/door-codes', label: 'Door Codes', icon: DoorOpen, roles: ['superadmin', 'manager'] },
-    { href: '/tenants', label: 'Tenants', icon: Users, roles: ['superadmin', 'manager'] },
+    { href: '/door-codes', label: 'Door Codes', icon: DoorOpen, roles: ['superadmin', 'manager', 'contractor'] },
+    { href: '/tenants', label: 'Tenants', icon: Users, roles: ['superadmin', 'manager', 'contractor'] },
     { href: '/properties', label: 'Properties', icon: Building, roles: ['superadmin', 'manager', 'contractor', 'user'] },
-    { href: '/rooms', label: 'Rooms', icon: Home, roles: ['superadmin', 'manager', 'user'] },
+    { href: '/rooms', label: 'Rooms', icon: Home, roles: ['superadmin', 'manager', 'contractor', 'user'] },
     { href: '/expenses', label: 'Expenses', icon: Receipt, roles: ['superadmin', 'manager'] },
     { href: '/rent-payments', label: 'Rent Payments', icon: DollarSign, roles: ['superadmin', 'manager'] },
     { href: '/tasks', label: 'Tasks', icon: ListTodo, roles: ['superadmin', 'manager', 'contractor'] },

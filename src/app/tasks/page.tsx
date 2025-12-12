@@ -107,12 +107,20 @@ export default function TasksPage() {
     assignedToName: undefined,
   });
 
-  const tasksCollectionRef = useMemoFirebase(
-    () => (firestore && isAuthorized ? collection(firestore, 'contractorTasks') : null),
-    [firestore, isAuthorized]
+  const tasksCollectionQuery = useMemoFirebase(
+    () => {
+        if (!firestore || !isAuthorized || !userProfile) return null;
+        
+        if (userProfile.role === 'contractor') {
+            return query(collection(firestore, 'contractorTasks'), where('assignedTo', '==', user?.uid));
+        }
+
+        return collection(firestore, 'contractorTasks');
+    },
+    [firestore, isAuthorized, userProfile, user]
   );
   const { data: tasks, isLoading: tasksLoading, error: tasksError } =
-    useCollection<ContractorTask>(tasksCollectionRef);
+    useCollection<ContractorTask>(tasksCollectionQuery);
 
   const propertiesCollectionRef = useMemoFirebase(
     () => (firestore && isAuthorized ? collection(firestore, 'properties') : null),
@@ -251,7 +259,9 @@ export default function TasksPage() {
                 <CardTitle>Contractor Tasks</CardTitle>
                 <CardDescription>Track and manage all contractor tasks.</CardDescription>
               </div>
-              <Button onClick={handleAddClick}><PlusCircle className="mr-2 h-4 w-4" />Add Task</Button>
+              {(userProfile?.role === 'superadmin' || userProfile?.role === 'manager') && (
+                <Button onClick={handleAddClick}><PlusCircle className="mr-2 h-4 w-4" />Add Task</Button>
+              )}
             </CardHeader>
             <CardContent>
               {isLoading && <div className="flex justify-center py-8"><Loader2 className="h-8 w-8 animate-spin" /></div>}
@@ -288,7 +298,9 @@ export default function TasksPage() {
                         <TableCell><Badge variant={task.status === 'Paid' ? 'default' : 'secondary'}>{task.status}</Badge></TableCell>
                         <TableCell className="text-right">
                           <Button variant="ghost" size="icon" onClick={() => handleEditClick(task)}><Edit className="w-4 h-4" /></Button>
-                          <Button variant="ghost" size="icon" onClick={() => handleDeleteClick(task)} className="text-destructive hover:text-destructive/80"><Trash2 className="w-4 h-4"/></Button>
+                          {(userProfile?.role === 'superadmin' || userProfile?.role === 'manager') && (
+                            <Button variant="ghost" size="icon" onClick={() => handleDeleteClick(task)} className="text-destructive hover:text-destructive/80"><Trash2 className="w-4 h-4"/></Button>
+                          )}
                         </TableCell>
                       </TableRow>
                     ))}
