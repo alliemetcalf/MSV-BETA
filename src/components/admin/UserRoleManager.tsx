@@ -27,12 +27,7 @@ import { Loader2, RefreshCw } from 'lucide-react';
 import { Button } from '../ui/button';
 import { useAuth, useCollection, useFirestore, useMemoFirebase } from '@/firebase';
 import { collection, doc, updateDoc } from 'firebase/firestore';
-
-interface UserProfile {
-    id: string;
-    email: string;
-    role: 'superadmin' | 'manager' | 'contractor' | 'user' | 'admin';
-}
+import { UserProfile } from '@/types/user-profile';
 
 export function UserRoleManager() {
   const { toast } = useToast();
@@ -65,14 +60,14 @@ export function UserRoleManager() {
         toast({ variant: 'destructive', title: 'Error', description: 'Firestore is not initialized.' });
         return;
     }
-     if (newRole === 'admin') {
-        toast({
-            variant: 'destructive',
-            title: 'Invalid Role',
-            description: '"admin" is not a standard role. Please select a different one.',
-        });
-        return;
-    }
+    if (newRole === 'admin') {
+       toast({
+           variant: 'destructive',
+           title: 'Invalid Role',
+           description: '"admin" is not a standard role. Please select a different one.',
+       });
+       return;
+   }
     
     setIsUpdating((prev) => ({ ...prev, [uid]: true }));
     try {
@@ -135,7 +130,7 @@ export function UserRoleManager() {
                     ) : (
                       <Select
                         value={user.role}
-                        onValueChange={(newRole: UserProfile['role']) =>
+                        onValueChange={(newRole: any) =>
                           handleRoleChange(user.id, newRole)
                         }
                         disabled={user.id === currentUserUid}
