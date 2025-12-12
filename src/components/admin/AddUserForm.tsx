@@ -29,26 +29,19 @@ import {
   SelectTrigger,
   SelectValue,
 } from '@/components/ui/select';
+import { createUser } from '@/ai/flows/create-user-flow';
 import {
-  createUser,
-  CreateUserInput,
-} from '@/ai/flows/create-user-flow';
+  CreateUserInputSchema,
+  type CreateUserInput,
+} from '@/ai/schemas/user-schemas';
 
-const addUserFormSchema = z.object({
-  email: z.string().email({ message: 'Invalid email address.' }),
-  password: z
-    .string()
-    .min(6, { message: 'Password must be at least 6 characters.' }),
-  role: z.enum(['superadmin', 'manager', 'contractor', 'user']).default('user'),
-  displayName: z.string().min(1, { message: 'Display name is required.' }),
-});
 
 export function AddUserForm() {
   const { toast } = useToast();
   const [isSubmitting, setIsSubmitting] = useState(false);
 
-  const form = useForm<z.infer<typeof addUserFormSchema>>({
-    resolver: zodResolver(addUserFormSchema),
+  const form = useForm<z.infer<typeof CreateUserInputSchema>>({
+    resolver: zodResolver(CreateUserInputSchema),
     defaultValues: {
       email: '',
       password: '',
