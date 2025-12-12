@@ -21,7 +21,6 @@ import {
 } from '@/components/ui/form';
 import { Input } from '@/components/ui/input';
 import { useToast } from '@/hooks/use-toast';
-import { createUser } from '@/ai/flows/create-user-flow';
 import { Loader2, UserPlus } from 'lucide-react';
 import {
   Select,
@@ -30,6 +29,9 @@ import {
   SelectTrigger,
   SelectValue,
 } from '@/components/ui/select';
+import { useAuth, useFirestore } from '@/firebase';
+import { createUserWithEmailAndPassword } from 'firebase/auth';
+import { doc, setDoc } from 'firebase/firestore';
 
 const addUserFormSchema = z.object({
   email: z.string().email({ message: 'Invalid email address.' }),
@@ -37,10 +39,13 @@ const addUserFormSchema = z.object({
     .string()
     .min(6, { message: 'Password must be at least 6 characters.' }),
   role: z.enum(['superadmin', 'manager', 'contractor', 'user']).default('user'),
+  displayName: z.string().min(1, { message: 'Display name is required.' }),
 });
 
 export function AddUserForm() {
   const { toast } = useToast();
+  const auth = useAuth();
+  const firestore = useFirestore();
   const [isSubmitting, setIsSubmitting] = useState(false);
 
   const form = useForm<z.infer<typeof addUserFormSchema>>({
@@ -49,26 +54,45 @@ export function AddUserForm() {
       email: '',
       password: '',
       role: 'user',
+      displayName: '',
     },
   });
 
   async function onAddUserSubmit(values: z.infer<typeof addUserFormSchema>) {
     setIsSubmitting(true);
-    try {
-      const result = await createUser({
-        email: values.email,
-        password: values.password,
-        role: values.role,
+    if (!auth || !firestore) {
+      toast({
+        variant: 'destructive',
+        title: 'Firebase not initialized',
+        description: 'Please wait a moment and try again.',
       });
-      if (result.success) {
-        toast({
-          title: 'User Created',
-          description: `Successfully created user: ${values.email}`,
-        });
-        form.reset();
-      } else {
-        throw new Error(result.message || 'Failed to create user.');
-      }
+      setIsSubmitting(false);
+      return;
+    }
+
+    try {
+      // 1. Create the user in Firebase Authentication
+      const userCredential = await createUserWithEmailAndPassword(
+        auth,
+        values.email,
+        values.password
+      );
+      const user = userCredential.user;
+
+      // 2. Create the user profile document in Firestore
+      const userDocRef = doc(firestore, 'users', user.uid);
+      await setDoc(userDocRef, {
+        email: values.email,
+        role: values.role,
+        displayName: values.displayName,
+      });
+
+      toast({
+        title: 'User Created',
+        description: `Successfully created user: ${values.email}`,
+      });
+      form.reset();
+
     } catch (error) {
       const errorMessage =
         error instanceof Error ? error.message : 'An unexpected error occurred.';
@@ -96,10 +120,23 @@ export function AddUserForm() {
           >
             <FormField
               control={form.control}
+              name="displayName"
+              render={({ field }) => (
+                <FormItem>
+                  <FormLabel>Display Name</FormLabel>
+                  <FormControl>
+                    <Input placeholder="John Doe" {...field} />
+                  </FormControl>
+                  <FormMessage />
+                </FormItem>
+              )}
+            />
+            <FormField
+              control={form.control}
               name="email"
               render={({ field }) => (
                 <FormItem>
-                  <FormLabel>New User's Email</FormLabel>
+                  <FormLabel>Email</FormLabel>
                   <FormControl>
                     <Input placeholder="new.user@example.com" {...field} />
                   </FormControl>

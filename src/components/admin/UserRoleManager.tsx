@@ -25,55 +25,29 @@ import {
 import { useToast } from '@/hooks/use-toast';
 import { Loader2, RefreshCw } from 'lucide-react';
 import { Button } from '../ui/button';
-import { listUsers, updateUserRole } from '@/ai/flows/list-users-flow';
-import { useAuth } from '@/firebase';
-
-type User = {
-  uid: string;
-  email?: string;
-  displayName?: string;
-  role?: 'superadmin' | 'manager' | 'contractor' | 'user' | 'admin';
-};
+import { useAuth, useCollection, useFirestore, useMemoFirebase } from '@/firebase';
+import { UserProfile } from '@/types/user-profile';
+import { collection, doc, updateDoc } from 'firebase/firestore';
 
 export function UserRoleManager() {
   const { toast } = useToast();
   const auth = useAuth();
+  const firestore = useFirestore();
   const currentUserUid = auth?.currentUser?.uid;
 
-  const [users, setUsers] = useState<User[]>([]);
-  const [isLoading, setIsLoading] = useState(true);
-  const [error, setError] = useState<string | null>(null);
+  const usersCollectionRef = useMemoFirebase(
+    () => (firestore ? collection(firestore, 'users') : null),
+    [firestore]
+  );
+
+  const { data: users, isLoading, error, refetch } = useCollection<UserProfile>(usersCollectionRef);
+
   const [isUpdating, setIsUpdating] = useState<Record<string, boolean>>({});
 
-  const fetchUsers = useCallback(async () => {
-    setIsLoading(true);
-    setError(null);
-    try {
-      const result = await listUsers();
-      if (result.error) {
-        throw new Error(result.error);
-      }
-      const sorted = result.users.sort((a,b) => (a.displayName || a.email || '').localeCompare(b.displayName || b.email || ''));
-      setUsers(sorted);
-    } catch (e: any) {
-      const errorMessage = e.message || 'Could not retrieve user list.';
-      setError(errorMessage);
-      toast({
-        variant: 'destructive',
-        title: 'Failed to load users',
-        description: errorMessage,
-      });
-    } finally {
-      setIsLoading(false);
-    }
-  }, [toast]);
+  const sortedUsers = users?.sort((a,b) => (a.displayName || a.email || '').localeCompare(b.displayName || b.email || '')) || [];
 
-  useEffect(() => {
-    fetchUsers();
-  }, [fetchUsers]);
-
-  const handleRoleChange = async (uid: string, newRole: User['role']) => {
-    if (!newRole || newRole === 'admin') {
+  const handleRoleChange = async (uid: string, newRole: UserProfile['role']) => {
+    if (!newRole || !firestore) {
        toast({
            variant: 'destructive',
            title: 'Invalid Role',
@@ -84,18 +58,13 @@ export function UserRoleManager() {
     
     setIsUpdating((prev) => ({ ...prev, [uid]: true }));
     try {
-      const result = await updateUserRole({ uid, role: newRole as any });
-
-      if (result.success) {
+        const userDocRef = doc(firestore, 'users', uid);
+        await updateDoc(userDocRef, { role: newRole });
         toast({
             title: 'Role Updated',
             description: "User's role has been successfully changed.",
         });
-        // Refetch users to show the updated role
-        fetchUsers();
-      } else {
-        throw new Error(result.message || 'An unknown error occurred.');
-      }
+        refetch(); // Refetch to show the updated role
     } catch (e: any) {
       toast({
         variant: 'destructive',
@@ -114,7 +83,7 @@ export function UserRoleManager() {
             <CardTitle>User Role Management</CardTitle>
             <CardDescription>View and manage user roles.</CardDescription>
         </div>
-        <Button variant="ghost" size="icon" onClick={fetchUsers} disabled={isLoading}>
+        <Button variant="ghost" size="icon" onClick={refetch} disabled={isLoading}>
             <RefreshCw className={`h-4 w-4 ${isLoading ? 'animate-spin' : ''}`} />
         </Button>
       </CardHeader>
@@ -126,11 +95,11 @@ export function UserRoleManager() {
         ) : error ? (
            <div className="text-center text-destructive py-8">
             <p>Error loading users:</p>
-            <p className="text-sm">{error}</p>
+            <p className="text-sm">{error.message}</p>
           </div>
-        ) : users.length === 0 ? (
+        ) : sortedUsers.length === 0 ? (
           <div className="text-center text-muted-foreground py-8">
-            No users found.
+            No users found in the 'users' collection.
           </div>
         ) : (
           <Table>
@@ -141,19 +110,19 @@ export function UserRoleManager() {
               </TableRow>
             </TableHeader>
             <TableBody>
-              {users.map((user) => (
-                <TableRow key={user.uid}>
+              {sortedUsers.map((user) => (
+                <TableRow key={user.id}>
                   <TableCell className="font-medium">{user.displayName || user.email || 'N/A'}</TableCell>
                   <TableCell>
-                    {isUpdating[user.uid] ? (
+                    {isUpdating[user.id] ? (
                       <Loader2 className="h-4 w-4 animate-spin" />
                     ) : (
                       <Select
                         value={user.role}
                         onValueChange={(newRole: any) =>
-                          handleRoleChange(user.uid, newRole)
+                          handleRoleChange(user.id, newRole)
                         }
-                        disabled={user.uid === currentUserUid}
+                        disabled={user.id === currentUserUid}
                       >
                         <SelectTrigger className="w-[180px]">
                           <SelectValue placeholder="Select role" />
@@ -163,7 +132,6 @@ export function UserRoleManager() {
                           <SelectItem value="contractor">Contractor</SelectItem>
                           <SelectItem value="manager">Manager</SelectItem>
                           <SelectItem value="superadmin">Super Admin</SelectItem>
-                          {/* Only show 'admin' if it's the user's current, invalid role */}
                           {user.role === 'admin' && <SelectItem value="admin" disabled>Admin (Invalid)</SelectItem>}
                         </SelectContent>
                       </Select>
