@@ -6,18 +6,22 @@
  * - CreateUserInput - The input type for the createUserFlow function.
  */
 
-import {initializeApp, getApps} from 'firebase-admin/app';
+import {initializeApp, getApps, cert, getApp} from 'firebase-admin/app';
 import {getAuth} from 'firebase-admin/auth';
 import {getFirestore} from 'firebase-admin/firestore';
 import {ai} from '@/ai/genkit';
 import {z} from 'zod';
+import serviceAccount from '@/../firebase-service-account.json';
 
+// Initialize Firebase Admin SDK if not already initialized
 if (getApps().length === 0) {
-  initializeApp();
+  initializeApp({
+    credential: cert(serviceAccount),
+  });
 }
 
-const auth = getAuth();
-const db = getFirestore();
+const auth = getAuth(getApp());
+const db = getFirestore(getApp());
 
 export const CreateUserInputSchema = z.object({
   email: z.string().email(),
@@ -52,6 +56,7 @@ export const createUserFlow = ai.defineFlow(
         email: input.email,
         role: input.role,
         displayName: input.displayName,
+        bio: '', // Add empty bio field
       });
 
       return `Successfully created user ${userRecord.email} with UID ${userRecord.uid}`;
