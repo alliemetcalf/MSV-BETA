@@ -29,12 +29,11 @@ import {
   SelectTrigger,
   SelectValue,
 } from '@/components/ui/select';
-import { createUser } from '@/ai/flows/create-user-flow';
 import {
   CreateUserInputSchema,
   type CreateUserInput,
 } from '@/ai/schemas/user-schemas';
-
+import { createUserAction } from '@/app/admin/actions';
 
 export function AddUserForm() {
   const { toast } = useToast();
@@ -53,10 +52,15 @@ export function AddUserForm() {
   async function onAddUserSubmit(values: CreateUserInput) {
     setIsSubmitting(true);
     try {
-      const result = await createUser(values);
+      const result = await createUserAction(values);
+
+      if (result.error) {
+        throw new Error(result.error);
+      }
+
       toast({
         title: 'User Created',
-        description: result,
+        description: result.message,
       });
       form.reset();
     } catch (error) {
