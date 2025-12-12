@@ -8,17 +8,21 @@ import { CreateUserInputSchema, type CreateUserInput } from '@/ai/schemas/user-s
 // This is safe to be in the code, as it's a server-only file.
 const serviceAccount = require('../../../firebase-service-account.json');
 
-// A function to initialize and get the Firebase Admin app, ensuring it only happens once.
-function getAdminApp(): App {
-  // Check if there are any initialized apps. If not, initialize one.
-  if (!getApps().length) {
-    return initializeApp({
-      credential: cert(serviceAccount),
-    });
+let adminApp: App;
+
+// Idempotent initialization of the Firebase Admin SDK
+function getInitializedAdminApp(): App {
+  if (getApps().some(app => app.name === 'admin')) {
+    return getApps().find(app => app.name === 'admin')!;
   }
-  // If apps are already initialized, return the default one.
-  return getApps()[0];
+
+  adminApp = initializeApp({
+    credential: cert(serviceAccount),
+  }, 'admin');
+  
+  return adminApp;
 }
+
 
 export async function createUserAction(data: CreateUserInput): Promise<{ message: string; error?: string; }> {
   try {
@@ -32,11 +36,11 @@ export async function createUserAction(data: CreateUserInput): Promise<{ message
     const { email, password, displayName, role } = parsedData.data;
     
     // Get the initialized admin app instance.
-    const adminApp = getAdminApp();
+    const app = getInitializedAdminApp();
 
     // Pass the app instance explicitly to the services.
-    const auth = getAuth(adminApp);
-    const db = getFirestore(adminApp);
+    const auth = getAuth(app);
+    const db = getFirestore(app);
 
     // 1. Create the user in Firebase Authentication.
     const userRecord = await auth.createUser({

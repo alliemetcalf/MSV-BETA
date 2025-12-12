@@ -1,10 +1,11 @@
 
 export const firebaseConfig = {
-  apiKey: "AIzaSyBCG29EhICnZf3cjUYq4Hvn2q45ENB2rpQ",
-  authDomain: "msv-beta.firebaseapp.com",
-  projectId: "msv-beta",
-  storageBucket: "msv-beta.firebasestorage.app",
-  messagingSenderId: "614074080882",
-  appId: "1:614074080882:web:1e1984151011c1323d2ceb",
-  measurementId: "G-6L55TC2D5Y"
+  apiKey: process.env.NEXT_PUBLIC_FIREBASE_API_KEY,
+  authDomain: process.env.NEXT_PUBLIC_FIREBASE_AUTH_DOMAIN,
+  projectId: process.env.NEXT_PUBLIC_FIREBASE_PROJECT_ID,
+  storageBucket: process.env.NEXT_PUBLIC_FIREBASE_STORAGE_BUCKET,
+  messagingSenderId: process.env.NEXT_PUBLIC_FIREBASE_MESSAGING_SENDER_ID,
+  appId: process.env.NEXT_PUBLIC_FIREBASE_APP_ID,
+  measurementId: process.env.NEXT_PUBLIC_FIREBASE_MEASUREMENT_ID
 };
+
