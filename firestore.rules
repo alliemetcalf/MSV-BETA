@@ -70,7 +70,8 @@ service cloud.firestore {
 
     // Properties
     match /properties/{propertyId} {
-      allow read, write: if isSuperAdmin() || isManager();
+      allow read: if isSignedIn();
+      allow write: if isSuperAdmin() || isManager();
     }
 
     // Expenses
