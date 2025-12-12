@@ -1,6 +1,6 @@
 'use server';
 
-import { initializeApp, getApps, cert, App } from 'firebase-admin/app';
+import { initializeApp, getApps, getApp, cert, App } from 'firebase-admin/app';
 import { getAuth } from 'firebase-admin/auth';
 import { getFirestore } from 'firebase-admin/firestore';
 import { CreateUserInputSchema, type CreateUserInput } from '@/ai/schemas/user-schemas';
@@ -8,39 +8,41 @@ import { CreateUserInputSchema, type CreateUserInput } from '@/ai/schemas/user-s
 // This is safe to be in the code, as it's a server-only file.
 const serviceAccount = require('../../../firebase-service-account.json');
 
-let adminApp: App;
-
-// Idempotent initialization of the Firebase Admin SDK
-function getInitializedAdminApp(): App {
-  if (getApps().some(app => app.name === 'admin')) {
-    return getApps().find(app => app.name === 'admin')!;
+/**
+ * Ensures that the Firebase Admin SDK is initialized, and returns the initialized App instance.
+ * This function is idempotent, meaning it can be called multiple times without re-initializing.
+ * It uses a named app 'admin' to avoid conflicts with any client-side initializations.
+ */
+function initializeAdminApp(): App {
+  const adminAppName = 'admin';
+  // Check if an app with the name 'admin' already exists
+  const existingApp = getApps().find(app => app.name === adminAppName);
+  if (existingApp) {
+    // If it exists, return it
+    return existingApp;
   }
-
-  adminApp = initializeApp({
+  // Otherwise, initialize a new app with the 'admin' name
+  return initializeApp({
     credential: cert(serviceAccount),
-  }, 'admin');
-  
-  return adminApp;
+  }, adminAppName);
 }
-
 
 export async function createUserAction(data: CreateUserInput): Promise<{ message: string; error?: string; }> {
   try {
     const parsedData = CreateUserInputSchema.safeParse(data);
     if (!parsedData.success) {
-      // Create a more detailed error message from Zod's errors.
       const errorDetails = parsedData.error.errors.map(e => `${e.path.join('.')}: ${e.message}`).join(', ');
       return { message: '', error: `Invalid input data. ${errorDetails}` };
     }
 
     const { email, password, displayName, role } = parsedData.data;
     
-    // Get the initialized admin app instance.
-    const app = getInitializedAdminApp();
+    // Get the initialized admin app instance. This is the crucial step.
+    const adminApp = initializeAdminApp();
 
     // Pass the app instance explicitly to the services.
-    const auth = getAuth(app);
-    const db = getFirestore(app);
+    const auth = getAuth(adminApp);
+    const db = getFirestore(adminApp);
 
     // 1. Create the user in Firebase Authentication.
     const userRecord = await auth.createUser({
@@ -63,6 +65,7 @@ export async function createUserAction(data: CreateUserInput): Promise<{ message
   } catch (error: any) {
     console.error('API Error: Failed to create user:', error);
 
+    // Provide a more user-friendly error message for common issues.
     const errorMessage = error.code === 'auth/email-already-exists'
       ? 'This email address is already in use by another account.'
       : error.message || 'An internal server error occurred.';
