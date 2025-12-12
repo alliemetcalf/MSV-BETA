@@ -8,25 +8,19 @@
 
 import { ai } from '@/ai/genkit';
 import { z } from 'genkit';
-import { initializeApp, getApps, cert, App } from 'firebase-admin/app';
-import { getFirestore, Firestore } from 'firebase-admin/firestore';
-import { getAuth, Auth } from 'firebase-admin/auth';
-import { serviceAccount } from '@/lib/firebase-admin';
+import { initializeApp, getApps } from 'firebase-admin/app';
+import { getFirestore } from 'firebase-admin/firestore';
+import { getAuth } from 'firebase-admin/auth';
 import { UserProfile } from '@/types/user-profile';
 
-
-let app: App;
+// Initialize Firebase Admin SDK if not already initialized.
+// This will use the GOOGLE_APPLICATION_CREDENTIALS environment variable.
 if (!getApps().length) {
-  app = initializeApp({
-    credential: cert(serviceAccount),
-  });
-} else {
-  app = getApps()[0];
+  initializeApp();
 }
 
-const db: Firestore = getFirestore(app);
-const auth: Auth = getAuth(app);
-
+const db = getFirestore();
+const auth = getAuth();
 
 const UserWithRoleSchema = z.object({
   uid: z.string(),

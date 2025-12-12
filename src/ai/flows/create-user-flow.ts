@@ -9,7 +9,17 @@
 
 import { ai } from '@/ai/genkit';
 import { z } from 'genkit';
-import { db, auth } from '@/lib/firebase-admin';
+import { initializeApp, getApps } from 'firebase-admin/app';
+import { getFirestore } from 'firebase-admin/firestore';
+import { getAuth } from 'firebase-admin/auth';
+
+if (!getApps().length) {
+  initializeApp();
+}
+
+const db = getFirestore();
+const auth = getAuth();
+
 
 const CreateUserInputSchema = z.object({
   email: z.string().email(),
