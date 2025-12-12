@@ -224,7 +224,7 @@ export default function DoorCodesPage() {
   };
 
 
-  if (isUserLoading || !user || !isAuthorized) {
+  if (isUserLoading || !userProfile) {
     return (
       <div className="flex h-screen w-full items-center justify-center bg-background">
         <Loader2 className="h-10 w-10 animate-spin text-primary" />
@@ -232,6 +232,14 @@ export default function DoorCodesPage() {
     );
   }
   
+  if (!isAuthorized) {
+    return (
+      <div className="flex h-screen w-full items-center justify-center bg-background">
+        <Loader2 className="h-10 w-10 animate-spin text-primary" />
+      </div>
+    );
+  }
+
   const codesError = userCodesError;
   const isDataLoading = userCodesLoading || lockTypesLoading || propertiesLoading;
 
