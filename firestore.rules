@@ -40,8 +40,8 @@ service cloud.firestore {
       // Allow any user to create their own user document.
       allow create: if isOwner(userId);
       
-      // Explicitly allow superadmins to list the entire collection.
-      allow list: if isSuperAdmin();
+      // Explicitly allow any signed in user to list the entire collection for the admin panel.
+      allow list: if isSignedIn();
 
       // Allow superadmin to read/write to any doorCodes subcollection for migration
       match /doorCodes/{doorCodeId} {
