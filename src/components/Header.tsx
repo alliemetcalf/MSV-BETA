@@ -16,7 +16,7 @@ import {
 } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { Button } from './ui/button';
-import { useAuth, useUser } from '@/firebase';
+import { useAuth, useDoc, useFirebaseApp, useFirestore, useMemoFirebase, useUser } from '@/firebase';
 import { signOut } from 'firebase/auth';
 import { useToast } from '@/hooks/use-toast';
 import {
@@ -26,13 +26,22 @@ import {
   DropdownMenuSeparator,
   DropdownMenuTrigger,
 } from '@/components/ui/dropdown-menu';
+import { UserProfile } from '@/types/user-profile';
+import { doc } from 'firebase/firestore';
 
 export function Header() {
   const pathname = usePathname();
   const { toast } = useToast();
   const router = useRouter();
   const auth = useAuth();
+  const firestore = useFirestore();
   const { user } = useUser(auth);
+
+  const userProfileRef = useMemoFirebase(
+    () => (user ? doc(firestore, 'users', user.uid) : null),
+    [firestore, user]
+  );
+  const { data: userProfile } = useDoc<UserProfile>(userProfileRef);
 
   const handleLogout = async () => {
     if (!auth) return;
@@ -68,6 +77,7 @@ export function Header() {
   ];
 
   const adminNavItems = [{ href: '/admin', label: 'Admin', icon: ShieldCheck }];
+  const canSeeAdmin = userProfile?.role === 'superadmin' || userProfile?.role === 'manager';
 
   return (
     <header className="bg-card border-b sticky top-0 z-50">
@@ -100,7 +110,7 @@ export function Header() {
                   {item.label}
                 </Link>
               ))}
-              {user &&
+              {user && canSeeAdmin &&
                 adminNavItems.map((item) => (
                   <Link
                     key={item.href}

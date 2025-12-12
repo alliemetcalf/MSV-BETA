@@ -34,13 +34,15 @@ service cloud.firestore {
     // Users Collection:
     match /users/{userId} {
       // Allow superadmins to get any user document.
-      // Allow any user to get/update their own document.
-      allow get, update, delete: if isSuperAdmin() || isOwner(userId);
+      allow get: if isSuperAdmin();
 
-      // Allow any user to create their own user document.
-      allow create: if isOwner(userId);
+      // Allow users to read their own document
+      allow get: if isOwner(userId);
       
-      // Explicitly allow any signed in user to list the entire collection for the admin panel.
+      // Allow only superadmins to create, update, or delete user documents
+      allow create, update, delete: if isSuperAdmin();
+
+      // Explicitly allow any signed in user to list the collection for the admin panel.
       allow list: if isSignedIn();
 
       // Allow superadmin to read/write to any doorCodes subcollection for migration

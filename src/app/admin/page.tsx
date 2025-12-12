@@ -1,6 +1,6 @@
 'use client';
 import { MainLayout } from '@/components/MainLayout';
-import { useUser, useAuth } from '@/firebase';
+import { useUser, useAuth, useDoc, useFirestore, useMemoFirebase } from '@/firebase';
 import { Loader2, Users, Shield, Lock, Building, Wallet, Wrench, ShieldAlert, DatabaseZap } from 'lucide-react';
 import { useRouter } from 'next/navigation';
 import Link from 'next/link';
@@ -29,21 +29,41 @@ import { PaymentMethodsManager } from '@/components/admin/PaymentMethodsManager'
 import { TaskSettingsManager } from '@/components/admin/TaskSettingsManager';
 import { Button } from '@/components/ui/button';
 import { DataMigrationManager } from '@/components/admin/DataMigrationManager';
+import { UserProfile } from '@/types/user-profile';
+import { doc } from 'firebase/firestore';
 
 export default function AdminPage() {
   const auth = useAuth();
+  const firestore = useFirestore();
   const { user, isUserLoading } = useUser(auth);
   const router = useRouter();
+
+  const userProfileRef = useMemoFirebase(
+    () => (user ? doc(firestore, 'users', user.uid) : null),
+    [firestore, user]
+  );
+  const { data: userProfile, isLoading: isProfileLoading } = useDoc<UserProfile>(userProfileRef);
 
   useEffect(() => {
     // If loading is finished and there's still no user, redirect to login
     if (!isUserLoading && !user) {
       router.push('/login');
+      return;
     }
-  }, [user, isUserLoading, router]);
+    // Once user and profile are loaded, check role
+    if (!isUserLoading && !isProfileLoading && userProfile) {
+      if (userProfile.role !== 'superadmin' && userProfile.role !== 'manager') {
+        router.push('/'); // Redirect non-admins
+      }
+    }
+  }, [user, isUserLoading, userProfile, isProfileLoading, router]);
 
-  // Show loader until we are sure about the user's auth state
-  if (isUserLoading || !user) {
+  const isLoading = isUserLoading || isProfileLoading;
+  const isAuthorized = userProfile?.role === 'superadmin' || userProfile?.role === 'manager';
+
+
+  // Show loader until we are sure about the user's auth state and role
+  if (isLoading || !user || !isAuthorized) {
     return (
       <div className="flex h-screen w-full items-center justify-center bg-background">
         <Loader2 className="h-10 w-10 animate-spin text-primary" />
@@ -51,7 +71,7 @@ export default function AdminPage() {
     );
   }
 
-  // Render the admin panel for any logged-in user
+  // Render the admin panel
   return (
     <MainLayout>
       <div className="w-full max-w-6xl px-4 flex flex-col gap-8">
@@ -64,31 +84,35 @@ export default function AdminPage() {
                 collapsible.
               </CardDescription>
             </div>
-            <Link href="/admin/permissions">
-              <Button variant="outline">
-                <ShieldAlert className="mr-2 h-4 w-4" />
-                Manage Permissions
-              </Button>
-            </Link>
+            {userProfile?.role === 'superadmin' && (
+              <Link href="/admin/permissions">
+                <Button variant="outline">
+                  <ShieldAlert className="mr-2 h-4 w-4" />
+                  Manage Permissions
+                </Button>
+              </Link>
+            )}
           </CardHeader>
         </Card>
 
         <Accordion type="multiple" className="w-full space-y-4">
           {/* User Management Section */}
-          <AccordionItem value="user-management" className="border rounded-lg">
-            <AccordionTrigger className="p-4 text-lg font-semibold hover:no-underline">
-              <div className="flex items-center gap-3">
-                <Users className="h-6 w-6 text-primary" />
-                User Management
-              </div>
-            </AccordionTrigger>
-            <AccordionContent className="p-4 pt-0">
-              <div className="grid md:grid-cols-2 gap-8">
-                <AddUserForm />
-                <UserRoleManager />
-              </div>
-            </AccordionContent>
-          </AccordionItem>
+          {userProfile?.role === 'superadmin' && (
+            <AccordionItem value="user-management" className="border rounded-lg">
+              <AccordionTrigger className="p-4 text-lg font-semibold hover:no-underline">
+                <div className="flex items-center gap-3">
+                  <Users className="h-6 w-6 text-primary" />
+                  User Management
+                </div>
+              </AccordionTrigger>
+              <AccordionContent className="p-4 pt-0">
+                <div className="grid md:grid-cols-2 gap-8">
+                  <AddUserForm />
+                  <UserRoleManager />
+                </div>
+              </AccordionContent>
+            </AccordionItem>
+          )}
           
           {/* Property & Tenant Management Section */}
           <AccordionItem value="property-management" className="border rounded-lg">
@@ -126,34 +150,38 @@ export default function AdminPage() {
           </AccordionItem>
           
            {/* Site Configuration Section */}
-          <AccordionItem value="site-config" className="border rounded-lg">
-            <AccordionTrigger className="p-4 text-lg font-semibold hover:no-underline">
-              <div className="flex items-center gap-3">
-                <Lock className="h-6 w-6 text-primary" />
-                Site Configuration
-              </div>
-            </AccordionTrigger>
-            <AccordionContent className="p-4 pt-0">
-              <div className="grid md:grid-cols-2 gap-8">
-                 <LockTypesManager />
-              </div>
-            </AccordionContent>
-          </AccordionItem>
+           {userProfile?.role === 'superadmin' && (
+            <AccordionItem value="site-config" className="border rounded-lg">
+                <AccordionTrigger className="p-4 text-lg font-semibold hover:no-underline">
+                <div className="flex items-center gap-3">
+                    <Lock className="h-6 w-6 text-primary" />
+                    Site Configuration
+                </div>
+                </AccordionTrigger>
+                <AccordionContent className="p-4 pt-0">
+                <div className="grid md:grid-cols-2 gap-8">
+                    <LockTypesManager />
+                </div>
+                </AccordionContent>
+            </AccordionItem>
+           )}
 
           {/* Data Migration Section */}
-          <AccordionItem value="data-migration" className="border rounded-lg">
-            <AccordionTrigger className="p-4 text-lg font-semibold hover:no-underline">
-              <div className="flex items-center gap-3">
-                <DatabaseZap className="h-6 w-6 text-primary" />
-                Data Migration
-              </div>
-            </AccordionTrigger>
-            <AccordionContent className="p-4 pt-0">
-              <div className="grid md:grid-cols-2 gap-8">
-                 <DataMigrationManager />
-              </div>
-            </AccordionContent>
-          </AccordionItem>
+          {userProfile?.role === 'superadmin' && (
+            <AccordionItem value="data-migration" className="border rounded-lg">
+                <AccordionTrigger className="p-4 text-lg font-semibold hover:no-underline">
+                <div className="flex items-center gap-3">
+                    <DatabaseZap className="h-6 w-6 text-primary" />
+                    Data Migration
+                </div>
+                </AccordionTrigger>
+                <AccordionContent className="p-4 pt-0">
+                <div className="grid md:grid-cols-2 gap-8">
+                    <DataMigrationManager />
+                </div>
+                </AccordionContent>
+            </AccordionItem>
+          )}
 
         </Accordion>
       </div>

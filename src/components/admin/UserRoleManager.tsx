@@ -25,7 +25,7 @@ import {
 import { useToast } from '@/hooks/use-toast';
 import { Loader2, RefreshCw } from 'lucide-react';
 import { Button } from '../ui/button';
-import { useAuth, useCollection, useFirestore, useMemoFirebase } from '@/firebase';
+import { useAuth, useCollection, useFirestore, useMemoFirebase, useDoc } from '@/firebase';
 import { UserProfile } from '@/types/user-profile';
 import { collection, doc, updateDoc } from 'firebase/firestore';
 
@@ -39,6 +39,13 @@ export function UserRoleManager() {
     () => (firestore ? collection(firestore, 'users') : null),
     [firestore]
   );
+  
+  const userProfileRef = useMemoFirebase(
+    () => (currentUserUid ? doc(firestore, 'users', currentUserUid) : null),
+    [firestore, currentUserUid]
+  );
+  const { data: currentUserProfile } = useDoc<UserProfile>(userProfileRef);
+
 
   const { data: users, isLoading, error, refetch } = useCollection<UserProfile>(usersCollectionRef);
 
@@ -75,6 +82,8 @@ export function UserRoleManager() {
       setIsUpdating((prev) => ({ ...prev, [uid]: false }));
     }
   };
+  
+  const canManageRoles = currentUserProfile?.role === 'superadmin';
 
   return (
     <Card>
@@ -122,7 +131,7 @@ export function UserRoleManager() {
                         onValueChange={(newRole: any) =>
                           handleRoleChange(user.id, newRole)
                         }
-                        disabled={user.id === currentUserUid}
+                        disabled={!canManageRoles || user.id === currentUserUid}
                       >
                         <SelectTrigger className="w-[180px]">
                           <SelectValue placeholder="Select role" />
