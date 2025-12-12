@@ -29,9 +29,10 @@ import {
   SelectTrigger,
   SelectValue,
 } from '@/components/ui/select';
-import { useAuth, useFirestore } from '@/firebase';
-import { createUserWithEmailAndPassword } from 'firebase/auth';
-import { doc, setDoc } from 'firebase/firestore';
+import {
+  createUser,
+  CreateUserInput,
+} from '@/ai/flows/create-user-flow';
 
 const addUserFormSchema = z.object({
   email: z.string().email({ message: 'Invalid email address.' }),
@@ -44,8 +45,6 @@ const addUserFormSchema = z.object({
 
 export function AddUserForm() {
   const { toast } = useToast();
-  const auth = useAuth();
-  const firestore = useFirestore();
   const [isSubmitting, setIsSubmitting] = useState(false);
 
   const form = useForm<z.infer<typeof addUserFormSchema>>({
@@ -58,41 +57,15 @@ export function AddUserForm() {
     },
   });
 
-  async function onAddUserSubmit(values: z.infer<typeof addUserFormSchema>) {
+  async function onAddUserSubmit(values: CreateUserInput) {
     setIsSubmitting(true);
-    if (!auth || !firestore) {
-      toast({
-        variant: 'destructive',
-        title: 'Firebase not initialized',
-        description: 'Please wait a moment and try again.',
-      });
-      setIsSubmitting(false);
-      return;
-    }
-
     try {
-      // 1. Create the user in Firebase Authentication
-      const userCredential = await createUserWithEmailAndPassword(
-        auth,
-        values.email,
-        values.password
-      );
-      const user = userCredential.user;
-
-      // 2. Create the user profile document in Firestore
-      const userDocRef = doc(firestore, 'users', user.uid);
-      await setDoc(userDocRef, {
-        email: values.email,
-        role: values.role,
-        displayName: values.displayName,
-      });
-
+      const result = await createUser(values);
       toast({
         title: 'User Created',
-        description: `Successfully created user: ${values.email}`,
+        description: result,
       });
       form.reset();
-
     } catch (error) {
       const errorMessage =
         error instanceof Error ? error.message : 'An unexpected error occurred.';
