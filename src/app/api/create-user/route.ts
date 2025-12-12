@@ -5,22 +5,11 @@ import {getFirestore} from 'firebase-admin/firestore';
 import {CreateUserInputSchema} from '@/ai/schemas/user-schemas';
 
 // Lazy-load the service account credentials.
-let serviceAccount: any;
-try {
-  serviceAccount = require('../../../../firebase-service-account.json');
-} catch (e) {
-  console.error(
-    'firebase-service-account.json not found. Make sure it exists in the root of your project.'
-  );
-  serviceAccount = null;
-}
+const serviceAccount = require('../../../../firebase-service-account.json');
 
 // Initialize Firebase Admin SDK idempotently.
 function initializeAdmin() {
   if (!getApps().length) {
-    if (!serviceAccount) {
-      throw new Error('Service account credentials are not loaded.');
-    }
     initializeApp({
       credential: cert(serviceAccount),
     });
@@ -70,8 +59,14 @@ export async function POST(req: NextRequest) {
     );
   } catch (error: any) {
     console.error('API Error: Failed to create user:', error);
+
+    // Provide a more specific error message if available
+    const errorMessage = error.code === 'auth/email-already-exists'
+      ? 'This email address is already in use by another account.'
+      : error.message || 'An internal server error occurred.';
+      
     return NextResponse.json(
-      {error: error.message || 'An internal server error occurred.'},
+      {error: errorMessage},
       {status: 500}
     );
   }
