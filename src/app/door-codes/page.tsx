@@ -65,13 +65,19 @@ export default function DoorCodesPage() {
   const firestore = useFirestore();
   const router = useRouter();
 
-  const isAuthorized = userProfile?.role === 'superadmin' || userProfile?.role === 'manager';
+  // We can only know if they are authorized once the user profile is loaded.
+  const isAuthorized = !isUserLoading && (userProfile?.role === 'superadmin' || userProfile?.role === 'manager');
 
   useEffect(() => {
-    if (!isUserLoading && !user) {
-      router.push('/login');
-    } else if (!isUserLoading && userProfile && !isAuthorized) {
-      router.push('/');
+    // Wait until loading is finished before checking auth state.
+    if (!isUserLoading) {
+      if (!user) {
+        // If no user, redirect to login.
+        router.push('/login');
+      } else if (!isAuthorized) {
+        // If there is a user, but they are not authorized, redirect to home.
+        router.push('/');
+      }
     }
   }, [user, userProfile, isUserLoading, isAuthorized, router]);
 
@@ -224,16 +230,8 @@ export default function DoorCodesPage() {
     handleDialogClose();
   };
 
-
-  if (isUserLoading || !userProfile) {
-    return (
-      <div className="flex h-screen w-full items-center justify-center bg-background">
-        <Loader2 className="h-10 w-10 animate-spin text-primary" />
-      </div>
-    );
-  }
-  
-  if (!isAuthorized) {
+  // Show a loader while we are determining auth state and authorization.
+  if (isUserLoading || !isAuthorized) {
     return (
       <div className="flex h-screen w-full items-center justify-center bg-background">
         <Loader2 className="h-10 w-10 animate-spin text-primary" />

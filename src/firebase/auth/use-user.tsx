@@ -5,6 +5,8 @@ import { Auth, User, onAuthStateChanged } from 'firebase/auth';
 import { useFirestore, useDoc, useMemoFirebase } from '@/firebase';
 import { doc } from 'firebase/firestore';
 import { UserProfile } from '@/types/user-profile';
+import { FirebaseContext } from '../provider';
+import { useContext } from 'react';
 
 // Return type for useUser() - combines auth state and profile data
 export interface UserHookResult { 
@@ -57,16 +59,16 @@ export const useUser = (): UserHookResult => {
     [firestore, authState.user]
   );
   
-  const { data: userProfile, isLoading: isProfileLoading } = useDoc<UserProfile>(userProfileRef);
+  const { data: userProfile, isLoading: isProfileLoading, error: profileError } = useDoc<UserProfile>(userProfileRef);
+  
+  // The user is loading if auth state is loading OR if we have a user but are still waiting for their profile.
+  const isLoading = authState.isAuthLoading || (!!authState.user && isProfileLoading);
+
 
   return {
     user: authState.user,
-    userProfile,
-    isUserLoading: authState.isAuthLoading || isProfileLoading,
-    userError: authState.authError,
+    userProfile: userProfile,
+    isUserLoading: isLoading,
+    userError: authState.authError || profileError,
   };
 };
-
-// Re-export the context for direct usage if needed, but useUser is preferred
-import { FirebaseContext } from '../provider';
-import { useContext } from 'react';

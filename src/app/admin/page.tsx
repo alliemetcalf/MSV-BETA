@@ -34,23 +34,21 @@ export default function AdminPage() {
   const { user, userProfile, isUserLoading } = useUser();
   const router = useRouter();
 
-  const isAuthorized = userProfile?.role === 'superadmin' || userProfile?.role === 'manager';
+  const isAuthorized = !isUserLoading && (userProfile?.role === 'superadmin' || userProfile?.role === 'manager');
 
   useEffect(() => {
-    // If loading is finished and there's still no user, redirect to login
-    if (!isUserLoading && !user) {
-      router.push('/login');
-      return;
+    if (!isUserLoading) {
+      if (!user) {
+        router.push('/login');
+      } else if (!isAuthorized) {
+        router.push('/');
+      }
     }
-    // Once user and profile are loaded, check role
-    if (!isUserLoading && userProfile && !isAuthorized) {
-        router.push('/'); // Redirect non-admins
-    }
-  }, [user, isUserLoading, userProfile, isAuthorized, router]);
+  }, [user, userProfile, isUserLoading, isAuthorized, router]);
 
 
   // Show loader until we are sure about the user's auth state and role
-  if (isUserLoading || !user || !isAuthorized) {
+  if (isUserLoading || !isAuthorized) {
     return (
       <div className="flex h-screen w-full items-center justify-center bg-background">
         <Loader2 className="h-10 w-10 animate-spin text-primary" />

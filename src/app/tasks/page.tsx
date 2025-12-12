@@ -59,13 +59,15 @@ export default function TasksPage() {
   const router = useRouter();
   const { toast } = useToast();
 
-  const isAuthorized = userProfile?.role === 'superadmin' || userProfile?.role === 'manager' || userProfile?.role === 'contractor';
+  const isAuthorized = !isUserLoading && (userProfile?.role === 'superadmin' || userProfile?.role === 'manager' || userProfile?.role === 'contractor');
 
   useEffect(() => {
-    if (!isUserLoading && !user) {
-      router.push('/login');
-    } else if (!isUserLoading && userProfile && !isAuthorized) {
-      router.push('/');
+    if (!isUserLoading) {
+        if (!user) {
+            router.push('/login');
+        } else if (!isAuthorized) {
+            router.push('/');
+        }
     }
   }, [user, userProfile, isUserLoading, isAuthorized, router]);
 
@@ -204,15 +206,11 @@ export default function TasksPage() {
       setFormData(prev => ({ ...prev, [field]: value }));
   };
 
-  const isLoading = isUserLoading || (isAuthorized && tasksLoading) || propertiesLoading || taskSettingsLoading;
-
-  if (isUserLoading || !userProfile) {
+  if (isUserLoading || !isAuthorized) {
     return <div className="flex h-screen w-full items-center justify-center bg-background"><Loader2 className="h-10 w-10 animate-spin text-primary" /></div>;
   }
 
-  if (!isAuthorized) {
-    return <div className="flex h-screen w-full items-center justify-center bg-background"><Loader2 className="h-10 w-10 animate-spin text-primary" /></div>;
-  }
+  const isLoading = (isAuthorized && tasksLoading) || propertiesLoading || taskSettingsLoading;
 
   return (
     <>
