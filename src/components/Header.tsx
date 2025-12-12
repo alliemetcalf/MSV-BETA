@@ -129,7 +129,7 @@ export function Header() {
           <div className="flex items-center">
             {user && (
               <DropdownMenu>
-                <DropdownMenuTrigger asChild>
+                <DropdownMenuTrigger>
                   <Button variant="ghost" className="flex items-center gap-2">
                     <span className="text-sm text-muted-foreground hidden sm:inline">
                       {user.displayName || user.email}
