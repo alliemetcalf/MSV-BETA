@@ -1,7 +1,10 @@
 import { initializeApp, getApps, cert, App } from 'firebase-admin/app';
 import { getFirestore, Firestore } from 'firebase-admin/firestore';
 import { getAuth, Auth } from 'firebase-admin/auth';
-import serviceAccount from '@/../firebase-service-account.json';
+import serviceAccountData from '@/../firebase-service-account.json';
+
+// We cast the imported JSON to the type Firebase expects.
+export const serviceAccount = serviceAccountData as any;
 
 let app: App;
 
