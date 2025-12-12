@@ -64,22 +64,22 @@ export default function DoorCodesPage() {
   const { user, userProfile, isUserLoading } = useUser();
   const firestore = useFirestore();
   const router = useRouter();
-
-  // We can only know if they are authorized once the user profile is loaded.
-  const isAuthorized = !isUserLoading && (userProfile?.role === 'superadmin' || userProfile?.role === 'manager');
+  const [isAuthorized, setIsAuthorized] = useState(false);
 
   useEffect(() => {
-    // Wait until loading is finished before checking auth state.
     if (!isUserLoading) {
       if (!user) {
-        // If no user, redirect to login.
         router.push('/login');
-      } else if (!isAuthorized) {
-        // If there is a user, but they are not authorized, redirect to home.
+        return;
+      }
+      const authorized = userProfile?.role === 'superadmin' || userProfile?.role === 'manager';
+      if (authorized) {
+        setIsAuthorized(true);
+      } else {
         router.push('/');
       }
     }
-  }, [user, userProfile, isUserLoading, isAuthorized, router]);
+  }, [user, userProfile, isUserLoading, router]);
 
 
   const doorCodesQuery = useMemoFirebase(() => {
@@ -230,7 +230,6 @@ export default function DoorCodesPage() {
     handleDialogClose();
   };
 
-  // Show a loader while we are determining auth state and authorization.
   if (isUserLoading || !isAuthorized) {
     return (
       <div className="flex h-screen w-full items-center justify-center bg-background">

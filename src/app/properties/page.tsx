@@ -71,8 +71,7 @@ function getInitials(name: string) {
 }
 
 export default function PropertiesPage() {
-  const auth = useAuth();
-  const { user, isUserLoading } = useUser(auth);
+  const { user, userProfile, isUserLoading } = useUser();
   const firestore = useFirestore();
   const router = useRouter();
 
@@ -80,6 +79,8 @@ export default function PropertiesPage() {
     null
   );
   const [isTenantDialogOpen, setIsTenantDialogOpen] = React.useState(false);
+
+  const isAuthorized = !isUserLoading && (userProfile?.role === 'superadmin' || userProfile?.role === 'manager');
 
   React.useEffect(() => {
     if (!isUserLoading && !user) {
@@ -108,11 +109,11 @@ export default function PropertiesPage() {
   } = useCollection<Tenant>(tenantsCollectionRef);
 
   const doorCodesQuery = useMemoFirebase(() => {
-    if (!firestore) {
+    if (!firestore || !isAuthorized) {
       return null;
     }
     return collection(firestore, 'doorCodes');
-  }, [firestore]);
+  }, [firestore, isAuthorized]);
 
   const { data: doorCodes, isLoading: doorCodesLoading } = useCollection<DoorCode>(doorCodesQuery);
 
@@ -295,7 +296,7 @@ export default function PropertiesPage() {
                               </AccordionContent>
                             </AccordionItem>
                           )}
-                          {propertyDoorCodes.length > 0 && (
+                          {isAuthorized && propertyDoorCodes.length > 0 && (
                             <AccordionItem
                               value="door-codes"
                               className="px-6 border-b-0"
