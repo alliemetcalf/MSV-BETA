@@ -20,7 +20,6 @@ const UserSchema = z.object({
 const ListUsersOutputSchema = z.array(UserSchema);
 export type ListUsersOutput = z.infer<typeof ListUsersOutputSchema>;
 
-
 export async function listUsers(): Promise<ListUsersOutput> {
   return listUsersFlow();
 }
@@ -33,39 +32,39 @@ const listUsersFlow = ai.defineFlow(
   async () => {
     try {
       const listUsersResult = await auth.listUsers();
-      const authUsers = listUsersResult.users;
+      const users = listUsersResult.users;
 
-      // Get all user profile documents from Firestore in one go.
-      const usersCollectionSnapshot = await db.collection('users').get();
-      const firestoreUsers = new Map(
-        usersCollectionSnapshot.docs.map(doc => [doc.id, doc.data()])
+      const combinedUsers = await Promise.all(
+        users.map(async (user) => {
+          const userDocRef = db.collection('users').doc(user.uid);
+          const userDoc = await userDocRef.get();
+          
+          let role = 'user';
+          if (userDoc.exists) {
+            role = userDoc.data()?.role || 'user';
+          } else {
+            // If doc doesn't exist, create it with a default role
+            await userDocRef.set({ 
+              email: user.email,
+              role: 'user' 
+            });
+          }
+
+          return {
+            uid: user.uid,
+            email: user.email,
+            displayName: user.displayName,
+            role: role,
+          };
+        })
       );
-
-      const combinedUsers = authUsers.map(authUser => {
-        const firestoreUser = firestoreUsers.get(authUser.uid);
-        
-        // If user document doesn't exist, create it.
-        if (!firestoreUser) {
-           db.collection('users').doc(authUser.uid).set({
-            email: authUser.email,
-            role: 'user',
-          });
-        }
-        
-        return {
-          uid: authUser.uid,
-          email: authUser.email,
-          displayName: authUser.displayName,
-          role: firestoreUser?.role || 'user',
-        };
-      });
-
+      
       return combinedUsers;
 
     } catch (error: any) {
       console.error('Error listing users:', error);
-      // It's better to return an empty array on error than to crash.
-      return [];
+      // Throw the error so the client can see what went wrong.
+      throw new Error(`Failed to list users: ${error.message}`);
     }
   }
 );
