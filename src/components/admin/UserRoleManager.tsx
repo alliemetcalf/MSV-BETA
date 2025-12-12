@@ -22,48 +22,50 @@ import {
   SelectTrigger,
   SelectValue,
 } from '@/components/ui/select';
-import { listUsers, ListUsersOutput } from '@/ai/flows/list-users-flow';
-import { updateUserRole } from '@/ai/flows/update-user-role-flow';
 import { useToast } from '@/hooks/use-toast';
 import { Loader2, RefreshCw } from 'lucide-react';
 import { Button } from '../ui/button';
-import { useAuth } from '@/firebase';
+import { useAuth, useCollection, useFirestore, useMemoFirebase } from '@/firebase';
+import { collection, doc, updateDoc } from 'firebase/firestore';
 
-type User = ListUsersOutput[0];
-type Role = 'superadmin' | 'manager' | 'contractor' | 'user' | 'admin';
+interface UserProfile {
+    id: string;
+    email: string;
+    role: 'superadmin' | 'manager' | 'contractor' | 'user' | 'admin';
+}
 
 export function UserRoleManager() {
-  const [users, setUsers] = useState<User[]>([]);
-  const [isLoading, setIsLoading] = useState(true);
-  const [isUpdating, setIsUpdating] = useState<Record<string, boolean>>({});
   const { toast } = useToast();
   const auth = useAuth();
+  const firestore = useFirestore();
   const currentUserUid = auth?.currentUser?.uid;
 
-  const fetchUsers = async () => {
-    setIsLoading(true);
-    try {
-      const userList = await listUsers();
-      setUsers(userList);
-    } catch (error) {
-      toast({
-        variant: 'destructive',
-        title: 'Failed to load users',
-        description: 'Could not retrieve user list.',
-      });
-    } finally {
-      setIsLoading(false);
-    }
-  };
+  const usersCollectionRef = useMemoFirebase(
+      () => (firestore ? collection(firestore, 'users') : null),
+      [firestore]
+  );
+
+  const { data: users, isLoading, error, refetch } = useCollection<UserProfile>(usersCollectionRef);
+
+  const [isUpdating, setIsUpdating] = useState<Record<string, boolean>>({});
 
   useEffect(() => {
-    if (auth) {
-      fetchUsers();
+    if(error){
+       toast({
+        variant: 'destructive',
+        title: 'Failed to load users',
+        description: error.message || 'Could not retrieve user list.',
+      });
     }
-  }, [auth]);
+  }, [error, toast]);
 
-  const handleRoleChange = async (uid: string, newRole: Role) => {
-    if (newRole === 'admin') {
+
+  const handleRoleChange = async (uid: string, newRole: UserProfile['role']) => {
+    if (!firestore) {
+        toast({ variant: 'destructive', title: 'Error', description: 'Firestore is not initialized.' });
+        return;
+    }
+     if (newRole === 'admin') {
         toast({
             variant: 'destructive',
             title: 'Invalid Role',
@@ -74,43 +76,35 @@ export function UserRoleManager() {
     
     setIsUpdating((prev) => ({ ...prev, [uid]: true }));
     try {
-      const result = await updateUserRole({ uid, role: newRole as 'superadmin' | 'manager' | 'contractor' | 'user' });
-      if (result.success) {
-        setUsers((currentUsers) =>
-          currentUsers.map((user) =>
-            user.uid === uid ? { ...user, role: newRole } : user
-          )
-        );
-        toast({
-          title: 'Role Updated',
-          description: "User's role has been successfully changed.",
-        });
-      } else {
-        throw new Error(result.message || 'Failed to update role.');
-      }
-    } catch (error) {
-      const errorMessage =
-        error instanceof Error ? error.message : 'An unexpected error occurred.';
+      const userDocRef = doc(firestore, 'users', uid);
+      await updateDoc(userDocRef, { role: newRole });
+
+      toast({
+        title: 'Role Updated',
+        description: "User's role has been successfully changed.",
+      });
+      // The useCollection hook will automatically show the updated data.
+    } catch (e: any) {
       toast({
         variant: 'destructive',
         title: 'Update Failed',
-        description: errorMessage,
+        description: e.message || 'An unexpected error occurred.',
       });
-      // Re-fetch users to get the correct state from the server on failure
-      fetchUsers();
     } finally {
       setIsUpdating((prev) => ({ ...prev, [uid]: false }));
     }
   };
+
+  const sortedUsers = users?.sort((a,b) => (a.email || '').localeCompare(b.email || '')) || [];
 
   return (
     <Card>
       <CardHeader className="flex flex-row items-center justify-between">
         <div>
             <CardTitle>User Role Management</CardTitle>
-            <CardDescription>View and manage user roles.</CardDescription>
+            <CardDescription>View and manage user roles from Firestore.</CardDescription>
         </div>
-        <Button variant="ghost" size="icon" onClick={fetchUsers} disabled={isLoading}>
+        <Button variant="ghost" size="icon" onClick={() => refetch?.()} disabled={isLoading}>
             <RefreshCw className={`h-4 w-4 ${isLoading ? 'animate-spin' : ''}`} />
         </Button>
       </CardHeader>
@@ -118,6 +112,10 @@ export function UserRoleManager() {
         {isLoading ? (
           <div className="flex justify-center items-center py-8">
             <Loader2 className="h-8 w-8 animate-spin" />
+          </div>
+        ) : sortedUsers.length === 0 ? (
+          <div className="text-center text-muted-foreground py-8">
+            No user profiles found in the 'users' collection.
           </div>
         ) : (
           <Table>
@@ -128,19 +126,19 @@ export function UserRoleManager() {
               </TableRow>
             </TableHeader>
             <TableBody>
-              {users.map((user) => (
-                <TableRow key={user.uid}>
+              {sortedUsers.map((user) => (
+                <TableRow key={user.id}>
                   <TableCell className="font-medium">{user.email}</TableCell>
                   <TableCell>
-                    {isUpdating[user.uid] ? (
+                    {isUpdating[user.id] ? (
                       <Loader2 className="h-4 w-4 animate-spin" />
                     ) : (
                       <Select
                         value={user.role}
-                        onValueChange={(newRole: Role) =>
-                          handleRoleChange(user.uid, newRole)
+                        onValueChange={(newRole: UserProfile['role']) =>
+                          handleRoleChange(user.id, newRole)
                         }
-                        disabled={user.uid === currentUserUid}
+                        disabled={user.id === currentUserUid}
                       >
                         <SelectTrigger className="w-[180px]">
                           <SelectValue placeholder="Select role" />
@@ -150,7 +148,7 @@ export function UserRoleManager() {
                           <SelectItem value="contractor">Contractor</SelectItem>
                           <SelectItem value="manager">Manager</SelectItem>
                           <SelectItem value="superadmin">Super Admin</SelectItem>
-                          {/* Only show 'admin' if it's the user's current, invalid role */}
+                           {/* Only show 'admin' if it's the user's current, invalid role */}
                           {user.role === 'admin' && <SelectItem value="admin" disabled>Admin (Invalid)</SelectItem>}
                         </SelectContent>
                       </Select>
