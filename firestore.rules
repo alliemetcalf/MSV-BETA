@@ -33,7 +33,15 @@ service cloud.firestore {
 
     // Users Collection:
     match /users/{userId} {
-      allow read, write: if isSuperAdmin() || isOwner(userId);
+      // Allow superadmins to get any user document.
+      // Allow any user to get/update their own document.
+      allow get, update, delete: if isSuperAdmin() || isOwner(userId);
+
+      // Allow any user to create their own user document.
+      allow create: if isOwner(userId);
+      
+      // Explicitly allow superadmins to list the entire collection.
+      allow list: if isSuperAdmin();
 
       // Allow superadmin to read/write to any doorCodes subcollection for migration
       match /doorCodes/{doorCodeId} {
