@@ -64,7 +64,7 @@ service cloud.firestore {
     
     // Tenants
     match /tenants/{tenantId} {
-      allow read: if isSignedIn(); // Allow any signed-in user to read tenant data
+      allow read: if isSignedIn();
       allow write: if isSuperAdmin() || isManager();
     }
 
