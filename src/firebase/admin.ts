@@ -2,7 +2,6 @@
 import { initializeApp, getApps, cert, getApp, App } from 'firebase-admin/app';
 import { getAuth, Auth } from 'firebase-admin/auth';
 import { getFirestore, Firestore } from 'firebase-admin/firestore';
-import serviceAccount from '@/../firebase-service-account.json';
 
 // This is a lazy-loaded singleton for the Firebase Admin App.
 let app: App | null = null;
@@ -12,14 +11,11 @@ let app: App | null = null;
  * This is idempotent and safe to call multiple times.
  */
 function initializeAdminApp(): App {
-  if (app) {
-    return app;
-  }
-
   if (getApps().length === 0) {
-    app = initializeApp({
-      credential: cert(serviceAccount as any),
-    });
+    // When running in a serverless environment, the GOOGLE_APPLICATION_CREDENTIALS
+    // env var is used to automatically configure the credentials.
+    // In a local dev environment, this var must be set in your .env file.
+    app = initializeApp();
   } else {
     app = getApp();
   }
