@@ -26,9 +26,6 @@ if (getApps().length === 0) {
   app = getApp();
 }
 
-const auth = getAuth(app);
-const db = getFirestore(app);
-
 const createUserFlow = ai.defineFlow(
   {
     name: 'createUserFlow',
@@ -37,6 +34,9 @@ const createUserFlow = ai.defineFlow(
   },
   async (input) => {
     try {
+      const auth = getAuth(app);
+      const db = getFirestore(app);
+
       // 1. Create the user in Firebase Authentication
       const userRecord = await auth.createUser({
         email: input.email,
