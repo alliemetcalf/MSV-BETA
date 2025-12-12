@@ -1,3 +1,4 @@
+
 {
   "entities": {
     "UserProfile": {
@@ -483,6 +484,14 @@
       "type": "object",
       "description": "Represents a single task assigned to a contractor.",
       "properties": {
+        "assignedTo": {
+          "type": "string",
+          "description": "The UID of the user (contractor) assigned to the task."
+        },
+        "assignedToName": {
+          "type": "string",
+          "description": "The display name of the user (contractor) assigned to the task."
+        },
         "invoiceNumber": {
           "type": "number",
           "description": "The invoice number this task belongs to."

@@ -16,6 +16,8 @@ import {
   updateDoc,
   deleteDoc,
   Timestamp,
+  query,
+  where,
 } from 'firebase/firestore';
 import { useRouter } from 'next/navigation';
 import { MainLayout } from '@/components/MainLayout';
@@ -45,6 +47,7 @@ import { Calendar } from '@/components/ui/calendar';
 import { format } from 'date-fns';
 import { cn } from '@/lib/utils';
 import { Badge } from '@/components/ui/badge';
+import { UserProfile } from '@/types/user-profile';
 
 const moneyFormatter = new Intl.NumberFormat('en-US', {
   style: 'currency',
@@ -59,18 +62,22 @@ export default function TasksPage() {
   const router = useRouter();
   const { toast } = useToast();
 
-  const isAuthorized = !isUserLoading && (userProfile?.role === 'superadmin' || userProfile?.role === 'manager' || userProfile?.role === 'contractor');
+  const [isAuthorized, setIsAuthorized] = useState(false);
 
   useEffect(() => {
     if (!isUserLoading) {
-        if (!user) {
-            router.push('/login');
-        } else if (!isAuthorized) {
-            router.push('/');
-        }
+      if (!user) {
+        router.push('/login');
+        return;
+      }
+      const authorized = userProfile?.role === 'superadmin' || userProfile?.role === 'manager' || userProfile?.role === 'contractor';
+      if (authorized) {
+        setIsAuthorized(true);
+      } else {
+        router.push('/');
+      }
     }
-  }, [user, userProfile, isUserLoading, isAuthorized, router]);
-
+  }, [user, userProfile, isUserLoading, router]);
 
   const [isFormOpen, setIsFormOpen] = useState(false);
   const [editingTask, setEditingTask] = useState<ContractorTask | null>(null);
@@ -96,6 +103,8 @@ export default function TasksPage() {
     totalPaid: undefined,
     datePaid: undefined,
     totalInvoiceAmount: undefined,
+    assignedTo: undefined,
+    assignedToName: undefined,
   });
 
   const tasksCollectionRef = useMemoFirebase(
@@ -106,17 +115,24 @@ export default function TasksPage() {
     useCollection<ContractorTask>(tasksCollectionRef);
 
   const propertiesCollectionRef = useMemoFirebase(
-    () => (firestore ? collection(firestore, 'properties') : null),
-    [firestore]
+    () => (firestore && isAuthorized ? collection(firestore, 'properties') : null),
+    [firestore, isAuthorized]
   );
   const { data: properties, isLoading: propertiesLoading } = useCollection<Property>(propertiesCollectionRef);
   const propertyNames = useMemo(() => properties?.map(p => p.name).sort() || [], [properties]);
 
   const taskSettingsDocRef = useMemoFirebase(
-    () => (firestore ? doc(firestore, 'siteConfiguration', 'contractorTasks') : null),
-    [firestore]
+    () => (firestore && isAuthorized ? doc(firestore, 'siteConfiguration', 'contractorTasks') : null),
+    [firestore, isAuthorized]
   );
   const { data: taskSettingsData, isLoading: taskSettingsLoading } = useDoc<{ mileageRate: number, taskTypes: TaskType[] }>(taskSettingsDocRef);
+
+  const contractorsQuery = useMemoFirebase(() => {
+    if (!firestore || !isAuthorized) return null;
+    return query(collection(firestore, 'users'), where('role', '==', 'contractor'));
+  }, [firestore, isAuthorized]);
+
+  const { data: contractors, isLoading: contractorsLoading } = useCollection<UserProfile>(contractorsQuery);
 
   const sortedTasks = useMemo(() => {
     if (!tasks) return [];
@@ -139,6 +155,8 @@ export default function TasksPage() {
       totalPaid: undefined,
       datePaid: undefined,
       totalInvoiceAmount: undefined,
+      assignedTo: undefined,
+      assignedToName: undefined,
     });
     setIsFormOpen(true);
   };
@@ -178,7 +196,18 @@ export default function TasksPage() {
     
     const mileageRate = taskSettingsData?.mileageRate || 0;
 
-    const dataToSave = { ...formData, mileageRate };
+    let dataToSave = { ...formData, mileageRate };
+    
+    if (dataToSave.assignedTo) {
+        const assignedContractor = contractors?.find(c => c.id === dataToSave.assignedTo);
+        if (assignedContractor) {
+            dataToSave.assignedToName = assignedContractor.displayName || assignedContractor.email;
+        }
+    } else {
+        dataToSave.assignedTo = undefined;
+        dataToSave.assignedToName = undefined;
+    }
+
 
     try {
       if (editingTask) {
@@ -203,14 +232,14 @@ export default function TasksPage() {
   };
 
   const handleSelectChange = (field: keyof Omit<ContractorTask, 'id' | 'mileageRate'>) => (value: string) => {
-      setFormData(prev => ({ ...prev, [field]: value }));
+      setFormData(prev => ({ ...prev, [field]: value === NONE_VALUE ? undefined : value }));
   };
 
   if (isUserLoading || !isAuthorized) {
     return <div className="flex h-screen w-full items-center justify-center bg-background"><Loader2 className="h-10 w-10 animate-spin text-primary" /></div>;
   }
 
-  const isLoading = (isAuthorized && tasksLoading) || propertiesLoading || taskSettingsLoading;
+  const isLoading = (isAuthorized && tasksLoading) || propertiesLoading || taskSettingsLoading || contractorsLoading;
 
   return (
     <>
@@ -235,7 +264,7 @@ export default function TasksPage() {
                       <TableHead>Date</TableHead>
                       <TableHead>Task Type</TableHead>
                       <TableHead>Property</TableHead>
-                      <TableHead>Room</TableHead>
+                      <TableHead>Assigned To</TableHead>
                       <TableHead>Description</TableHead>
                       <TableHead>Hours</TableHead>
                       <TableHead>Rate</TableHead>
@@ -251,7 +280,7 @@ export default function TasksPage() {
                         <TableCell>{format(task.dateOfTask.toDate(), 'PPP')}</TableCell>
                         <TableCell>{task.taskType}</TableCell>
                         <TableCell>{task.property}</TableCell>
-                        <TableCell>{task.room}</TableCell>
+                        <TableCell>{task.assignedToName}</TableCell>
                         <TableCell>{task.description}</TableCell>
                         <TableCell>{task.hoursWorked}</TableCell>
                         <TableCell>{task.hourlyRate ? moneyFormatter.format(task.hourlyRate) : ''}</TableCell>
@@ -332,6 +361,16 @@ export default function TasksPage() {
                 <div className="space-y-2">
                   <Label htmlFor="room">Room #</Label>
                   <Input id="room" value={formData.room || ''} onChange={handleFormChange} />
+                </div>
+                <div className="space-y-2">
+                  <Label htmlFor="assignedTo">Assign To</Label>
+                  <Select onValueChange={handleSelectChange('assignedTo')} value={formData.assignedTo}>
+                    <SelectTrigger><SelectValue placeholder="Select a contractor" /></SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value={NONE_VALUE}>None</SelectItem>
+                      {contractors?.map(c => <SelectItem key={c.id} value={c.id}>{c.displayName || c.email}</SelectItem>)}
+                    </SelectContent>
+                  </Select>
                 </div>
                  <div className="space-y-2">
                   <Label htmlFor="status">Status</Label>

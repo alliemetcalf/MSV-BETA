@@ -16,6 +16,8 @@ export interface ContractorTask {
   datePaid?: Timestamp;
   totalInvoiceAmount?: number;
   status: 'Pending' | 'In Progress' | 'Completed' | 'Paid';
+  assignedTo?: string; // UID of the contractor user
+  assignedToName?: string; // displayName of the contractor
 }
 
 export type TaskType = {
