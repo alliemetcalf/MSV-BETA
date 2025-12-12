@@ -14,6 +14,7 @@ import { UserProfile } from '@/types/user-profile';
 const UserWithRoleSchema = z.object({
   uid: z.string(),
   email: z.string().optional(),
+  displayName: z.string().optional(),
   role: z.enum(['superadmin', 'manager', 'contractor', 'user', 'admin']).optional(),
 });
 
@@ -50,6 +51,7 @@ const listUsersFlow = ai.defineFlow(
         return {
           uid: userRecord.uid,
           email: userRecord.email,
+          displayName: firestoreProfile?.displayName || userRecord.displayName,
           role: firestoreProfile?.role || 'user', // Default to 'user' if no profile exists
         };
       });

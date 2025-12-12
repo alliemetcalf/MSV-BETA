@@ -31,6 +31,7 @@ import { useAuth } from '@/firebase';
 type User = {
   uid: string;
   email?: string;
+  displayName?: string;
   role?: 'superadmin' | 'manager' | 'contractor' | 'user' | 'admin';
 };
 
@@ -52,7 +53,7 @@ export function UserRoleManager() {
       if (result.error) {
         throw new Error(result.error);
       }
-      const sorted = result.users.sort((a,b) => (a.email || '').localeCompare(b.email || ''));
+      const sorted = result.users.sort((a,b) => (a.displayName || a.email || '').localeCompare(b.displayName || b.email || ''));
       setUsers(sorted);
     } catch (e: any) {
       const errorMessage = e.message || 'Could not retrieve user list.';
@@ -135,14 +136,14 @@ export function UserRoleManager() {
           <Table>
             <TableHeader>
               <TableRow>
-                <TableHead>Email</TableHead>
+                <TableHead>User</TableHead>
                 <TableHead>Role</TableHead>
               </TableRow>
             </TableHeader>
             <TableBody>
               {users.map((user) => (
                 <TableRow key={user.uid}>
-                  <TableCell className="font-medium">{user.email || 'N/A'}</TableCell>
+                  <TableCell className="font-medium">{user.displayName || user.email || 'N/A'}</TableCell>
                   <TableCell>
                     {isUpdating[user.uid] ? (
                       <Loader2 className="h-4 w-4 animate-spin" />
