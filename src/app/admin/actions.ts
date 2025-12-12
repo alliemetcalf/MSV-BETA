@@ -1,33 +1,40 @@
 'use server';
 
-import { initializeApp, getApp, getApps, cert } from 'firebase-admin/app';
+import { initializeApp, getApps, cert, App } from 'firebase-admin/app';
 import { getAuth } from 'firebase-admin/auth';
 import { getFirestore } from 'firebase-admin/firestore';
-import { CreateUserInputSchema, CreateUserInput } from '@/ai/schemas/user-schemas';
+import { CreateUserInputSchema, type CreateUserInput } from '@/ai/schemas/user-schemas';
 
 // This is safe to be in the code, as it's a server-only file.
 const serviceAccount = require('../../../firebase-service-account.json');
 
-// Initialize Firebase Admin SDK idempotently.
-function initializeAdmin() {
+// A function to initialize and get the Firebase Admin app, ensuring it only happens once.
+function getAdminApp(): App {
+  // Check if there are any initialized apps. If not, initialize one.
   if (!getApps().length) {
-    initializeApp({
+    return initializeApp({
       credential: cert(serviceAccount),
     });
   }
-  return getApp();
+  // If apps are already initialized, return the default one.
+  return getApps()[0];
 }
 
 export async function createUserAction(data: CreateUserInput): Promise<{ message: string; error?: string; }> {
   try {
     const parsedData = CreateUserInputSchema.safeParse(data);
     if (!parsedData.success) {
-      return { message: '', error: 'Invalid input data.' };
+      // Create a more detailed error message from Zod's errors.
+      const errorDetails = parsedData.error.errors.map(e => `${e.path.join('.')}: ${e.message}`).join(', ');
+      return { message: '', error: `Invalid input data. ${errorDetails}` };
     }
 
     const { email, password, displayName, role } = parsedData.data;
     
-    const adminApp = initializeAdmin();
+    // Get the initialized admin app instance.
+    const adminApp = getAdminApp();
+
+    // Pass the app instance explicitly to the services.
     const auth = getAuth(adminApp);
     const db = getFirestore(adminApp);
 
