@@ -1,3 +1,4 @@
+
 'use client';
 
 import React, { useState, useEffect, useMemo } from 'react';
@@ -63,7 +64,7 @@ export default function TasksPage() {
   useEffect(() => {
     if (!isUserLoading && !user) {
       router.push('/login');
-    } else if (!isUserLoading && user && !isAuthorized) {
+    } else if (!isUserLoading && userProfile && !isAuthorized) {
       router.push('/');
     }
   }, [user, userProfile, isUserLoading, isAuthorized, router]);
@@ -96,22 +97,22 @@ export default function TasksPage() {
   });
 
   const tasksCollectionRef = useMemoFirebase(
-    () => (user && firestore && isAuthorized ? collection(firestore, 'contractorTasks') : null),
-    [firestore, user, isAuthorized]
+    () => (firestore && isAuthorized ? collection(firestore, 'contractorTasks') : null),
+    [firestore, isAuthorized]
   );
   const { data: tasks, isLoading: tasksLoading, error: tasksError } =
     useCollection<ContractorTask>(tasksCollectionRef);
 
   const propertiesCollectionRef = useMemoFirebase(
-    () => (user && firestore ? collection(firestore, 'properties') : null),
-    [firestore, user]
+    () => (firestore ? collection(firestore, 'properties') : null),
+    [firestore]
   );
   const { data: properties, isLoading: propertiesLoading } = useCollection<Property>(propertiesCollectionRef);
   const propertyNames = useMemo(() => properties?.map(p => p.name).sort() || [], [properties]);
 
   const taskSettingsDocRef = useMemoFirebase(
-    () => (user && firestore ? doc(firestore, 'siteConfiguration', 'contractorTasks') : null),
-    [firestore, user]
+    () => (firestore ? doc(firestore, 'siteConfiguration', 'contractorTasks') : null),
+    [firestore]
   );
   const { data: taskSettingsData, isLoading: taskSettingsLoading } = useDoc<{ mileageRate: number, taskTypes: TaskType[] }>(taskSettingsDocRef);
 
@@ -205,7 +206,11 @@ export default function TasksPage() {
 
   const isLoading = isUserLoading || (isAuthorized && tasksLoading) || propertiesLoading || taskSettingsLoading;
 
-  if (isLoading || !user || !isAuthorized) {
+  if (isUserLoading || !userProfile) {
+    return <div className="flex h-screen w-full items-center justify-center bg-background"><Loader2 className="h-10 w-10 animate-spin text-primary" /></div>;
+  }
+
+  if (!isAuthorized) {
     return <div className="flex h-screen w-full items-center justify-center bg-background"><Loader2 className="h-10 w-10 animate-spin text-primary" /></div>;
   }
 
@@ -222,8 +227,9 @@ export default function TasksPage() {
               <Button onClick={handleAddClick}><PlusCircle className="mr-2 h-4 w-4" />Add Task</Button>
             </CardHeader>
             <CardContent>
+              {isLoading && <div className="flex justify-center py-8"><Loader2 className="h-8 w-8 animate-spin" /></div>}
               {tasksError && <p className="text-destructive text-center py-8">Error: {tasksError.message}</p>}
-              {!tasksError && sortedTasks.length > 0 ? (
+              {!isLoading && !tasksError && sortedTasks.length > 0 ? (
                 <Table>
                   <TableHeader>
                     <TableRow>
@@ -262,7 +268,7 @@ export default function TasksPage() {
                   </TableBody>
                 </Table>
               ) : (
-                !tasksError && <div className="text-center text-muted-foreground py-8">No tasks found. Click "Add Task" to start.</div>
+                !isLoading && !tasksError && <div className="text-center text-muted-foreground py-8">No tasks found. Click "Add Task" to start.</div>
               )}
             </CardContent>
           </Card>

@@ -1,3 +1,4 @@
+
 'use client';
 
 import React, { useState, useEffect, useMemo } from 'react';
@@ -77,7 +78,7 @@ export default function ExpensesPage() {
   useEffect(() => {
     if (!isUserLoading && !user) {
       router.push('/login');
-    } else if (!isUserLoading && user && !isAuthorized) {
+    } else if (!isUserLoading && userProfile && !isAuthorized) {
       router.push('/');
     }
   }, [user, userProfile, isUserLoading, isAuthorized, router]);
@@ -119,37 +120,37 @@ export default function ExpensesPage() {
   const [isUploading, setIsUploading] = useState(false);
 
   const expensesCollectionRef = useMemoFirebase(
-    () => (user && firestore && isAuthorized ? collection(firestore, 'expenses') : null),
-    [firestore, user, isAuthorized]
+    () => (firestore && isAuthorized ? collection(firestore, 'expenses') : null),
+    [firestore, isAuthorized]
   );
   const { data: expenses, isLoading: expensesLoading, error: expensesError } =
     useCollection<Expense>(expensesCollectionRef);
 
   const categoriesDocRef = useMemoFirebase(
-    () => (user && firestore ? doc(firestore, 'siteConfiguration', 'expenseCategories') : null),
-    [firestore, user]
+    () => (firestore ? doc(firestore, 'siteConfiguration', 'expenseCategories') : null),
+    [firestore]
   );
   const { data: categoriesData, isLoading: categoriesLoading } = useDoc<{ categories: ExpenseCategory[] }>(categoriesDocRef);
   const categories = useMemo(() => categoriesData?.categories || [], [categoriesData]);
 
   const vendorsDocRef = useMemoFirebase(
-    () => (user && firestore ? doc(firestore, 'siteConfiguration', 'vendors') : null),
-    [firestore, user]
+    () => (firestore ? doc(firestore, 'siteConfiguration', 'vendors') : null),
+    [firestore]
   );
   const { data: vendorsData, isLoading: vendorsLoading } = useDoc<{ vendors: Vendor[] }>(vendorsDocRef);
   const vendors = useMemo(() => vendorsData?.vendors.sort((a,b) => a.name.localeCompare(b.name)) || [], [vendorsData]);
 
 
   const propertiesCollectionRef = useMemoFirebase(
-    () => (user && firestore ? collection(firestore, 'properties') : null),
-    [firestore, user]
+    () => (firestore ? collection(firestore, 'properties') : null),
+    [firestore]
   );
   const { data: properties, isLoading: propertiesLoading } = useCollection<Property>(propertiesCollectionRef);
   const propertyNames = useMemo(() => properties?.map(p => p.name).sort() || [], [properties]);
 
   const tenantsCollectionRef = useMemoFirebase(
-    () => (user && firestore ? collection(firestore, 'tenants') : null),
-    [firestore, user]
+    () => (firestore ? collection(firestore, 'tenants') : null),
+    [firestore]
   );
   const { data: tenants, isLoading: tenantsLoading } = useCollection<Tenant>(tenantsCollectionRef);
   
@@ -344,7 +345,11 @@ export default function ExpensesPage() {
 
   const isLoading = isUserLoading || (isAuthorized && expensesLoading) || categoriesLoading || propertiesLoading || tenantsLoading || vendorsLoading;
 
-  if (isLoading || !user || !isAuthorized) {
+  if (isUserLoading || !userProfile) {
+    return <div className="flex h-screen w-full items-center justify-center bg-background"><Loader2 className="h-10 w-10 animate-spin text-primary" /></div>;
+  }
+
+  if (!isAuthorized) {
     return <div className="flex h-screen w-full items-center justify-center bg-background"><Loader2 className="h-10 w-10 animate-spin text-primary" /></div>;
   }
 
@@ -361,8 +366,9 @@ export default function ExpensesPage() {
               <Button onClick={handleAddClick}><PlusCircle className="mr-2 h-4 w-4" />Add Expense</Button>
             </CardHeader>
             <CardContent>
+              {isLoading && <div className="flex justify-center py-8"><Loader2 className="h-8 w-8 animate-spin" /></div>}
               {expensesError && <p className="text-destructive text-center py-8">Error: {expensesError.message}</p>}
-              {!expensesError && sortedExpenses.length > 0 ? (
+              {!isLoading && !expensesError && sortedExpenses.length > 0 ? (
                 <Table>
                   <TableHeader>
                     <TableRow>
@@ -393,7 +399,7 @@ export default function ExpensesPage() {
                   </TableBody>
                 </Table>
               ) : (
-                !expensesError && <div className="text-center text-muted-foreground py-8">No expenses found. Click "Add Expense" to start.</div>
+                !isLoading && !expensesError && <div className="text-center text-muted-foreground py-8">No expenses found. Click "Add Expense" to start.</div>
               )}
             </CardContent>
           </Card>

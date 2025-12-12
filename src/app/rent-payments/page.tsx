@@ -66,7 +66,7 @@ export default function RentPaymentsPage() {
   useEffect(() => {
     if (!isUserLoading && !user) {
       router.push('/login');
-    } else if (!isUserLoading && user && !isAuthorized) {
+    } else if (!isUserLoading && userProfile && !isAuthorized) {
       router.push('/');
     }
   }, [user, userProfile, isUserLoading, isAuthorized, router]);
@@ -98,15 +98,15 @@ export default function RentPaymentsPage() {
   });
 
   const paymentsCollectionRef = useMemoFirebase(
-    () => (user && firestore && isAuthorized ? collection(firestore, 'rentPayments') : null),
-    [firestore, user, isAuthorized]
+    () => (firestore && isAuthorized ? collection(firestore, 'rentPayments') : null),
+    [firestore, isAuthorized]
   );
   const { data: payments, isLoading: paymentsLoading, error: paymentsError } =
     useCollection<RentPayment>(paymentsCollectionRef);
 
   const tenantsCollectionRef = useMemoFirebase(
-    () => (user && firestore ? collection(firestore, 'tenants') : null),
-    [firestore, user]
+    () => (firestore ? collection(firestore, 'tenants') : null),
+    [firestore]
   );
   const { data: tenants, isLoading: tenantsLoading } = useCollection<Tenant>(tenantsCollectionRef);
 
@@ -118,15 +118,15 @@ export default function RentPaymentsPage() {
   }, [tenants, tenantFilter]);
 
   const incomeTypesDocRef = useMemoFirebase(
-    () => (user && firestore ? doc(firestore, 'siteConfiguration', 'incomeTypes') : null),
-    [firestore, user]
+    () => (firestore ? doc(firestore, 'siteConfiguration', 'incomeTypes') : null),
+    [firestore]
   );
   const { data: incomeTypesData, isLoading: incomeTypesLoading } = useDoc<{ types: IncomeType[] }>(incomeTypesDocRef);
   const incomeTypes = useMemo(() => incomeTypesData?.types.sort((a,b) => a.name.localeCompare(b.name)) || [], [incomeTypesData]);
   
   const paymentMethodsDocRef = useMemoFirebase(
-    () => (user && firestore ? doc(firestore, 'siteConfiguration', 'paymentMethods') : null),
-    [firestore, user]
+    () => (firestore ? doc(firestore, 'siteConfiguration', 'paymentMethods') : null),
+    [firestore]
   );
   const { data: paymentMethodsData, isLoading: paymentMethodsLoading } = useDoc<{ methods: PaymentMethod[] }>(paymentMethodsDocRef);
   const paymentMethods = useMemo(() => paymentMethodsData?.methods.sort((a,b) => a.name.localeCompare(b.name)) || [], [paymentMethodsData]);
@@ -241,7 +241,11 @@ export default function RentPaymentsPage() {
 
   const isLoading = isUserLoading || (isAuthorized && paymentsLoading) || tenantsLoading || incomeTypesLoading || paymentMethodsLoading;
 
-  if (isLoading || !user || !isAuthorized) {
+  if (isUserLoading || !userProfile) {
+    return <div className="flex h-screen w-full items-center justify-center bg-background"><Loader2 className="h-10 w-10 animate-spin text-primary" /></div>;
+  }
+
+  if (!isAuthorized) {
     return <div className="flex h-screen w-full items-center justify-center bg-background"><Loader2 className="h-10 w-10 animate-spin text-primary" /></div>;
   }
 
@@ -257,8 +261,9 @@ export default function RentPaymentsPage() {
             <Button onClick={handleAddClick}><PlusCircle className="mr-2 h-4 w-4" /> Add Payment</Button>
           </CardHeader>
           <CardContent>
+            {isLoading && <div className="flex justify-center py-8"><Loader2 className="h-8 w-8 animate-spin" /></div>}
             {paymentsError && <p className="text-destructive text-center py-8">Error: {paymentsError.message}</p>}
-            {!paymentsError && sortedPayments.length > 0 ? (
+            {!isLoading && !paymentsError && sortedPayments.length > 0 ? (
               <Table>
                 <TableHeader>
                   <TableRow>
@@ -291,7 +296,7 @@ export default function RentPaymentsPage() {
                 </TableBody>
               </Table>
             ) : (
-              !paymentsError && <div className="text-center text-muted-foreground py-8">No payments found. Click "Add Payment" to start.</div>
+              !isLoading && !paymentsError && <div className="text-center text-muted-foreground py-8">No payments found. Click "Add Payment" to start.</div>
             )}
           </CardContent>
         </Card>

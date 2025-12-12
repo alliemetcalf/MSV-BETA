@@ -70,13 +70,14 @@ export default function DoorCodesPage() {
   useEffect(() => {
     if (!isUserLoading && !user) {
       router.push('/login');
-    } else if (!isUserLoading && user && !isAuthorized) {
+    } else if (!isUserLoading && userProfile && !isAuthorized) {
       router.push('/');
     }
   }, [user, userProfile, isUserLoading, isAuthorized, router]);
 
 
   const doorCodesQuery = useMemoFirebase(() => {
+    // Only construct the query if the user is authorized.
     if (!firestore || !isAuthorized) {
       return null;
     }
